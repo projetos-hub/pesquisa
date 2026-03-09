@@ -93,6 +93,9 @@
     .welcome-body { font-size: .95rem; color: #444; line-height: 1.75; display: flex; flex-direction: column; gap: 14px; }
     .welcome-body p { margin: 0; }
     .welcome-footer { margin-top: 32px; display: flex; justify-content: flex-end; }
+
+    .text-area { width: 100%; padding: 12px 14px; border-radius: 10px; border: 2px solid #e5e7eb; font-size: .95rem; font-family: inherit; resize: vertical; min-height: 110px; outline: none; transition: border-color .15s; color: #333; }
+    .text-area:focus { border-color: #667eea; }
   </style>
 </head>
 <body>
@@ -100,15 +103,159 @@
 <script type="text/babel">
 const { useState, useEffect } = React;
 
-/* ── helpers ─────────────────────────────────────── */
-function Radio({ selected }) {
-  return <span className={`radio`} />;
+/* ══════════════════════════════════════════════════════
+   REGISTRY DE PESQUISAS
+   Para adicionar uma nova pesquisa: inclua uma entrada
+   neste objeto seguindo o mesmo padrão do 'csat'.
+   ══════════════════════════════════════════════════════ */
+const SURVEYS = {
+
+  /* ── CSAT — Pesquisa de Satisfação ─────────────────── */
+  'csat': {
+    id: 'csat',
+    titulo: 'Pesquisa de Satisfação 2026',
+    tipo_pesquisa: 'quantitativa',
+    publico: ['responsavel', 'aluno'],
+    steps: [
+      { type: 'welcome' },
+
+      {
+        type: 'nps',
+        key: 'nps',
+        perguntaBilingue: true,
+      },
+
+      {
+        type: 'scale',
+        key: 'bilingue',
+        titulo: 'Programa Bilíngue',
+        desc: 'Avalie os aspectos do programa bilíngue da {tipo}.',
+        condicional: (ans) => ans.nps?.participa_bilingue === 'Sim',
+        secoes: [
+          {
+            key: 'ingles_todo_dia',
+            titulo: 'Inglês Todo Dia',
+            perguntas: [
+              'Qualidade geral do programa e materiais didáticos',
+              'Integração do inglês com outras áreas do conhecimento (CLIL)',
+              'Desenvolvimento das habilidades e interesse pelo aprendizado do inglês',
+            ],
+          },
+          {
+            key: 'turno_integral',
+            titulo: 'Turno Integral Bilíngue',
+            perguntas: [
+              'Qualidade geral do projeto e atividades complementares',
+              'Quantidade e diversidade das aulas e horas dedicadas ao inglês',
+              'Uso dos espaços da {tipo} para imersão no inglês',
+            ],
+          },
+        ],
+      },
+
+      {
+        type: 'scale',
+        key: 'pedagogico',
+        titulo: 'Eixo Pedagógico',
+        desc: 'Avalie de 1 a 5 os seguintes aspectos:',
+        perguntas: [
+          'Qualidade do ensino (professores, metodologias e estímulo ao aprendizado)',
+          'Recursos pedagógicos e suporte no integral/ateliê (plataformas, materiais e serviços)',
+          'Acolhimento e desenvolvimento emocional (atenção ao aluno e apoio às famílias)',
+        ],
+      },
+
+      {
+        type: 'scale',
+        key: 'administrativo',
+        titulo: 'Eixo Administrativo',
+        desc: 'Avalie de 1 a 5 os seguintes aspectos:',
+        perguntas: [
+          'Gestão e organização da {tipo} (direção, coordenação e rotina de entrada e saída)',
+          'Atendimento ao público (secretaria e financeiro)',
+          'Canais digitais de comunicação (informações no app da {tipo}, e-mail e redes sociais/sites)',
+        ],
+      },
+
+      {
+        type: 'scale',
+        key: 'infraestrutura',
+        titulo: 'Eixo Infraestrutura',
+        desc: 'Avalie de 1 a 5 os seguintes aspectos:',
+        perguntas: [
+          'Conforto e segurança dos espaços (salas, convivência e recepção)',
+          'Higiene e conservação (limpeza geral e banheiros)',
+          'Alimentação e serviços de apoio (cantina, variedade e organização do refeitório)',
+        ],
+      },
+
+      { type: 'thankyou' },
+    ],
+  },
+
+  /* ── Adicione novas pesquisas abaixo ────────────────── */
+  // Exemplo:
+  // 'feedback-professores': {
+  //   id: 'feedback-professores',
+  //   titulo: 'Feedback de Professores',
+  //   tipo_pesquisa: 'qualitativa',
+  //   publico: ['responsavel'],
+  //   steps: [
+  //     { type: 'welcome' },
+  //     { type: 'radio', key: 'avaliacao_geral', titulo: 'Avaliação Geral',
+  //       pergunta: 'Como você avalia o professor?', opcoes: ['Ótimo','Bom','Regular','Ruim'] },
+  //     { type: 'text', key: 'sugestao', titulo: 'Sugestões',
+  //       pergunta: 'Deixe sua sugestão:', obrigatorio: false },
+  //     { type: 'thankyou' },
+  //   ],
+  // },
+
+};
+
+/* ══════════════════════════════════════════════════════
+   ENGINE — funções do motor de pesquisas
+   ══════════════════════════════════════════════════════ */
+
+function buildActiveSteps(survey, perfil, answers) {
+  return survey.steps.filter(step => {
+    if (step.somentePara && step.somentePara !== perfil) return false;
+    if (step.condicional && !step.condicional(answers)) return false;
+    return true;
+  });
+}
+
+function stepId(step) {
+  return step.key || step.type;
+}
+
+async function reportarErro(surveyId, ctx) {
+  if (!SHEETS_WEBHOOK || SHEETS_WEBHOOK.includes('SUA_URL')) return;
+  try {
+    await fetch(SHEETS_WEBHOOK, {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'error',
+        surveyId: surveyId || '',
+        communityId: ctx.communityId || '',
+        userId: ctx.userId || '',
+        timestamp: new Date().toISOString(),
+      }),
+    });
+  } catch (e) { /* silencioso — não bloquear o usuário */ }
+}
+
+/* ══════════════════════════════════════════════════════
+   COMPONENTES BASE
+   ══════════════════════════════════════════════════════ */
+
+function Radio() {
+  return <span className="radio" />;
 }
 
 function OptionBtn({ label, selected, onClick }) {
   return (
     <button className={`option-btn${selected ? ' sel' : ''}`} onClick={onClick}>
-      <Radio selected={selected} />
+      <Radio />
       {label}
     </button>
   );
@@ -128,7 +275,21 @@ function ScaleRow({ label, value, onChange }) {
   );
 }
 
-/* ── Welcome ─────────────────────────────────────── */
+function ProgressBar({ step, total }) {
+  const pct = total > 0 ? Math.min((step / total) * 100, 100) : 0;
+  return (
+    <div className="progress-wrap">
+      <div className="progress-info"><span>Etapa {step + 1} de {total}</span><span>{Math.round(pct)}%</span></div>
+      <div className="progress-track"><div className="progress-fill" style={{width:`${pct}%`}} /></div>
+      <div className="progress-spacer" />
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   TELA DE BOAS-VINDAS
+   ══════════════════════════════════════════════════════ */
+
 function WelcomeStep({ nome, nomeAluno, serie, perfil, tipo, onStart }) {
   const isResponsavel = perfil !== 'aluno';
   return (
@@ -166,9 +327,7 @@ function WelcomeStep({ nome, nomeAluno, serie, perfil, tipo, onStart }) {
           Suas respostas serão analisadas com atenção pela equipe da {tipo} e contribuirão diretamente
           para a melhoria contínua do nosso trabalho.
         </p>
-        <p>
-          Agradecemos pelo seu tempo e pela sua colaboração.
-        </p>
+        <p>Agradecemos pelo seu tempo e pela sua colaboração.</p>
       </div>
       <div className="welcome-footer">
         <button className="btn btn-primary" onClick={onStart}>Começar →</button>
@@ -177,102 +336,176 @@ function WelcomeStep({ nome, nomeAluno, serie, perfil, tipo, onStart }) {
   );
 }
 
-/* ── Steps ───────────────────────────────────────── */
-function StepIdentificacao({ onNext }) {
-  const [ans, setAns] = useState({});
-  const PERGUNTAS = [
-    { key:'perfil',   label:'Você é responsável ou estudante?',   opts:['Responsável','Estudante'] },
-    { key:'unidade',  label:'Qual a sua unidade?',                opts:['Unidade A','Unidade B','Unidade C'] },
-    { key:'segmento', label:'Qual o segmento do estudante?',      opts:['Infantil','Fundamental','Médio'] },
-  ];
-  const ok = PERGUNTAS.every(p => ans[p.key]);
-  return (
-    <div>
-      <p className="step-title">Identificação</p>
-      <p className="step-desc">Antes de começar, conte-nos um pouco sobre você.</p>
-      {PERGUNTAS.map(({ key, label, opts }) => (
-        <div className="q-group" key={key}>
-          <p className="question-label">{label}</p>
-          <div className="option-list">
-            {opts.map(op => <OptionBtn key={op} label={op} selected={ans[key]===op} onClick={() => setAns(p=>({...p,[key]:op}))} />)}
-          </div>
-        </div>
-      ))}
-      <div className="btn-row">
-        <button className="btn btn-primary" disabled={!ok} onClick={() => onNext(ans)}>Próximo →</button>
-      </div>
-    </div>
-  );
-}
+/* ══════════════════════════════════════════════════════
+   STEP — NPS
+   ══════════════════════════════════════════════════════ */
 
-function StepNPS({ onNext, onBack, tipo }) {
+function StepNPS({ step, onNext, onBack, tipo }) {
   const [nps, setNps] = useState(null);
   const [bil, setBil] = useState(null);
-  const ok = nps !== null && bil !== null;
+  const perguntaBilingue = step.perguntaBilingue || false;
+  const ok = nps !== null && (!perguntaBilingue || bil !== null);
+
   return (
     <div>
       <p className="step-title">Recomendação</p>
       <p className="step-desc">Qual a probabilidade de recomendar a {tipo} a um amigo ou colega?</p>
       <div className="nps-hint"><span>Muito improvável</span><span>Muito provável</span></div>
       <div className="nps-row">
-        {[0,1,2,3,4,5,6,7,8,9,10].map(n=>(
-          <button key={n} className={`nps-btn${nps===n?' sel':''}`} onClick={()=>setNps(n)}>{n}</button>
+        {[0,1,2,3,4,5,6,7,8,9,10].map(n => (
+          <button key={n} className={`nps-btn${nps===n?' sel':''}`} onClick={() => setNps(n)}>{n}</button>
         ))}
       </div>
-      <div className="q-group" style={{marginTop:28}}>
-        <p className="question-label">Você faz parte do programa bilíngue?</p>
-        <div className="option-list">
-          {['Sim','Não'].map(op=><OptionBtn key={op} label={op} selected={bil===op} onClick={()=>setBil(op)} />)}
+      {perguntaBilingue && (
+        <div className="q-group" style={{marginTop:28}}>
+          <p className="question-label">Você faz parte do programa bilíngue?</p>
+          <div className="option-list">
+            {['Sim','Não'].map(op => <OptionBtn key={op} label={op} selected={bil===op} onClick={() => setBil(op)} />)}
+          </div>
         </div>
-      </div>
+      )}
       <div className="btn-row">
         <button className="btn btn-secondary" onClick={onBack}>← Voltar</button>
-        <button className="btn btn-primary" disabled={!ok} onClick={()=>onNext({nps, participa_bilingue:bil})}>Próximo →</button>
-      </div>
-    </div>
-  );
-}
-
-function StepBilingue({ onNext, onBack, tipo }) {
-  const [ingles, setIngles] = useState({});
-  const [turno, setTurno] = useState({});
-  const INGLES = ['Qualidade geral do programa e materiais didáticos','Integração do inglês com outras áreas do conhecimento (CLIL)','Desenvolvimento das habilidades e interesse pelo aprendizado do inglês'];
-  const TURNO  = ['Qualidade geral do projeto e atividades complementares','Quantidade e diversidade das aulas e horas dedicadas ao inglês',`Uso dos espaços da ${tipo} para imersão no inglês`];
-  const ok = INGLES.every((_,i)=>ingles[i]!=null) && TURNO.every((_,i)=>turno[i]!=null);
-  return (
-    <div>
-      <p className="step-title">Programa Bilíngue</p>
-      <p className="step-desc">Avalie os aspectos do programa bilíngue da {tipo}.</p>
-      <p className="section-div">Inglês Todo Dia</p>
-      {INGLES.map((l,i)=><ScaleRow key={i} label={l} value={ingles[i]} onChange={v=>setIngles(p=>({...p,[i]:v}))} />)}
-      <p className="section-div">Turno Integral Bilíngue</p>
-      {TURNO.map((l,i)=><ScaleRow key={i} label={l} value={turno[i]} onChange={v=>setTurno(p=>({...p,[i]:v}))} />)}
-      <div className="btn-row">
-        <button className="btn btn-secondary" onClick={onBack}>← Voltar</button>
-        <button className="btn btn-primary" disabled={!ok} onClick={()=>onNext({ingles_todo_dia:ingles,turno_integral:turno})}>Próximo →</button>
-      </div>
-    </div>
-  );
-}
-
-function StepEscala({ titulo, aspectos, stepKey, onNext, onBack, isLast, loading }) {
-  const [ratings, setRatings] = useState({});
-  const ok = aspectos.every((_,i)=>ratings[i]!=null);
-  const buildAns = () => aspectos.reduce((a,l,i)=>({...a,[l]:ratings[i]}),{});
-  return (
-    <div>
-      <p className="step-title">{titulo}</p>
-      <p className="step-desc">Avalie de 1 a 5 os seguintes aspectos:</p>
-      {aspectos.map((l,i)=><ScaleRow key={i} label={l} value={ratings[i]} onChange={v=>setRatings(p=>({...p,[i]:v}))} />)}
-      <div className="btn-row">
-        <button className="btn btn-secondary" onClick={onBack}>← Voltar</button>
-        <button className="btn btn-primary" disabled={!ok||loading} onClick={()=>onNext(buildAns())}>
-          {loading?'Enviando…':isLast?'Enviar pesquisa ✓':'Próximo →'}
+        <button className="btn btn-primary" disabled={!ok} onClick={() => onNext({ nps, ...(perguntaBilingue ? { participa_bilingue: bil } : {}) })}>
+          Próximo →
         </button>
       </div>
     </div>
   );
 }
+
+/* ══════════════════════════════════════════════════════
+   STEP — ESCALA (Likert 1–5)
+   Suporta lista simples (perguntas[]) e seções (secoes[])
+   ══════════════════════════════════════════════════════ */
+
+function StepEscala({ step, tipo, onNext, onBack, isLast, loading }) {
+  const [ratings, setRatings] = useState({});
+  const resolve = l => l.replace(/\{tipo\}/g, tipo);
+
+  if (step.secoes) {
+    const allOk = step.secoes.every(sec =>
+      sec.perguntas.every((_, i) => ratings[sec.key]?.[i] != null)
+    );
+    const buildAns = () => step.secoes.reduce((acc, sec) => ({
+      ...acc, [sec.key]: { ...(ratings[sec.key] || {}) }
+    }), {});
+
+    return (
+      <div>
+        <p className="step-title">{step.titulo}</p>
+        <p className="step-desc">{step.desc || 'Avalie os aspectos abaixo.'}</p>
+        {step.secoes.map(sec => (
+          <div key={sec.key}>
+            <p className="section-div">{sec.titulo}</p>
+            {sec.perguntas.map((l, i) => (
+              <ScaleRow key={i} label={resolve(l)}
+                value={ratings[sec.key]?.[i]}
+                onChange={v => setRatings(p => ({ ...p, [sec.key]: { ...(p[sec.key] || {}), [i]: v } }))}
+              />
+            ))}
+          </div>
+        ))}
+        <div className="btn-row">
+          <button className="btn btn-secondary" onClick={onBack}>← Voltar</button>
+          <button className="btn btn-primary" disabled={!allOk || loading} onClick={() => onNext(buildAns())}>
+            {loading ? 'Enviando…' : isLast ? 'Enviar pesquisa ✓' : 'Próximo →'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Lista simples
+  const perguntas = step.perguntas.map(resolve);
+  const ok = perguntas.every((_, i) => ratings[i] != null);
+  const buildAns = () => perguntas.reduce((a, l, i) => ({ ...a, [l]: ratings[i] }), {});
+
+  return (
+    <div>
+      <p className="step-title">{step.titulo}</p>
+      <p className="step-desc">{step.desc || 'Avalie de 1 a 5 os seguintes aspectos:'}</p>
+      {perguntas.map((l, i) => (
+        <ScaleRow key={i} label={l} value={ratings[i]} onChange={v => setRatings(p => ({ ...p, [i]: v }))} />
+      ))}
+      <div className="btn-row">
+        <button className="btn btn-secondary" onClick={onBack}>← Voltar</button>
+        <button className="btn btn-primary" disabled={!ok || loading} onClick={() => onNext(buildAns())}>
+          {loading ? 'Enviando…' : isLast ? 'Enviar pesquisa ✓' : 'Próximo →'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   STEP — MÚLTIPLA ESCOLHA (radio)
+   ══════════════════════════════════════════════════════ */
+
+function StepRadio({ step, tipo, onNext, onBack, isLast, loading }) {
+  const [ans, setAns] = useState(null);
+  const resolve = l => l.replace(/\{tipo\}/g, tipo);
+
+  return (
+    <div>
+      <p className="step-title">{step.titulo}</p>
+      {step.desc && <p className="step-desc">{step.desc}</p>}
+      <div className="q-group">
+        <p className="question-label">{resolve(step.pergunta)}</p>
+        <div className="option-list">
+          {step.opcoes.map(op => (
+            <OptionBtn key={op} label={resolve(op)} selected={ans === op} onClick={() => setAns(op)} />
+          ))}
+        </div>
+      </div>
+      <div className="btn-row">
+        <button className="btn btn-secondary" onClick={onBack}>← Voltar</button>
+        <button className="btn btn-primary" disabled={!ans || loading} onClick={() => onNext(ans)}>
+          {loading ? 'Enviando…' : isLast ? 'Enviar pesquisa ✓' : 'Próximo →'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   STEP — TEXTO ABERTO (qualitativa)
+   ══════════════════════════════════════════════════════ */
+
+function StepText({ step, tipo, onNext, onBack, isLast, loading }) {
+  const [txt, setTxt] = useState('');
+  const resolve = l => l.replace(/\{tipo\}/g, tipo);
+  const ok = !step.obrigatorio || txt.trim().length > 0;
+
+  return (
+    <div>
+      <p className="step-title">{step.titulo}</p>
+      {step.desc && <p className="step-desc">{step.desc}</p>}
+      <div className="q-group">
+        <p className="question-label">{resolve(step.pergunta)}</p>
+        <textarea
+          className="text-area"
+          placeholder={step.placeholder || 'Digite aqui...'}
+          value={txt}
+          onChange={e => setTxt(e.target.value)}
+        />
+        {step.obrigatorio && !txt.trim() && (
+          <p style={{fontSize:'.8rem', color:'#e53e3e', marginTop:4}}>Campo obrigatório</p>
+        )}
+      </div>
+      <div className="btn-row">
+        <button className="btn btn-secondary" onClick={onBack}>← Voltar</button>
+        <button className="btn btn-primary" disabled={!ok || loading} onClick={() => onNext(txt.trim())}>
+          {loading ? 'Enviando…' : isLast ? 'Enviar pesquisa ✓' : 'Próximo →'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   LINKS DE INDICAÇÃO POR ESCOLA
+   ══════════════════════════════════════════════════════ */
 
 const SCHOOL_LINKS = {
   'cubo':          'https://cubo.global/quem-confia-indica',
@@ -290,15 +523,18 @@ const SCHOOL_LINKS = {
   'uniao':         'https://colegiouniao.com.br/quem-confia-indica/',
 };
 
+/* ══════════════════════════════════════════════════════
+   TELA DE OBRIGADO
+   ══════════════════════════════════════════════════════ */
+
 function ThankYou({ nps, perfil, nomeAluno, school, tipo }) {
   const isResponsavel = perfil !== 'aluno';
   const score = Number(nps);
-  const isPromotor  = score >= 9;
-  const isNeutro    = score >= 7 && score <= 8;
-  const isDetrator  = score <= 6;
+  const isPromotor = score >= 9;
+  const isNeutro   = score >= 7 && score <= 8;
+  const isDetrator = score <= 6;
   const linkIndicacao = SCHOOL_LINKS[school] || null;
 
-  // ── Aluno ──────────────────────────────────────────
   if (!isResponsavel) {
     return (
       <div className="thankyou">
@@ -323,7 +559,6 @@ function ThankYou({ nps, perfil, nomeAluno, school, tipo }) {
     );
   }
 
-  // ── Responsável — Promotor (9–10) ──────────────────
   if (isPromotor) {
     return (
       <div className="thankyou">
@@ -348,7 +583,6 @@ function ThankYou({ nps, perfil, nomeAluno, school, tipo }) {
     );
   }
 
-  // ── Responsável — Neutro (7–8) ─────────────────────
   if (isNeutro) {
     return (
       <div className="thankyou">
@@ -370,7 +604,6 @@ function ThankYou({ nps, perfil, nomeAluno, school, tipo }) {
     );
   }
 
-  // ── Responsável — Detrator (0–6) ───────────────────
   return (
     <div className="thankyou">
       <div className="icon">💬</div>
@@ -386,7 +619,10 @@ function ThankYou({ nps, perfil, nomeAluno, school, tipo }) {
   );
 }
 
-/* ── Telas de prazo ──────────────────────────────── */
+/* ══════════════════════════════════════════════════════
+   TELAS DE PRAZO E ERRO
+   ══════════════════════════════════════════════════════ */
+
 function AindaNaoAberta({ openDate }) {
   const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
   return (
@@ -413,49 +649,36 @@ function Encerrada({ closeDate }) {
   );
 }
 
-/* ── App ─────────────────────────────────────────── */
-function getEixos(tipo) {
-  return {
-    pedagogico:    { titulo:'Eixo Pedagógico',     aspectos:['Qualidade do ensino (professores, metodologias e estímulo ao aprendizado)','Recursos pedagógicos e suporte no integral/ateliê (plataformas, materiais e serviços)','Acolhimento e desenvolvimento emocional (atenção ao aluno e apoio às famílias)'] },
-    administrativo:{ titulo:'Eixo Administrativo', aspectos:[`Gestão e organização da ${tipo} (direção, coordenação e rotina de entrada e saída)`,'Atendimento ao público (secretaria e financeiro)',`Canais digitais de comunicação (informações no app da ${tipo}, e-mail e redes sociais/sites)`] },
-    infraestrutura:{ titulo:'Eixo Infraestrutura',  aspectos:['Conforto e segurança dos espaços (salas, convivência e recepção)','Higiene e conservação (limpeza geral e banheiros)','Alimentação e serviços de apoio (cantina, variedade e organização do refeitório)'] },
-  };
-}
-
-function buildSteps(isBilingue) {
-  const s = ['welcome','nps'];
-  if (isBilingue) s.push('bilingue');
-  s.push('pedagogico','administrativo','infraestrutura','done');
-  return s;
-}
-
-function ProgressBar({ step, total }) {
-  const pct = Math.min((step/total)*100,100);
+function ErroSurvey({ surveyId }) {
   return (
-    <div className="progress-wrap">
-      <div className="progress-info"><span>Etapa {step+1} de {total}</span><span>{Math.round(pct)}%</span></div>
-      <div className="progress-track"><div className="progress-fill" style={{width:`${pct}%`}} /></div>
-      <div className="progress-spacer" />
+    <div className="prazo-screen">
+      <div className="icon">⚠️</div>
+      <h2>Pesquisa não encontrada</h2>
+      <p>A pesquisa <strong>{surveyId || 'solicitada'}</strong> não está disponível no momento.</p>
+      <p style={{marginTop:8, fontSize:'.85rem', color:'#999'}}>Nossa equipe foi notificada automaticamente.</p>
     </div>
   );
 }
 
-// ⚙️ Cole aqui a URL do Apps Script após implantar
+/* ══════════════════════════════════════════════════════
+   WEBHOOK — cole a URL do Apps Script aqui após implantar
+   ══════════════════════════════════════════════════════ */
 const SHEETS_WEBHOOK = 'SUA_URL_DO_APPS_SCRIPT_AQUI';
 
+/* ══════════════════════════════════════════════════════
+   APP — motor principal
+   ══════════════════════════════════════════════════════ */
 function App() {
-  const [stepIdx, setStepIdx] = useState(0);
+  const [currentKey, setCurrentKey] = useState('welcome');
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  // Contexto carregado via LayersPortal + Apps Script
-  const [ctx, setCtx] = useState(null); // null = carregando
+  const [submitError, setSubmitError] = useState(null);
+  const [ctx, setCtx] = useState(null);
 
   useEffect(() => {
     async function carregarContexto() {
+      const p = new URLSearchParams(window.location.search);
       try {
-        // 1. Aguarda LayersPortal conectar
         let userId = '', communityId = '', session = '';
         if (window.LayersPortal) {
           await window.LayersPortal.connectedPromise;
@@ -464,19 +687,19 @@ function App() {
           session     = window.LayersPortal.session     || '';
         }
 
-        // 2. Busca configuração da escola no Apps Script
-        const url = `${SHEETS_WEBHOOK}?communityId=${encodeURIComponent(communityId)}&userId=${encodeURIComponent(userId)}`;
+        const surveyId = p.get('surveyId') || 'csat';
+        const url = `${SHEETS_WEBHOOK}?communityId=${encodeURIComponent(communityId)}&userId=${encodeURIComponent(userId)}&surveyId=${encodeURIComponent(surveyId)}`;
         const res  = await fetch(url);
         const data = await res.json();
 
-        setCtx({ userId, communityId, session, ...data });
+        setCtx({ userId, communityId, session, surveyId, ...data });
       } catch (e) {
         // Fallback para testes locais via URL params
-        const p = new URLSearchParams(window.location.search);
         setCtx({
           userId:       '',
           communityId:  p.get('communityId') || '',
           session:      '',
+          surveyId:     p.get('surveyId')    || 'csat',
           onda:         p.get('onda')        || '1S2026',
           openDate:     p.get('openDate')    || '',
           closeDate:    p.get('closeDate')   || '',
@@ -493,9 +716,10 @@ function App() {
     carregarContexto();
   }, []);
 
+  // ── Carregando ──────────────────────────────────────
   if (!ctx) return (
     <div className="card">
-      <div className="header"><h1>Pesquisa de Satisfação 2026</h1></div>
+      <div className="header"><h1>Pesquisa de Satisfação</h1></div>
       <div className="loading-screen">
         <div className="spinner" />
         <p>Carregando...</p>
@@ -503,42 +727,91 @@ function App() {
     </div>
   );
 
-  const { userId, communityId, session, onda, openDate, closeDate, status,
+  const { userId, communityId, session, surveyId, onda, openDate, closeDate, status,
           school, tipo, nome: nomeCompleto, perfil, nomeAluno, serie } = ctx;
-  const eixos = getEixos(tipo);
 
-  const aindaNaoAberta = status === 'nao_aberta';
-  const encerrada      = status === 'encerrada';
+  // ── Survey não encontrado ───────────────────────────
+  const survey = SURVEYS[surveyId];
+  if (!survey) {
+    reportarErro(surveyId, ctx);
+    return (
+      <div className="card">
+        <div className="header"><h1>Pesquisa de Satisfação</h1></div>
+        <ErroSurvey surveyId={surveyId} />
+      </div>
+    );
+  }
 
-  const isBilingue = answers.nps?.participa_bilingue === 'Sim';
-  const steps = buildSteps(isBilingue);
-  const current = steps[stepIdx] ?? 'done';
-  const total = steps.length - 1;
+  // ── Perfil sem acesso ───────────────────────────────
+  if (survey.publico && !survey.publico.includes(perfil)) {
+    return (
+      <div className="card">
+        <div className="header"><h1>{survey.titulo}</h1></div>
+        <div className="prazo-screen">
+          <div className="icon">🔒</div>
+          <h2>Pesquisa não disponível</h2>
+          <p>Esta pesquisa não está disponível para o seu perfil.</p>
+        </div>
+      </div>
+    );
+  }
 
-  function save(key, data) { setAnswers(p=>({...p,[key]:data})); }
+  // ── Prazo ───────────────────────────────────────────
+  if (status === 'nao_aberta') return (
+    <div className="card">
+      <div className="header"><h1>{survey.titulo}</h1></div>
+      <AindaNaoAberta openDate={openDate} />
+    </div>
+  );
 
+  if (status === 'encerrada') return (
+    <div className="card">
+      <div className="header"><h1>{survey.titulo}</h1></div>
+      <Encerrada closeDate={closeDate} />
+    </div>
+  );
+
+  // ── Steps ativos ────────────────────────────────────
+  const activeSteps   = buildActiveSteps(survey, perfil, answers);
+  const currentIdx    = activeSteps.findIndex(s => stepId(s) === currentKey);
+  const currentStep   = activeSteps[currentIdx] || activeSteps[0];
+  const isLastData    = currentIdx === activeSteps.length - 2; // passo antes do thankyou
+
+  // Steps de dados (excluindo welcome e thankyou) para progress bar
+  const dataSteps = activeSteps.filter(s => s.type !== 'welcome' && s.type !== 'thankyou');
+  const dataIdx   = dataSteps.findIndex(s => stepId(s) === currentKey);
+
+  // ── Navegação ───────────────────────────────────────
   function next(key, data) {
-    save(key, data);
-    // Se NPS respondeu Não para bilíngue, pular etapa bilíngue
-    if (key==='nps' && data.participa_bilingue==='Não') {
-      const nextSteps = buildSteps(false);
-      setStepIdx(nextSteps.indexOf('pedagogico'));
+    const newAnswers = { ...answers, [key]: data };
+    setAnswers(newAnswers);
+
+    if (isLastData) {
+      submitPesquisa(newAnswers);
     } else {
-      setStepIdx(i=>i+1);
+      const newActive = buildActiveSteps(survey, perfil, newAnswers);
+      const nextStep  = newActive[currentIdx + 1];
+      if (nextStep) setCurrentKey(stepId(nextStep));
     }
   }
 
-  function back() { setStepIdx(i=>Math.max(0,i-1)); }
+  function back() {
+    if (currentIdx > 0) {
+      setCurrentKey(stepId(activeSteps[currentIdx - 1]));
+    }
+  }
 
-  async function handleSubmit(data) {
-    save('infraestrutura', data);
+  // ── Submit ──────────────────────────────────────────
+  async function submitPesquisa(finalAnswers) {
     setLoading(true);
-    setError(null);
+    setSubmitError(null);
     try {
       const payload = {
+        type: 'response',
+        surveyId,
         communityId, userId, session,
         onda, school, tipo, perfil, nomeCompleto, nomeAluno, serie,
-        ...answers, infraestrutura: data,
+        ...finalAnswers,
       };
 
       if (SHEETS_WEBHOOK && !SHEETS_WEBHOOK.includes('SUA_URL')) {
@@ -548,46 +821,76 @@ function App() {
         });
       }
 
-      setStepIdx(steps.indexOf('done'));
-    } catch(e) {
-      setError('Erro ao enviar. Verifique sua conexão e tente novamente.');
+      setCurrentKey('thankyou');
+    } catch (e) {
+      setSubmitError('Erro ao enviar. Verifique sua conexão e tente novamente.');
     } finally {
       setLoading(false);
     }
   }
 
-  if (aindaNaoAberta) return (
-    <div className="card">
-      <div className="header"><h1>Pesquisa de Satisfação 2026</h1></div>
-      <AindaNaoAberta openDate={openDate} />
-    </div>
-  );
+  const isWelcome  = currentStep?.type === 'welcome';
+  const isThankyou = currentStep?.type === 'thankyou';
 
-  if (encerrada) return (
-    <div className="card">
-      <div className="header"><h1>Pesquisa de Satisfação 2026</h1></div>
-      <Encerrada closeDate={closeDate} />
-    </div>
-  );
-
+  // ── Render ──────────────────────────────────────────
   return (
     <div className="card">
       <div className="header">
-        <h1>Pesquisa de Satisfação 2026</h1>
+        <h1>{survey.titulo}</h1>
       </div>
 
-      {current !== 'done' && current !== 'welcome' && <ProgressBar step={stepIdx - 1} total={total - 1} />}
+      {!isWelcome && !isThankyou && dataSteps.length > 0 && (
+        <ProgressBar step={dataIdx} total={dataSteps.length} />
+      )}
 
       <div className="body">
-        {error && <p style={{color:'#e53e3e',marginBottom:16,fontWeight:600}}>⚠️ {error}</p>}
+        {submitError && <p style={{color:'#e53e3e', marginBottom:16, fontWeight:600}}>⚠️ {submitError}</p>}
 
-        {current==='welcome'       && <WelcomeStep nome={nomeCompleto} nomeAluno={nomeAluno} serie={serie} perfil={perfil} tipo={tipo} onStart={()=>setStepIdx(1)} />}
-        {current==='nps'           && <StepNPS onNext={d=>next('nps',d)} onBack={back} tipo={tipo} />}
-        {current==='bilingue'      && <StepBilingue onNext={d=>next('bilingue',d)} onBack={back} tipo={tipo} />}
-        {current==='pedagogico'    && <StepEscala {...eixos.pedagogico}    onNext={d=>next('pedagogico',d)}    onBack={back} />}
-        {current==='administrativo'&& <StepEscala {...eixos.administrativo} onNext={d=>next('administrativo',d)} onBack={back} />}
-        {current==='infraestrutura'&& <StepEscala {...eixos.infraestrutura} onNext={handleSubmit} onBack={back} isLast loading={loading} />}
-        {current==='done' && <ThankYou nps={answers.nps?.nps} perfil={perfil} nomeAluno={nomeAluno} school={school} tipo={tipo} />}
+        {currentStep?.type === 'welcome' && (
+          <WelcomeStep
+            nome={nomeCompleto} nomeAluno={nomeAluno} serie={serie}
+            perfil={perfil} tipo={tipo}
+            onStart={() => {
+              const nextStep = activeSteps[1];
+              if (nextStep) setCurrentKey(stepId(nextStep));
+            }}
+          />
+        )}
+
+        {currentStep?.type === 'nps' && (
+          <StepNPS step={currentStep} onNext={d => next('nps', d)} onBack={back} tipo={tipo} />
+        )}
+
+        {currentStep?.type === 'scale' && (
+          <StepEscala
+            step={currentStep} tipo={tipo}
+            onNext={d => next(currentStep.key, d)} onBack={back}
+            isLast={isLastData} loading={loading}
+          />
+        )}
+
+        {currentStep?.type === 'radio' && (
+          <StepRadio
+            step={currentStep} tipo={tipo}
+            onNext={d => next(currentStep.key, d)} onBack={back}
+            isLast={isLastData} loading={loading}
+          />
+        )}
+
+        {currentStep?.type === 'text' && (
+          <StepText
+            step={currentStep} tipo={tipo}
+            onNext={d => next(currentStep.key, d)} onBack={back}
+            isLast={isLastData} loading={loading}
+          />
+        )}
+
+        {currentStep?.type === 'thankyou' && (
+          <ThankYou
+            nps={answers.nps?.nps} perfil={perfil}
+            nomeAluno={nomeAluno} school={school} tipo={tipo}
+          />
+        )}
       </div>
     </div>
   );
