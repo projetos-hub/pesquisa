@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pesquisa de Satisfação</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>window.LayersPortalOptions = { appId: 'pesquisa-satisfacao-2026', insidePortalOnly: false };</script>
+  <script src="https://js.layers.digital/v1/LayersPortal.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px; }
+    #root { width: 100%; display: flex; justify-content: center; }
+
+    .card { background: #fff; border-radius: 20px; width: 100%; max-width: 640px; box-shadow: 0 20px 60px rgba(0,0,0,.2); overflow: hidden; }
+    .header { background: linear-gradient(135deg, #667eea, #764ba2); padding: 32px 32px 24px; text-align: center; color: white; }
+    .header h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
+    .header p { font-size: .9rem; opacity: .85; }
+
+    .progress-wrap { padding: 14px 32px 0; background: #fafafa; }
+    .progress-info { display: flex; justify-content: space-between; font-size: .78rem; color: #888; margin-bottom: 6px; }
+    .progress-track { height: 6px; background: #e5e7eb; border-radius: 99px; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 99px; transition: width .4s ease; }
+    .progress-spacer { height: 12px; }
+
+    .body { padding: 32px; }
+
+    .step-title { font-size: 1.1rem; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; }
+    .step-desc { font-size: .9rem; color: #666; margin-bottom: 24px; }
+
+    .question-label { font-weight: 600; font-size: .95rem; color: #333; margin-bottom: 10px; }
+    .q-group { margin-bottom: 24px; }
+
+    .option-list { display: flex; flex-direction: column; gap: 10px; }
+    .option-btn { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border: 2px solid #e5e7eb; border-radius: 12px; cursor: pointer; background: white; font-size: .95rem; color: #333; text-align: left; transition: all .15s; width: 100%; }
+    .option-btn:hover { border-color: #667eea; background: #f5f3ff; }
+    .option-btn.sel { border-color: #667eea; background: #f5f3ff; color: #5a4fcf; font-weight: 600; }
+    .radio { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #ccc; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .option-btn.sel .radio { border-color: #667eea; background: #667eea; position: relative; }
+    .option-btn.sel .radio::after { content: ''; position: absolute; width: 7px; height: 7px; border-radius: 50%; background: white; }
+
+    .scale-group { margin-bottom: 24px; }
+    .scale-label { font-size: .9rem; color: #444; margin-bottom: 10px; line-height: 1.4; }
+    .scale-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+    .scale-btn { width: 48px; height: 48px; border-radius: 10px; border: 2px solid #e5e7eb; background: white; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all .15s; color: #555; }
+    .scale-btn:hover { border-color: #667eea; color: #667eea; }
+    .scale-btn.sel { background: linear-gradient(135deg, #667eea, #764ba2); border-color: transparent; color: white; }
+    .scale-hint { display: flex; justify-content: space-between; font-size: .75rem; color: #aaa; margin-top: 4px; }
+
+    .nps-row { display: flex; gap: 5px; flex-wrap: nowrap; margin: 16px 0; }
+    .nps-btn { flex: 1; min-width: 0; height: 48px; border-radius: 8px; border: 2px solid #e5e7eb; background: white; font-size: .95rem; font-weight: 700; cursor: pointer; transition: all .15s; color: #555; padding: 0; }
+    .nps-btn:hover { border-color: #667eea; }
+    .nps-btn.sel { background: linear-gradient(135deg, #667eea, #764ba2); border-color: transparent; color: white; }
+    .nps-hint { display: flex; justify-content: space-between; font-size: .78rem; color: #999; margin-bottom: 8px; }
+
+    .thankyou-link-box { background: #f5f3ff; border: 1.5px solid #d4c9ff; border-radius: 12px; padding: 14px 18px; margin-top: 16px; word-break: break-all; }
+    .thankyou-link-box a { color: #5a4fcf; font-weight: 600; font-size: .9rem; text-decoration: none; }
+    .thankyou-link-box a:hover { text-decoration: underline; }
+
+    .section-div { margin: 24px 0 16px; font-size: .85rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #764ba2; border-bottom: 2px solid #f0ebff; padding-bottom: 8px; }
+
+    .btn-row { display: flex; justify-content: space-between; align-items: center; margin-top: 32px; gap: 12px; }
+    .btn-row .btn:only-child { margin-left: auto; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; padding: 12px 28px; border-radius: 10px; font-size: .95rem; font-weight: 600; cursor: pointer; border: none; transition: all .2s; gap: 6px; font-family: inherit; }
+    .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+    .btn-primary:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+    .btn-secondary { background: #f0f0f0; color: #555; }
+    .btn-secondary:hover { background: #e0e0e0; }
+
+    .prazo-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 48px 32px; gap: 16px; }
+    .prazo-screen .icon { font-size: 3rem; }
+    .prazo-screen h2 { font-size: 1.3rem; font-weight: 700; color: #1a1a2e; }
+    .prazo-screen p { font-size: .95rem; color: #666; line-height: 1.6; }
+    .prazo-badge { display: inline-block; background: #f0ebff; color: #764ba2; font-weight: 700; font-size: .85rem; padding: 6px 14px; border-radius: 99px; margin-top: 4px; }
+
+    .thankyou { text-align: center; padding: 24px 16px; }
+    .thankyou .icon { font-size: 3.5rem; margin-bottom: 16px; }
+    .thankyou h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 8px; color: #1a1a2e; }
+    .thankyou p { color: #666; font-size: .95rem; line-height: 1.6; }
+
+    .loading-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:64px 32px; gap:16px; }
+    .spinner { width:40px; height:40px; border:4px solid #e5e7eb; border-top-color:#667eea; border-radius:50%; animation:spin .8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .loading-screen p { color:#888; font-size:.9rem; }
+
+    .welcome { padding: 36px 32px; }
+    .welcome-greeting { font-size: 1.55rem; font-weight: 700; color: #1a1a2e; margin-bottom: 20px; line-height: 1.3; }
+    .welcome-greeting span { color: #667eea; }
+    .welcome-body { font-size: .95rem; color: #444; line-height: 1.75; display: flex; flex-direction: column; gap: 14px; }
+    .welcome-body p { margin: 0; }
+    .welcome-footer { margin-top: 32px; display: flex; justify-content: flex-end; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+/* ── helpers ─────────────────────────────────────── */
+function Radio({ selected }) {
+  return <span className={`radio`} />;
+}
+
+function OptionBtn({ label, selected, onClick }) {
+  return (
+    <button className={`option-btn${selected ? ' sel' : ''}`} onClick={onClick}>
+      <Radio selected={selected} />
+      {label}
+    </button>
+  );
+}
+
+function ScaleRow({ label, value, onChange }) {
+  return (
+    <div className="scale-group">
+      <p className="scale-label">{label}</p>
+      <div className="scale-btns">
+        {[1,2,3,4,5].map(n => (
+          <button key={n} className={`scale-btn${value===n?' sel':''}`} onClick={() => onChange(n)}>{n}</button>
+        ))}
+      </div>
+      <div className="scale-hint"><span>Ruim</span><span>Excelente</span></div>
+    </div>
+  );
+}
+
+/* ── Welcome ─────────────────────────────────────── */
+function WelcomeStep({ nome, nomeAluno, serie, perfil, tipo, onStart }) {
+  const isResponsavel = perfil !== 'aluno';
+  return (
+    <div className="welcome">
+      <p className="welcome-greeting">
+        Olá, <span>{nome || 'bem-vindo(a)'}.</span>
+      </p>
+      <div className="welcome-body">
+        {isResponsavel ? (
+          <p>
+            Que bom que você, responsável pelo(a) aluno(a) <strong>{nomeAluno || '[nome do aluno]'}</strong>,
+            da <strong>{serie || '[série]'}</strong>, veio responder à nossa pesquisa.
+            Sua participação é muito importante para nós.
+          </p>
+        ) : (
+          <p>
+            Que bom que você, aluno(a) da <strong>{serie || '[série]'}</strong>, veio responder à nossa pesquisa.
+            Sua participação é muito importante para nós.
+          </p>
+        )}
+        {isResponsavel ? (
+          <p>
+            Este questionário é utilizado pela {tipo} como mais um canal de escuta ativa, para que possamos
+            compreender melhor a experiência dos estudantes e das famílias e, a partir disso, continuar
+            aprimorando nossos processos, atendimentos e atividades.
+          </p>
+        ) : (
+          <p>
+            Este questionário é utilizado pela {tipo} como mais um canal de escuta ativa, para que possamos
+            compreender melhor a experiência dos alunos e, a partir disso, continuar aprimorando nossos
+            processos, atividades e o ambiente da {tipo}.
+          </p>
+        )}
+        <p>
+          Suas respostas serão analisadas com atenção pela equipe da {tipo} e contribuirão diretamente
+          para a melhoria contínua do nosso trabalho.
+        </p>
+        <p>
+          Agradecemos pelo seu tempo e pela sua colaboração.
+        </p>
+      </div>
+      <div className="welcome-footer">
+        <button className="btn btn-primary" onClick={onStart}>Começar →</button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Steps ───────────────────────────────────────── */
+function StepIdentificacao({ onNext }) {
+  const [ans, setAns] = useState({});
+  const PERGUNTAS = [
+    { key:'perfil',   label:'Você é responsável ou estudante?',   opts:['Responsável','Estudante'] },
+    { key:'unidade',  label:'Qual a sua unidade?',                opts:['Unidade A','Unidade B','Unidade C'] },
+    { key:'segmento', label:'Qual o segmento do estudante?',      opts:['Infantil','Fundamental','Médio'] },
+  ];
+  const ok = PERGUNTAS.every(p => ans[p.key]);
+  return (
+    <div>
+      <p className="step-title">Identificação</p>
+      <p className="step-desc">Antes de começar, conte-nos um pouco sobre você.</p>
+      {PERGUNTAS.map(({ key, label, opts }) => (
+        <div className="q-group" key={key}>
+          <p className="question-label">{label}</p>
+          <div className="option-list">
+            {opts.map(op => <OptionBtn key={op} label={op} selected={ans[key]===op} onClick={() => setAns(p=>({...p,[key]:op}))} />)}
+          </div>
+        </div>
+      ))}
+      <div className="btn-row">
+        <button className="btn btn-primary" disabled={!ok} onClick={() => onNext(ans)}>Próximo →</button>
+      </div>
+    </div>
+  );
+}
+
+function StepNPS({ onNext, onBack, tipo }) {
+  const [nps, setNps] = useState(null);
+  const [bil, setBil] = useState(null);
+  const ok = nps !== null && bil !== null;
+  return (
+    <div>
+      <p className="step-title">Recomendação</p>
+      <p className="step-desc">Qual a probabilidade de recomendar a {tipo} a um amigo ou colega?</p>
+      <div className="nps-hint"><span>Muito improvável</span><span>Muito provável</span></div>
+      <div className="nps-row">
+        {[0,1,2,3,4,5,6,7,8,9,10].map(n=>(
+          <button key={n} className={`nps-btn${nps===n?' sel':''}`} onClick={()=>setNps(n)}>{n}</button>
+        ))}
+      </div>
+      <div className="q-group" style={{marginTop:28}}>
+        <p className="question-label">Você faz parte do programa bilíngue?</p>
+        <div className="option-list">
+          {['Sim','Não'].map(op=><OptionBtn key={op} label={op} selected={bil===op} onClick={()=>setBil(op)} />)}
+        </div>
+      </div>
+      <div className="btn-row">
+        <button className="btn btn-secondary" onClick={onBack}>← Voltar</button>
+        <button className="btn btn-primary" disabled={!ok} onClick={()=>onNext({nps, participa_bilingue:bil})}>Próximo →</button>
+      </div>
+    </div>
+  );
+}
+
+function StepBilingue({ onNext, onBack, tipo }) {
+  const [ingles, setIngles] = useState({});
+  const [turno, setTurno] = useState({});
+  const INGLES = ['Qualidade geral do programa e materiais didáticos','Integração do inglês com outras áreas do conhecimento (CLIL)','Desenvolvimento das habilidades e interesse pelo aprendizado do inglês'];
+  const TURNO  = ['Qualidade geral do projeto e atividades complementares','Quantidade e diversidade das aulas e horas dedicadas ao inglês',`Uso dos espaços da ${tipo} para imersão no inglês`];
+  const ok = INGLES.every((_,i)=>ingles[i]!=null) && TURNO.every((_,i)=>turno[i]!=null);
+  return (
+    <div>
+      <p className="step-title">Programa Bilíngue</p>
+      <p className="step-desc">Avalie os aspectos do programa bilíngue da {tipo}.</p>
+      <p className="section-div">Inglês Todo Dia</p>
+      {INGLES.map((l,i)=><ScaleRow key={i} label={l} value={ingles[i]} onChange={v=>setIngles(p=>({...p,[i]:v}))} />)}
+      <p className="section-div">Turno Integral Bilíngue</p>
+      {TURNO.map((l,i)=><ScaleRow key={i} label={l} value={turno[i]} onChange={v=>setTurno(p=>({...p,[i]:v}))} />)}
+      <div className="btn-row">
+        <button className="btn btn-secondary" onClick={onBack}>← Voltar</button>
+        <button className="btn btn-primary" disabled={!ok} onClick={()=>onNext({ingles_todo_dia:ingles,turno_integral:turno})}>Próximo →</button>
+      </div>
+    </div>
+  );
+}
+
+function StepEscala({ titulo, aspectos, stepKey, onNext, onBack, isLast, loading }) {
+  const [ratings, setRatings] = useState({});
+  const ok = aspectos.every((_,i)=>ratings[i]!=null);
+  const buildAns = () => aspectos.reduce((a,l,i)=>({...a,[l]:ratings[i]}),{});
+  return (
+    <div>
+      <p className="step-title">{titulo}</p>
+      <p className="step-desc">Avalie de 1 a 5 os seguintes aspectos:</p>
+      {aspectos.map((l,i)=><ScaleRow key={i} label={l} value={ratings[i]} onChange={v=>setRatings(p=>({...p,[i]:v}))} />)}
+      <div className="btn-row">
+        <button className="btn btn-secondary" onClick={onBack}>← Voltar</button>
+        <button className="btn btn-primary" disabled={!ok||loading} onClick={()=>onNext(buildAns())}>
+          {loading?'Enviando…':isLast?'Enviar pesquisa ✓':'Próximo →'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const SCHOOL_LINKS = {
+  'cubo':          'https://cubo.global/quem-confia-indica',
+  'apogeu':        'https://apogeu.com.br/quem-confia-indica/',
+  'apogeu-global': 'https://apogeu.global/quem-confia-indica/',
+  'clv':           'https://colegioleonardodavinci.com.br/quem-confia-indica/',
+  'global-tree':   'https://crecheglobaltree.com.br/quem-confia-indica/',
+  'matriz':        'https://matrizeducacao.com.br/quem-confia-indica/',
+  'qi':            'https://colegioqi.com.br/quem-confia-indica/',
+  'sa-pereira':    'https://escolasapereira.com.br/quem-confia-indica/',
+  'sap':           'https://escolasap.com.br/quem-confia-indica/',
+  'sarah-dawsey':  'https://sdjf.com.br/quem-confia-indica/',
+  'unificado':     'https://unificado.com.br/quem-confia-indica/',
+  'americano':     'https://americanobilingue.com.br/quem-confia-indica/',
+  'uniao':         'https://colegiouniao.com.br/quem-confia-indica/',
+};
+
+function ThankYou({ nps, perfil, nomeAluno, school, tipo }) {
+  const isResponsavel = perfil !== 'aluno';
+  const score = Number(nps);
+  const isPromotor  = score >= 9;
+  const isNeutro    = score >= 7 && score <= 8;
+  const isDetrator  = score <= 6;
+  const linkIndicacao = SCHOOL_LINKS[school] || null;
+
+  // ── Aluno ──────────────────────────────────────────
+  if (!isResponsavel) {
+    return (
+      <div className="thankyou">
+        <div className="icon">{isDetrator ? '💬' : '🎉'}</div>
+        <h2>Obrigado pelo seu feedback!</h2>
+        {(isPromotor || isNeutro) && (
+          <p>
+            Obrigado por compartilhar sua avaliação e por fazer parte da nossa {tipo}.<br /><br />
+            É muito importante para nós saber como você tem vivido sua experiência aqui e entender
+            o que funciona bem para você.<br /><br />
+            Se quiser, pode também contar para amigos ou familiares sobre a {tipo} e o que você gosta por aqui.
+          </p>
+        )}
+        {isDetrator && (
+          <p>
+            Obrigado por compartilhar sua avaliação e por fazer parte da nossa {tipo}.<br /><br />
+            Sua opinião é importante para a gente entender o que pode ser melhorado na sua experiência aqui.<br /><br />
+            A {tipo} está aberta para conversar sempre que você quiser contar suas ideias ou sugestões.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // ── Responsável — Promotor (9–10) ──────────────────
+  if (isPromotor) {
+    return (
+      <div className="thankyou">
+        <div className="icon">🎉</div>
+        <h2>Obrigado pela sua avaliação!</h2>
+        <p>
+          Agradecemos pela sua avaliação e pela confiança na nossa {tipo}.<br /><br />
+          É muito importante para nós saber que a experiência do(a) aluno(a) está alinhada
+          com as expectativas da sua família em relação ao que a {tipo} se propõe a entregar.<br /><br />
+          Caso conheça outras famílias que possam se conectar com a proposta da {tipo},
+          você pode compartilhar este link de indicação:
+        </p>
+        {linkIndicacao && (
+          <div className="thankyou-link-box">
+            <a href={linkIndicacao} target="_blank" rel="noreferrer">{linkIndicacao}</a>
+          </div>
+        )}
+        <p style={{marginTop:16}}>
+          Obrigado por caminhar junto com a gente na educação do(a) <strong>{nomeAluno || 'seu(sua) filho(a)'}</strong>.
+        </p>
+      </div>
+    );
+  }
+
+  // ── Responsável — Neutro (7–8) ─────────────────────
+  if (isNeutro) {
+    return (
+      <div className="thankyou">
+        <div className="icon">🙏</div>
+        <h2>Obrigado pela sua avaliação!</h2>
+        <p>
+          Agradecemos pela sua avaliação e por fazer parte da nossa {tipo}.<br /><br />
+          Sua opinião é importante e ajuda a gente a entender como tornar a experiência
+          do(a) <strong>{nomeAluno || 'seu(sua) filho(a)'}</strong> ainda melhor.
+          Estamos à disposição para conversar sempre que quiser compartilhar suas ideias.<br /><br />
+          Se conhecer famílias que se identifiquem com a proposta da {tipo}, compartilhe o link:
+        </p>
+        {linkIndicacao && (
+          <div className="thankyou-link-box">
+            <a href={linkIndicacao} target="_blank" rel="noreferrer">{linkIndicacao}</a>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Responsável — Detrator (0–6) ───────────────────
+  return (
+    <div className="thankyou">
+      <div className="icon">💬</div>
+      <h2>Obrigado pela sua avaliação!</h2>
+      <p>
+        Agradecemos pela sua avaliação e por fazer parte da nossa {tipo}.<br /><br />
+        Sua opinião é muito importante para nós. Em breve, nossa equipe diretiva entrará em
+        contato para conversarmos e entender de que forma podemos tornar a trajetória
+        do(a) <strong>{nomeAluno || 'seu(sua) filho(a)'}</strong> na {tipo} ainda melhor.<br /><br />
+        Agradecemos por dedicar um tempo para compartilhar suas percepções conosco.
+      </p>
+    </div>
+  );
+}
+
+/* ── Telas de prazo ──────────────────────────────── */
+function AindaNaoAberta({ openDate }) {
+  const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
+  return (
+    <div className="prazo-screen">
+      <div className="icon">🗓️</div>
+      <h2>A pesquisa ainda não está disponível</h2>
+      <p>Ela abrirá em</p>
+      <span className="prazo-badge">{fmt(openDate)}</span>
+      <p style={{marginTop:8}}>Volte nessa data para participar.</p>
+    </div>
+  );
+}
+
+function Encerrada({ closeDate }) {
+  const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
+  return (
+    <div className="prazo-screen">
+      <div className="icon">🔒</div>
+      <h2>Esta pesquisa foi encerrada</h2>
+      <p>O prazo de participação terminou em</p>
+      <span className="prazo-badge">{fmt(closeDate)}</span>
+      <p style={{marginTop:8}}>Agradecemos a todos que participaram.</p>
+    </div>
+  );
+}
+
+/* ── App ─────────────────────────────────────────── */
+function getEixos(tipo) {
+  return {
+    pedagogico:    { titulo:'Eixo Pedagógico',     aspectos:['Qualidade do ensino (professores, metodologias e estímulo ao aprendizado)','Recursos pedagógicos e suporte no integral/ateliê (plataformas, materiais e serviços)','Acolhimento e desenvolvimento emocional (atenção ao aluno e apoio às famílias)'] },
+    administrativo:{ titulo:'Eixo Administrativo', aspectos:[`Gestão e organização da ${tipo} (direção, coordenação e rotina de entrada e saída)`,'Atendimento ao público (secretaria e financeiro)',`Canais digitais de comunicação (informações no app da ${tipo}, e-mail e redes sociais/sites)`] },
+    infraestrutura:{ titulo:'Eixo Infraestrutura',  aspectos:['Conforto e segurança dos espaços (salas, convivência e recepção)','Higiene e conservação (limpeza geral e banheiros)','Alimentação e serviços de apoio (cantina, variedade e organização do refeitório)'] },
+  };
+}
+
+function buildSteps(isBilingue) {
+  const s = ['welcome','nps'];
+  if (isBilingue) s.push('bilingue');
+  s.push('pedagogico','administrativo','infraestrutura','done');
+  return s;
+}
+
+function ProgressBar({ step, total }) {
+  const pct = Math.min((step/total)*100,100);
+  return (
+    <div className="progress-wrap">
+      <div className="progress-info"><span>Etapa {step+1} de {total}</span><span>{Math.round(pct)}%</span></div>
+      <div className="progress-track"><div className="progress-fill" style={{width:`${pct}%`}} /></div>
+      <div className="progress-spacer" />
+    </div>
+  );
+}
+
+// ⚙️ Cole aqui a URL do Apps Script após implantar
+const SHEETS_WEBHOOK = 'SUA_URL_DO_APPS_SCRIPT_AQUI';
+
+function App() {
+  const [stepIdx, setStepIdx] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Contexto carregado via LayersPortal + Apps Script
+  const [ctx, setCtx] = useState(null); // null = carregando
+
+  useEffect(() => {
+    async function carregarContexto() {
+      try {
+        // 1. Aguarda LayersPortal conectar
+        let userId = '', communityId = '', session = '';
+        if (window.LayersPortal) {
+          await window.LayersPortal.connectedPromise;
+          userId      = window.LayersPortal.userId      || '';
+          communityId = window.LayersPortal.communityId || '';
+          session     = window.LayersPortal.session     || '';
+        }
+
+        // 2. Busca configuração da escola no Apps Script
+        const url = `${SHEETS_WEBHOOK}?communityId=${encodeURIComponent(communityId)}&userId=${encodeURIComponent(userId)}`;
+        const res  = await fetch(url);
+        const data = await res.json();
+
+        setCtx({ userId, communityId, session, ...data });
+      } catch (e) {
+        // Fallback para testes locais via URL params
+        const p = new URLSearchParams(window.location.search);
+        setCtx({
+          userId:       '',
+          communityId:  p.get('communityId') || '',
+          session:      '',
+          onda:         p.get('onda')        || '1S2026',
+          openDate:     p.get('openDate')    || '',
+          closeDate:    p.get('closeDate')   || '',
+          status:       'aberta',
+          school:       p.get('school')      || '',
+          tipo:         p.get('tipo')        || 'escola',
+          nome:         p.get('nome')        || p.get('name') || '',
+          perfil:       p.get('role')        || 'responsavel',
+          nomeAluno:    p.get('studentName') || '',
+          serie:        p.get('grade')       || '',
+        });
+      }
+    }
+    carregarContexto();
+  }, []);
+
+  if (!ctx) return (
+    <div className="card">
+      <div className="header"><h1>Pesquisa de Satisfação 2026</h1></div>
+      <div className="loading-screen">
+        <div className="spinner" />
+        <p>Carregando...</p>
+      </div>
+    </div>
+  );
+
+  const { userId, communityId, session, onda, openDate, closeDate, status,
+          school, tipo, nome: nomeCompleto, perfil, nomeAluno, serie } = ctx;
+  const eixos = getEixos(tipo);
+
+  const aindaNaoAberta = status === 'nao_aberta';
+  const encerrada      = status === 'encerrada';
+
+  const isBilingue = answers.nps?.participa_bilingue === 'Sim';
+  const steps = buildSteps(isBilingue);
+  const current = steps[stepIdx] ?? 'done';
+  const total = steps.length - 1;
+
+  function save(key, data) { setAnswers(p=>({...p,[key]:data})); }
+
+  function next(key, data) {
+    save(key, data);
+    // Se NPS respondeu Não para bilíngue, pular etapa bilíngue
+    if (key==='nps' && data.participa_bilingue==='Não') {
+      const nextSteps = buildSteps(false);
+      setStepIdx(nextSteps.indexOf('pedagogico'));
+    } else {
+      setStepIdx(i=>i+1);
+    }
+  }
+
+  function back() { setStepIdx(i=>Math.max(0,i-1)); }
+
+  async function handleSubmit(data) {
+    save('infraestrutura', data);
+    setLoading(true);
+    setError(null);
+    try {
+      const payload = {
+        communityId, userId, session,
+        onda, school, tipo, perfil, nomeCompleto, nomeAluno, serie,
+        ...answers, infraestrutura: data,
+      };
+
+      if (SHEETS_WEBHOOK && !SHEETS_WEBHOOK.includes('SUA_URL')) {
+        await fetch(SHEETS_WEBHOOK, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+      }
+
+      setStepIdx(steps.indexOf('done'));
+    } catch(e) {
+      setError('Erro ao enviar. Verifique sua conexão e tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (aindaNaoAberta) return (
+    <div className="card">
+      <div className="header"><h1>Pesquisa de Satisfação 2026</h1></div>
+      <AindaNaoAberta openDate={openDate} />
+    </div>
+  );
+
+  if (encerrada) return (
+    <div className="card">
+      <div className="header"><h1>Pesquisa de Satisfação 2026</h1></div>
+      <Encerrada closeDate={closeDate} />
+    </div>
+  );
+
+  return (
+    <div className="card">
+      <div className="header">
+        <h1>Pesquisa de Satisfação 2026</h1>
+      </div>
+
+      {current !== 'done' && current !== 'welcome' && <ProgressBar step={stepIdx - 1} total={total - 1} />}
+
+      <div className="body">
+        {error && <p style={{color:'#e53e3e',marginBottom:16,fontWeight:600}}>⚠️ {error}</p>}
+
+        {current==='welcome'       && <WelcomeStep nome={nomeCompleto} nomeAluno={nomeAluno} serie={serie} perfil={perfil} tipo={tipo} onStart={()=>setStepIdx(1)} />}
+        {current==='nps'           && <StepNPS onNext={d=>next('nps',d)} onBack={back} tipo={tipo} />}
+        {current==='bilingue'      && <StepBilingue onNext={d=>next('bilingue',d)} onBack={back} tipo={tipo} />}
+        {current==='pedagogico'    && <StepEscala {...eixos.pedagogico}    onNext={d=>next('pedagogico',d)}    onBack={back} />}
+        {current==='administrativo'&& <StepEscala {...eixos.administrativo} onNext={d=>next('administrativo',d)} onBack={back} />}
+        {current==='infraestrutura'&& <StepEscala {...eixos.infraestrutura} onNext={handleSubmit} onBack={back} isLast loading={loading} />}
+        {current==='done' && <ThankYou nps={answers.nps?.nps} perfil={perfil} nomeAluno={nomeAluno} school={school} tipo={tipo} />}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
