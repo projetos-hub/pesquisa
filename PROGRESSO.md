@@ -9,7 +9,7 @@
 
 ---
 
-## Estado atual: Fase 1 concluída — Fase 2 pendente de credenciais Supabase
+## Estado atual: Fase 2A concluída — leitura de pesquisa via Supabase
 
 ---
 
@@ -136,40 +136,43 @@ Testar as 10 URLs abaixo no browser:
 
 ---
 
-## Pendência manual — antes de avançar para Fase 2
+## Pendência manual — para ativar a Fase 2A no banco
 
-1. Criar projeto no Supabase (gratuito em supabase.com)
-2. Preencher `survey-platform/.env.local`:
-```
-NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJh...
-SUPABASE_SERVICE_ROLE_KEY=eyJh...
-```
-3. Rodar `supabase/migrations/001_initial_schema.sql` no SQL Editor do Supabase
+1. Rodar `supabase/migrations/001_initial_schema.sql` no SQL Editor do Supabase (se ainda não rodou)
+2. Rodar `supabase/migrations/002_seed_csat.sql` no SQL Editor do Supabase
+
+Após esses dois passos, `/p/csat` busca a configuração do banco em vez do hardcode.
 
 ---
 
-## Próximo passo: Fase 2 — Backend real (Supabase)
+### Fase 2A — Leitura de pesquisa via Supabase ✅ (commit a074fb1)
 
-**Objetivo:** submissão vai para Supabase; config da pesquisa vem do banco.
+| Arquivo | O que faz |
+|---|---|
+| `components/survey-engine/utils/types.ts` | `ConditionalDef` + `conditional_on?` em `BaseStep` |
+| `lib/survey-config.ts` | `rowsToConfig()` (DB → config) + `applyConditionals()` (reconstrói funções no cliente) |
+| `app/api/surveys/[slug]/route.ts` | GET — busca survey ativa, questions e options; retorna JSON |
+| `supabase/migrations/002_seed_csat.sql` | Seed idempotente da CSAT (survey + 7 questions + options) |
+| `components/survey-engine/SurveyRunner.tsx` | Fetch `/api/surveys/[slug]` + applyConditionals; spinner enquanto carrega |
+| `lib/surveys.ts` | `SURVEYS` removido; `SCHOOL_LINKS` mantido |
+
+**Decisões de implementação:**
+- `condicional` (função JS) não é serializável em JSON → trafega como `conditional_on` (JSONB spec)
+- `applyConditionals()` reconstrói as funções no cliente antes de armazenar no estado
+- API usa `createServiceClient()` (service role) → sem problemas de RLS durante desenvolvimento
+- Seed é idempotente: `ON CONFLICT (slug) DO UPDATE` + `DELETE FROM questions WHERE survey_id`
+
+---
+
+## Próximo passo: Fase 2B — Submit real para o Supabase
 
 **O que será criado:**
+- `app/api/surveys/[slug]/submit/route.ts` — POST: grava `response_session` + `responses`
 
-| Arquivo | Descrição |
-|---|---|
-| `app/api/surveys/[slug]/route.ts` | GET — retorna `SurveyConfig` do banco |
-| `app/api/surveys/[slug]/submit/route.ts` | POST — grava `response_session` + `responses` |
-| `lib/survey-config.ts` | Transforma rows do banco → `SurveyConfig` |
-| `supabase/migrations/002_seed_csat.sql` | Popula pesquisa CSAT via SQL |
-
-**Mudanças no código existente:**
-- `SurveyRunner.tsx`: substituir `SURVEYS[surveyId]` por `GET /api/surveys/[slug]`
+**Mudança no código existente:**
 - `SurveyRunner.tsx`: substituir submit simulado por `POST /api/surveys/[slug]/submit`
-- `lib/surveys.ts`: `SURVEYS` hardcoded removido (mantém só `SCHOOL_LINKS` até Fase 5)
 
 **Critério de done:** submissão real salva no Supabase; duplicatas rejeitadas com `{ duplicate: true }`.
-
-**Pré-requisito:** `.env.local` configurado e schema rodado no Supabase.
 
 ---
 
@@ -179,7 +182,8 @@ SUPABASE_SERVICE_ROLE_KEY=eyJh...
 |---|---|---|
 | 0 | Setup Next.js + Supabase clients + schema | ✅ Concluída (commit c581fb2) |
 | 1 | Engine migrada (frontend respondente) | ✅ Concluída (commit fd3f70a) |
-| 2 | Backend real (Supabase API routes) | 🔜 Próxima — aguarda credenciais |
+| 2A | Leitura de pesquisa via Supabase | ✅ Concluída (commit a074fb1) |
+| 2B | Submit real para Supabase | 🔜 Próxima |
 | 3 | Área admin | ⏳ Pendente |
 | 4 | Google Sheets espelho | ⏳ Pendente |
 | 5 | Polimento e remoção de hardcodes | ⏳ Pendente |
