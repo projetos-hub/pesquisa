@@ -9,7 +9,7 @@
 
 ---
 
-## Estado atual: Fase 2A concluída — leitura de pesquisa via Supabase
+## Estado atual: Fase 2 concluída — leitura e gravação via Supabase
 
 ---
 
@@ -164,15 +164,22 @@ Após esses dois passos, `/p/csat` busca a configuração do banco em vez do har
 
 ---
 
-## Próximo passo: Fase 2B — Submit real para o Supabase
+### Fase 2B — Submit real para Supabase ✅ (commit 419b4f8)
 
-**O que será criado:**
-- `app/api/surveys/[slug]/submit/route.ts` — POST: grava `response_session` + `responses`
+| Arquivo | O que faz |
+|---|---|
+| `app/api/surveys/[slug]/submit/route.ts` | POST: upsert `response_session` (idempotente) + insert `responses` em batch |
+| `components/survey-engine/SurveyRunner.tsx` | `submitPesquisa` agora faz `POST /api/surveys/[slug]/submit`; duplicate navega para ThankYou |
 
-**Mudança no código existente:**
-- `SurveyRunner.tsx`: substituir submit simulado por `POST /api/surveys/[slug]/submit`
+**Decisões de implementação:**
+- Idempotência via `upsert + ignoreDuplicates: true` → `ON CONFLICT (survey_id, community_id, user_id) DO NOTHING`
+- `{ duplicate: true }` navega para ThankYou silenciosamente (não é erro do ponto de vista do usuário)
+- Respostas de steps pulados (bilíngue condicional) simplesmente não existem em `answers` → ignoradas automaticamente
+- `communityId`/`userId` vindos de URL params (serão preenchidos via LayersPortal na Fase 3+)
 
-**Critério de done:** submissão real salva no Supabase; duplicatas rejeitadas com `{ duplicate: true }`.
+---
+
+## Próximo passo: Fase 3 — Área admin
 
 ---
 
@@ -183,7 +190,7 @@ Após esses dois passos, `/p/csat` busca a configuração do banco em vez do har
 | 0 | Setup Next.js + Supabase clients + schema | ✅ Concluída (commit c581fb2) |
 | 1 | Engine migrada (frontend respondente) | ✅ Concluída (commit fd3f70a) |
 | 2A | Leitura de pesquisa via Supabase | ✅ Concluída (commit a074fb1) |
-| 2B | Submit real para Supabase | 🔜 Próxima |
-| 3 | Área admin | ⏳ Pendente |
+| 2B | Submit real para Supabase | ✅ Concluída (commit 419b4f8) |
+| 3 | Área admin | 🔜 Próxima |
 | 4 | Google Sheets espelho | ⏳ Pendente |
 | 5 | Polimento e remoção de hardcodes | ⏳ Pendente |
