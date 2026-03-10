@@ -9,7 +9,7 @@
 
 ---
 
-## Estado atual: Fase 3 concluída — área admin funcional
+## Estado atual: Fase 3 concluída + fix ERR_TOO_MANY_REDIRECTS aplicado
 
 ---
 
@@ -248,6 +248,16 @@ WHERE email = 'seu@email.com';
 
 ---
 
+### Fix pós-Fase 3 — ERR_TOO_MANY_REDIRECTS ✅ (commit 107ccd1)
+
+**Causa:** `app/admin/layout.tsx` envolvia todas as rotas `/admin/*` incluindo `/admin/login`. Quando usuário não autenticado acessava `/admin/login`, o proxy deixava passar corretamente, mas o layout chamava `redirect('/admin/login')` → loop infinito.
+
+**Correção:** substituído `if (!user) redirect('/admin/login')` por `if (!user) return <>{children}</>` em `layout.tsx`. O `proxy.ts` continua sendo a única fonte de lógica de redirect; o layout é apenas estrutura visual.
+
+**Também removido:** `console.log` de debug esquecido em `app/page.tsx`.
+
+---
+
 ## Próximo passo: Fase 4 — Google Sheets espelho
 
 ---
@@ -261,5 +271,6 @@ WHERE email = 'seu@email.com';
 | 2A | Leitura de pesquisa via Supabase | ✅ Concluída (commit a074fb1) |
 | 2B | Submit real para Supabase | ✅ Concluída (commit 419b4f8) |
 | 3 | Área admin | ✅ Concluída (commit 5c69ad0) |
+| 3-fix | ERR_TOO_MANY_REDIRECTS no login | ✅ Corrigido (commit 107ccd1) |
 | 4 | Google Sheets espelho | 🔜 Próxima |
 | 5 | Polimento e remoção de hardcodes | ⏳ Pendente |

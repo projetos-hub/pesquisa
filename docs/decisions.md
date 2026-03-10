@@ -95,6 +95,16 @@ POST /api/surveys/[slug]/submit  → grava response_session + responses
 
 Constraint `UNIQUE (survey_id, community_id, user_id)` na tabela `response_sessions`. Se o usuário reenviar (botão voltar, duplo clique), a API retorna `{ ok: true, duplicate: true }` em vez de gravar duplicata.
 
+### proxy.ts como única fonte de redirects de auth
+
+**Decisão:** `app/admin/layout.tsx` não redireciona usuários não autenticados. Apenas retorna `<>{children}</>` quando sem sessão. O `proxy.ts` é a única fonte de lógica de redirect.
+
+**Motivo:** o `layout.tsx` envolve **todas** as rotas sob `/admin/*`, incluindo `/admin/login` e `/admin/auth/callback`. Se o layout redirecionar para `/admin/login` quando sem sessão, e o usuário estiver em `/admin/login`, ocorre loop infinito (`ERR_TOO_MANY_REDIRECTS`).
+
+**Alternativa descartada:** criar route group separado `(protected)` para isolar o layout autenticado — correto arquiteturalmente, mas over-engineering para o momento. A solução mínima (retornar `children` sem sidebar) resolve sem reestruturação.
+
+---
+
 ### Falha silenciosa do Sheets
 
 Se a chamada ao Apps Script falhar, a API route loga o erro mas responde `200` ao respondente. O campo `synced_to_sheets = false` permite reprocessamento posterior via job ou manualmente.

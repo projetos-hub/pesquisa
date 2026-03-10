@@ -1,18 +1,27 @@
 # Arquitetura — Plataforma de Pesquisas
 
 > Atualizado em: 2026-03-10
-> Estado: Fase 0 concluída (infraestrutura). Fase 1 não iniciada.
+> Estado: Fase 3 concluída. Próxima: Fase 4 (Google Sheets espelho).
 
 ---
 
-## Estado atual (Fase 0)
-
-O que existe hoje é apenas a **infraestrutura base** — Next.js scaffoldado com clientes Supabase e schema SQL. Nenhuma rota funcional além da home placeholder.
+## Estado atual (Fase 3 concluída)
 
 ```
-pesquisa.html  ←── ainda em produção (legado)
-survey-platform/  ←── em construção (Next.js, sem rotas de negócio)
+pesquisa.html  ←── legado em produção (referência, não mexer)
+survey-platform/  ←── plataforma nova funcional (Fases 0–3 completas)
 ```
+
+O que já está operacional:
+- Engine respondente completa (`/p/[surveySlug]`)
+- API de leitura (`GET /api/surveys/[slug]`) — lê do Supabase
+- API de submissão (`POST /api/surveys/[slug]/submit`) — grava no Supabase com idempotência
+- Área admin com auth magic link, CRUD de surveys e tabela de respostas
+- RLS configurado para leitura pública (surveys ativas) e admin (admin_profiles)
+
+O que falta:
+- Fase 4: espelho Google Sheets após gravação no Supabase
+- Fase 5: polimento (LayersPortal.js, remoção de hardcodes, paginação, editor de perguntas)
 
 ---
 
@@ -73,32 +82,41 @@ survey-platform/  ←── em construção (Next.js, sem rotas de negócio)
 
 ---
 
-## Diagrama — Estado atual (Fase 0)
+## Estrutura atual — survey-platform/
 
 ```
 survey-platform/
 │
 ├── app/
-│   ├── layout.tsx         ← Root layout (Tailwind, fonte)
-│   ├── page.tsx           ← Home placeholder (sem conteúdo)
-│   └── globals.css        ← Tailwind v4 base
+│   ├── (respondente)/p/[surveySlug]/   ← frontend respondente ✅
+│   ├── admin/                           ← área admin protegida ✅
+│   │   ├── login/                       ← magic link ✅
+│   │   ├── auth/callback/               ← troca code → sessão ✅
+│   │   ├── surveys/                     ← lista + CRUD ✅
+│   │   └── surveys/[id]/responses/      ← tabela de respostas ✅
+│   └── api/surveys/[slug]/
+│       ├── route.ts                     ← GET config ✅
+│       └── submit/route.ts              ← POST submissão ✅
+│
+├── components/
+│   ├── survey-engine/                   ← engine migrada ✅
+│   │   ├── steps/                       ← NPS, Escala, Radio, Text, etc.
+│   │   └── utils/                       ← buildActiveSteps, types
+│   └── ui/                              ← OptionBtn, ScaleRow, ProgressBar
 │
 ├── lib/
-│   ├── supabase.ts        ← createBrowserClient()   [browser]
-│   ├── supabase-server.ts ← createServerClient()    [RSC/API]
-│   └── supabase-service.ts← createClient(serviceKey)[API routes]
+│   ├── supabase.ts                      ← browser client
+│   ├── supabase-server.ts               ← server/RSC client
+│   ├── supabase-service.ts              ← service role (API routes)
+│   └── survey-config.ts                 ← rowsToConfig + applyConditionals
 │
-└── supabase/
-    └── migrations/
-        └── 001_initial_schema.sql  ← 6 tabelas + RLS + trigger
+├── proxy.ts                             ← auth guard /admin/* ✅
+│
+└── supabase/migrations/
+    ├── 001_initial_schema.sql           ← schema base + RLS
+    ├── 002_seed_csat.sql                ← seed CSAT (idempotente)
+    └── 003_admin_rls_and_constraints.sql← RLS admin + UNIQUE(survey_id,key)
 ```
-
-**O que NÃO existe ainda:**
-- Rotas respondente (`/p/[surveySlug]`)
-- Engine (`SurveyRunner`, steps, `buildActiveSteps`)
-- API routes (`/api/surveys/[slug]`)
-- Área admin
-- Integração Sheets
 
 ---
 
@@ -154,16 +172,18 @@ Admin com `service_role_key` (API routes): bypass de RLS, acesso total.
 
 ---
 
-## Rotas planejadas
+## Rotas
 
-| Rota | Tipo | Fase | Descrição |
+| Rota | Tipo | Status | Descrição |
 |---|---|---|---|
-| `/` | Page | 0 | Home placeholder |
-| `/p/[surveySlug]` | Page | 1 | Frontend respondente |
-| `/api/surveys/[slug]` | API GET | 2 | Config da pesquisa |
-| `/api/surveys/[slug]/submit` | API POST | 2 | Submissão de resposta |
-| `/admin` | Page | 3 | Dashboard admin |
-| `/admin/surveys` | Page | 3 | Lista de pesquisas |
-| `/admin/surveys/new` | Page | 3 | Criar pesquisa |
-| `/admin/surveys/[id]` | Page | 3 | Editar pesquisa |
-| `/admin/surveys/[id]/questions` | Page | 3 | Gerenciar perguntas |
+| `/p/[surveySlug]` | Page | ✅ | Frontend respondente |
+| `/api/surveys/[slug]` | API GET | ✅ | Config da pesquisa via Supabase |
+| `/api/surveys/[slug]/submit` | API POST | ✅ | Submissão com idempotência |
+| `/admin/login` | Page | ✅ | Magic link auth |
+| `/admin/auth/callback` | Route | ✅ | Troca code → sessão Supabase |
+| `/admin` | Page | ✅ | Redireciona para /admin/surveys |
+| `/admin/surveys` | Page | ✅ | Lista surveys com stats |
+| `/admin/surveys/new` | Page | ✅ | Criar pesquisa |
+| `/admin/surveys/[id]` | Page | ✅ | Editar título/status/datas |
+| `/admin/surveys/[id]/responses` | Page | ✅ | Tabela de respostas |
+| `/admin/surveys/[id]/questions` | Page | 🔜 Fase 3B | Editor de perguntas (drag & drop) |
