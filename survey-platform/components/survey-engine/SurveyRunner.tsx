@@ -97,6 +97,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const {
     surveyId, onda, openDate, closeDate, status,
     school, tipo, nome: nomeCompleto, perfil, nomeAluno, serie,
+    communityId, userId,
   } = ctx
 
   // ── Perfil sem acesso ────────────────────────────────────────────────────────
@@ -169,15 +170,33 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     setLoading(true)
     setSubmitError(null)
     try {
-      // TODO Fase 2B: substituir por POST /api/surveys/[slug]/submit
-      console.log('[Fase 2A] Submit simulado:', {
-        surveyId, onda, school, tipo, perfil, nomeCompleto, nomeAluno, serie,
-        ...finalAnswers,
+      const res = await fetch(`/api/surveys/${surveySlug}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          communityId,
+          userId,
+          onda,
+          school,
+          tipo,
+          perfil,
+          nomeCompleto,
+          nomeAluno,
+          serie,
+          answers: finalAnswers,
+        }),
       })
-      await new Promise(r => setTimeout(r, 300))
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error((err as { error?: string }).error ?? `HTTP ${res.status}`)
+      }
+
+      // { ok: true } ou { duplicate: true } — ambos navegam para ThankYou
       setCurrentKey('thankyou')
-    } catch {
-      setSubmitError('Erro ao enviar. Verifique sua conexão e tente novamente.')
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Erro desconhecido'
+      setSubmitError(`Erro ao enviar. ${msg}. Verifique sua conexão e tente novamente.`)
     } finally {
       setLoading(false)
     }
