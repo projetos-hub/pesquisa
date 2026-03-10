@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import LogoutButton from './LogoutButton'
@@ -13,7 +12,8 @@ export default async function AdminLayout({
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) redirect('/admin/login')
+  // proxy.ts é a única fonte de redirects — o layout apenas estrutura visualmente
+  if (!user) return <>{children}</>
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
