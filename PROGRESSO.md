@@ -9,7 +9,7 @@
 
 ---
 
-## Estado atual: Fase 2 concluída — leitura e gravação via Supabase
+## Estado atual: Fase 3 concluída — área admin funcional
 
 ---
 
@@ -202,7 +202,53 @@ Após esses dois passos, `/p/csat` busca a configuração do banco em vez do har
 
 ---
 
-## Próximo passo: Fase 3 — Área admin
+---
+
+### Fase 3 — Área admin ✅ (commit 5c69ad0)
+
+**13 arquivos criados. Build: limpo. TypeScript: zero erros.**
+
+| Arquivo | O que faz |
+|---|---|
+| `proxy.ts` | Auth guard para `/admin/*` (Next.js 16 proxy) — redireciona para `/admin/login` se não autenticado |
+| `app/admin/auth/callback/route.ts` | Troca `code` por sessão Supabase Auth (magic link callback) |
+| `app/admin/login/page.tsx` | Formulário de magic link — envia e-mail, exibe confirmação |
+| `app/admin/LogoutButton.tsx` | Botão de logout (client component — chama `signOut()`) |
+| `app/admin/layout.tsx` | Layout com sidebar + verificação server-side de auth |
+| `app/admin/page.tsx` | Redireciona `/admin` → `/admin/surveys` |
+| `app/admin/surveys/page.tsx` | Lista surveys com status, respostas e datas |
+| `app/admin/surveys/actions.ts` | Server Actions: `updateSurvey` e `createSurvey` (auth + service client) |
+| `app/admin/surveys/new/page.tsx` + `NewSurveyForm.tsx` | Criação de pesquisa (título, slug, tipo, público) |
+| `app/admin/surveys/[id]/page.tsx` | Detalhe: stats por perfil + top escolas + link para respostas |
+| `app/admin/surveys/[id]/SurveyEditForm.tsx` | Edição de título, status e datas (useActionState) |
+| `app/admin/surveys/[id]/responses/page.tsx` | Tabela: NPS + médias por eixo (pedagógico, admin, infra, bilíngue) |
+
+**Decisões de implementação:**
+- Dupla proteção: `proxy.ts` (borda) + auth check em `layout.tsx` (Server Component)
+- Mutações via `createServiceClient()` com `requireAuth()` explícita antes de cada write
+- Leituras via `createServerSupabaseClient()` — RLS verifica `admin_profiles` automaticamente
+- `useActionState` para feedback inline de erros/sucesso sem page reload
+- Magic link: sem senha, sem configuração de OAuth extra
+
+**Pré-requisito para usar o admin:**
+1. Rodar `003_admin_rls_and_constraints.sql` no Supabase
+2. Supabase Dashboard → Authentication → URL Configuration → adicionar `{seu-domínio}/admin/auth/callback` em "Redirect URLs"
+3. Criar usuário admin: Supabase Dashboard → Authentication → Users → "Invite user"
+4. Inserir o usuário em `admin_profiles`:
+```sql
+INSERT INTO admin_profiles (id, email, name, role)
+SELECT id, email, 'Admin', 'admin'
+FROM auth.users
+WHERE email = 'seu@email.com';
+```
+
+**Diferido para Fase 3B:**
+- Editor de perguntas (drag & drop com @dnd-kit)
+- Paginação na tabela de respostas (hoje mostra todas)
+
+---
+
+## Próximo passo: Fase 4 — Google Sheets espelho
 
 ---
 
@@ -214,6 +260,6 @@ Após esses dois passos, `/p/csat` busca a configuração do banco em vez do har
 | 1 | Engine migrada (frontend respondente) | ✅ Concluída (commit fd3f70a) |
 | 2A | Leitura de pesquisa via Supabase | ✅ Concluída (commit a074fb1) |
 | 2B | Submit real para Supabase | ✅ Concluída (commit 419b4f8) |
-| 3 | Área admin | 🔜 Próxima |
-| 4 | Google Sheets espelho | ⏳ Pendente |
+| 3 | Área admin | ✅ Concluída (commit 5c69ad0) |
+| 4 | Google Sheets espelho | 🔜 Próxima |
 | 5 | Polimento e remoção de hardcodes | ⏳ Pendente |
