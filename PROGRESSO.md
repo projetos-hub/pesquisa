@@ -9,7 +9,7 @@
 
 ---
 
-## Estado atual: Fase 0 concluída — Fase 1 iniciando
+## Estado atual: Fase 1 concluída — Fase 2 pendente de credenciais Supabase
 
 ---
 
@@ -36,116 +36,140 @@
 - Integração LayersPortal.js
 - Google Sheets via Apps Script
 
-### Documentação ✅ (commit 5b9db6c)
-- `docs/decisions.md` — decisões arquiteturais com alternativas descartadas
-- `docs/architecture.md` — diagrama, modelo de dados, fluxo de submissão, rotas planejadas
-- `PROGRESSO.md` — atualizado com estado completo da Fase 0
+---
 
 ### Fase 0 — Setup de infraestrutura ✅ (commit c581fb2)
-
-**Arquivos criados:**
 
 | Arquivo | Descrição |
 |---|---|
 | `survey-platform/` | Projeto Next.js 16 scaffoldado |
-| `survey-platform/app/layout.tsx` | Root layout (App Router) |
-| `survey-platform/app/page.tsx` | Home page placeholder |
-| `survey-platform/app/globals.css` | Tailwind v4 base styles |
-| `survey-platform/lib/supabase.ts` | Cliente browser (`createBrowserClient`) |
+| `survey-platform/lib/supabase.ts` | Cliente browser |
 | `survey-platform/lib/supabase-server.ts` | Cliente server-side com cookies |
 | `survey-platform/lib/supabase-service.ts` | Service role para API routes |
-| `survey-platform/supabase/migrations/001_initial_schema.sql` | Schema completo: 6 tabelas + índices + RLS |
-| `survey-platform/next.config.ts` | Config Next.js (turbopack) |
-| `survey-platform/tsconfig.json` | TypeScript strict |
-| `survey-platform/package.json` | Dependências |
+| `survey-platform/supabase/migrations/001_initial_schema.sql` | 6 tabelas + índices + RLS |
 
-**Dependências instaladas:**
-
-| Pacote | Versão | Uso |
-|---|---|---|
-| `next` | 16.1.6 | Framework principal |
-| `react` / `react-dom` | 19.2.3 | UI |
-| `@supabase/supabase-js` | ^2.99.0 | Cliente Supabase |
-| `@supabase/ssr` | ^0.9.0 | SSR com cookies |
-| `tailwindcss` | ^4 | Estilização |
-| `typescript` | ^5 | Type safety |
-
-**Schema SQL criado (`001_initial_schema.sql`):**
-- `surveys` — pesquisas (slug, status, datas, settings JSONB)
-- `questions` — perguntas com tipo, ordem e condicionais
-- `question_options` — opções de radio/scale_sections
-- `response_sessions` — sessão única por (survey, community, user)
-- `responses` — respostas por pergunta (JSONB)
-- `admin_profiles` — usuários admin (via Supabase Auth)
-- RLS habilitado em todas as tabelas
-- Trigger `updated_at` em `surveys`
+**Dependências:** `next@16.1.6`, `react@19`, `@supabase/supabase-js`, `@supabase/ssr`, `tailwindcss@4`, `typescript@5`
 
 ---
 
-## Checklist de validação da Fase 0
+### Fase 1 — Engine respondente migrada ✅ (commit fd3f70a)
 
-Execute antes de avançar para a Fase 1:
+**19 arquivos criados. TypeScript: zero erros. Build: limpo.**
+
+#### Contratos e engine
+
+| Arquivo | O que faz |
+|---|---|
+| `components/survey-engine/utils/types.ts` | Tipos: `StepDef`, `SurveyConfig`, `Answers`, `SurveyContext`, `NPSAnswer`, `Perfil` |
+| `components/survey-engine/utils/buildActiveSteps.ts` | `buildActiveSteps()` + `stepId()` — lógica condicional migrada literal do `pesquisa.html` L.219–229 |
+| `lib/surveys.ts` | `SURVEYS` (pesquisa CSAT completa) + `SCHOOL_LINKS` (13 escolas) — hardcoded para Fase 1 |
+
+#### Componentes de step
+
+| Arquivo | Migrado de |
+|---|---|
+| `components/survey-engine/steps/WelcomeStep.tsx` | `pesquisa.html` L.293–337 |
+| `components/survey-engine/steps/StepNPS.tsx` | L.343–375 — NPS 0–10 + pergunta bilíngue opcional |
+| `components/survey-engine/steps/StepEscala.tsx` | L.382–439 — lista simples e com seções |
+| `components/survey-engine/steps/StepRadio.tsx` | L.445–469 |
+| `components/survey-engine/steps/StepText.tsx` | L.475–504 |
+| `components/survey-engine/steps/ThankYou.tsx` | L.530–620 — 4 variantes: aluno, promotor, neutro, detrator |
+| `components/survey-engine/steps/AindaNaoAberta.tsx` | L.626–637 |
+| `components/survey-engine/steps/Encerrada.tsx` | L.639–650 |
+| `components/survey-engine/steps/ErroSurvey.tsx` | L.652–661 |
+
+#### Primitivos UI
+
+| Arquivo | Migrado de |
+|---|---|
+| `components/ui/OptionBtn.tsx` | L.255–262 |
+| `components/ui/ScaleRow.tsx` | L.264–276 |
+| `components/ui/ProgressBar.tsx` | L.278–287 |
+
+#### Engine principal e rota
+
+| Arquivo | O que faz |
+|---|---|
+| `components/survey-engine/SurveyRunner.tsx` | `App()` refatorado: carrega contexto via URL params, gerencia estado, navegação condicional, submit simulado (TODO Fase 2) |
+| `app/(respondente)/survey.css` | CSS do `pesquisa.html` preservado integralmente — zero diferença visual |
+| `app/(respondente)/layout.tsx` | Layout isolado: Inter font + gradient background. Sem nav/footer |
+| `app/(respondente)/p/[surveySlug]/page.tsx` | Rota `/p/csat`, `/p/qualquer-slug` — Suspense + SurveyRunner |
+
+#### Decisões de implementação registradas
+
+- `buildActiveSteps` copiado sem alteração de lógica — paridade garantida
+- Navegação por `key` string, não por índice — preserva comportamento do bilíngue condicional
+- `isLastData = currentIdx === activeSteps.length - 2` — fórmula idêntica ao original
+- Submit simulado na Fase 1 (console.log + setTimeout) — substituído na Fase 2
+- Contexto carregado via `useSearchParams()` — sem LayersPortal por ora
+
+---
+
+### Documentação ✅ (commits 5b9db6c, 892862a)
+- `docs/decisions.md` — decisões arquiteturais com alternativas descartadas
+- `docs/architecture.md` — diagrama, modelo de dados, fluxo de submissão, rotas planejadas
+
+---
+
+## Checklist de validação da Fase 1
 
 ```bash
 cd survey-platform
-
-# 1. Confirmar dependências
-npm list --depth=0
-# next, react, @supabase/supabase-js, @supabase/ssr devem aparecer
-
-# 2. Dev server
 npm run dev
-# → http://localhost:3000 deve abrir (home placeholder do Next.js)
-
-# 3. Build de produção
-npm run build
-# → "✓ Compiled successfully"
-
-# 4. TypeScript sem erros
-npx tsc --noEmit
-# → zero erros
-
-# 5. Estrutura dos arquivos lib/
-ls lib/
-# → supabase.ts  supabase-server.ts  supabase-service.ts
+# Abre em http://localhost:3000
 ```
+
+Testar as 10 URLs abaixo no browser:
+
+| # | URL | Esperado |
+|---|---|---|
+| 1 | `/p/csat?role=responsavel&nome=Ana&studentName=Pedro&grade=3F&school=qi` → NPS com bilíngue=Sim | Step bilíngue aparece |
+| 2 | mesma URL → NPS com bilíngue=Não | Step bilíngue é pulado |
+| 3 | Após cenário 1, no Pedagógico → Voltar | Volta para Bilíngue |
+| 4 | Após cenário 2, no Pedagógico → Voltar | Volta para NPS |
+| 5 | `/p/csat?role=responsavel&studentName=Pedro&school=qi` → NPS=9 ou 10 | ThankYou 🎉 + link indicação |
+| 6 | mesma URL → NPS=0 a 6 | ThankYou 💬 sem link |
+| 7 | `/p/csat?role=aluno&nome=Pedro&grade=3F` | ThankYou aluno sem link |
+| 8 | `/p/csat?status=nao_aberta&openDate=2026-06-01` | Tela 🗓️ com data formatada |
+| 9 | `/p/csat?status=encerrada&closeDate=2026-03-01` | Tela 🔒 com data formatada |
+| 10 | `/p/pesquisa-invalida` | Tela ⚠️ "Pesquisa não encontrada" |
 
 ---
 
-## Pendência manual (antes de avançar para Fase 2)
+## Pendência manual — antes de avançar para Fase 2
 
-Criar projeto no Supabase e preencher `survey-platform/.env.local`:
-
+1. Criar projeto no Supabase (gratuito em supabase.com)
+2. Preencher `survey-platform/.env.local`:
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJh...
 SUPABASE_SERVICE_ROLE_KEY=eyJh...
 ```
-
-Rodar `001_initial_schema.sql` no SQL Editor do Supabase.
+3. Rodar `supabase/migrations/001_initial_schema.sql` no SQL Editor do Supabase
 
 ---
 
-## Próximo passo: Fase 1 — Engine migrada
+## Próximo passo: Fase 2 — Backend real (Supabase)
 
-**Objetivo:** frontend respondente funciona identicamente ao `pesquisa.html` atual, porém em Next.js com TypeScript.
+**Objetivo:** submissão vai para Supabase; config da pesquisa vem do banco.
 
-**O que será criado (em ordem):**
+**O que será criado:**
 
-1. `components/survey-engine/utils/types.ts` — contratos TypeScript (`StepType`, `Step`, `Answers`, `SurveyConfig`, `SurveyStatus`)
-2. `components/survey-engine/utils/buildActiveSteps.ts` — lógica condicional (migrada do `pesquisa.html`)
-3. `components/survey-engine/steps/` — um componente por tipo de step
-4. `components/survey-engine/SurveyRunner.tsx` — engine principal com estado e navegação
-5. `components/ui/` — primitivos (`ProgressBar`, `ScaleRow`, `OptionBtn`)
-6. `app/(respondente)/p/[surveySlug]/page.tsx` — rota respondente
-7. CSS do legado preservado (mesmo visual)
-8. `SURVEYS` hardcoded temporariamente (substituído na Fase 2)
+| Arquivo | Descrição |
+|---|---|
+| `app/api/surveys/[slug]/route.ts` | GET — retorna `SurveyConfig` do banco |
+| `app/api/surveys/[slug]/submit/route.ts` | POST — grava `response_session` + `responses` |
+| `lib/survey-config.ts` | Transforma rows do banco → `SurveyConfig` |
+| `supabase/migrations/002_seed_csat.sql` | Popula pesquisa CSAT via SQL |
 
-**Primeiro arquivo a criar:** `types.ts` — define o contrato de dados antes de qualquer componente.
+**Mudanças no código existente:**
+- `SurveyRunner.tsx`: substituir `SURVEYS[surveyId]` por `GET /api/surveys/[slug]`
+- `SurveyRunner.tsx`: substituir submit simulado por `POST /api/surveys/[slug]/submit`
+- `lib/surveys.ts`: `SURVEYS` hardcoded removido (mantém só `SCHOOL_LINKS` até Fase 5)
 
-**Critério de done:** 10 cenários de teste do `migration-plan.md` passando.
+**Critério de done:** submissão real salva no Supabase; duplicatas rejeitadas com `{ duplicate: true }`.
 
-**Nota:** a Fase 1 não depende de Supabase. Pode ser executada antes de configurar o `.env.local`.
+**Pré-requisito:** `.env.local` configurado e schema rodado no Supabase.
 
 ---
 
@@ -153,9 +177,9 @@ Rodar `001_initial_schema.sql` no SQL Editor do Supabase.
 
 | Fase | Descrição | Status |
 |---|---|---|
-| 0 | Setup Next.js + Supabase clients + schema | ✅ Concluída |
-| 1 | Engine migrada (frontend respondente) | 🔜 Próxima |
-| 2 | Backend real (Supabase API routes) | ⏳ Pendente |
+| 0 | Setup Next.js + Supabase clients + schema | ✅ Concluída (commit c581fb2) |
+| 1 | Engine migrada (frontend respondente) | ✅ Concluída (commit fd3f70a) |
+| 2 | Backend real (Supabase API routes) | 🔜 Próxima — aguarda credenciais |
 | 3 | Área admin | ⏳ Pendente |
 | 4 | Google Sheets espelho | ⏳ Pendente |
 | 5 | Polimento e remoção de hardcodes | ⏳ Pendente |
