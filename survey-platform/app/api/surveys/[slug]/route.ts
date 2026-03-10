@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase-service'
+import { createClient } from '@supabase/supabase-js'
 import { rowsToConfig } from '@/lib/survey-config'
 import type { QuestionRow, OptionRow } from '@/lib/survey-config'
 
@@ -10,7 +10,13 @@ interface RouteContext {
 export async function GET(_req: Request, { params }: RouteContext) {
   const { slug } = await params
 
-  const supabase = createServiceClient()
+  // Anon client: RLS filtra automaticamente surveys com status != 'ativa'
+  // Não usar service client aqui — leitura pública não precisa contornar RLS
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { auth: { persistSession: false } }
+  )
 
   // 1. Busca survey ativa pelo slug
   const { data: survey, error: surveyError } = await supabase

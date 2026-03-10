@@ -128,6 +128,12 @@ export async function POST(req: Request, { params }: RouteContext) {
 
     if (responsesError) {
       console.error('[submit] responses insert error:', responsesError)
+
+      // Compensação: remove a session para que o usuário possa tentar novamente.
+      // Sem isso, o upsert idempotente retornaria { duplicate: true } na próxima
+      // tentativa, bloqueando o respondente permanentemente.
+      await supabase.from('response_sessions').delete().eq('id', sessionId)
+
       return NextResponse.json({ error: 'Failed to save responses' }, { status: 500 })
     }
   }
