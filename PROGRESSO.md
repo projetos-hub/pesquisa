@@ -1,7 +1,6 @@
-# Progresso — Plataforma de Pesquisa Layers Education
+# Progresso — Plataforma de Pesquisas Layers Education
 
 ## Como retomar com o assistente
-Cole esta mensagem no início da próxima conversa:
 
 > "Estou desenvolvendo uma plataforma de pesquisas de satisfação para a Layers Education.
 > O projeto fica em C:\Users\luisa.lopes\Desktop\EXP IA\survey-layers-app
@@ -10,9 +9,7 @@ Cole esta mensagem no início da próxima conversa:
 
 ---
 
-## O que é o projeto
-
-Plataforma de pesquisas de satisfação para rodar dentro dos apps escolares da Layers Education (portal iFrame). As respostas vão para um Google Sheets via webhook (Google Apps Script).
+## Estado atual: Fase 0 concluída — Fase 1 iniciando
 
 ---
 
@@ -20,122 +17,103 @@ Plataforma de pesquisas de satisfação para rodar dentro dos apps escolares da 
 
 | Arquivo | O que é |
 |---|---|
-| `pesquisa.html` | Mini app React (monolítico, roda sem build) — arquivo principal de deploy |
-| `google-apps-script.js` | Backend: recebe respostas e salva no Google Sheets |
-| `MANUAL-RETOMADA.md` | Contexto completo do projeto (escolas, parâmetros, fluxo) |
+| `pesquisa.html` | Mini app React legado — referência, não mexer |
+| `google-apps-script.js` | Backend legado para Google Sheets — referência |
+| `docs/migration-plan.md` | Plano completo de migração (fonte de verdade) |
+| `docs/decisions.md` | Decisões arquiteturais registradas |
+| `docs/architecture.md` | Diagrama e estrutura da plataforma |
+| `survey-platform/` | Next.js — novo frontend + API (em construção) |
 
 ---
 
 ## O que já está pronto
 
-### pesquisa.html (versão atual — CSAT hardcoded)
-- Tela de boas-vindas personalizada por perfil (responsável / aluno)
-- NPS de 0 a 10
-- Fluxo condicional bilíngue (só aparece se participante)
-- 3 eixos de avaliação: Pedagógico, Administrativo, Infraestrutura (escala 1–5)
-- Telas de encerramento personalizadas por perfil + segmento NPS
-- Links de indicação por escola (13 escolas)
-- Tela "pesquisa ainda não aberta" e "pesquisa encerrada"
-- Envio de respostas para Google Sheets via webhook
-- Integração com LayersPortal.js (userId, communityId)
-- Fallback para testes via parâmetros de URL
-
-### google-apps-script.js (versão atual — CSAT hardcoded)
-- GET: retorna config da escola (onda, status, school, tipo)
-- POST: salva resposta no Sheets com 28 colunas
-- Mapa de 27 comunidades/escolas mapeadas
-- Calcula segmento NPS (Promotor/Neutro/Detrator)
-- Cria aba e cabeçalho automaticamente
-
-### Infraestrutura
-- Repositório GitHub: https://github.com/projetos-hub/pesquisa.git (branch main)
-- **Regra:** sempre fazer commit + push após alterações
-
----
-
-## Próximo passo: IMPLEMENTAR O PLANO APROVADO
-
-### Objetivo
-Transformar o app de uma pesquisa única (CSAT) em uma **plataforma multi-pesquisa** que suporte pesquisas quantitativas e qualitativas, direcionadas para responsáveis e/ou alunos.
-
-### O que precisa ser feito em `pesquisa.html`
-
-1. **Criar objeto `SURVEYS`** no topo do arquivo — registry de todas as pesquisas
-2. **Migrar conteúdo CSAT** para `SURVEYS['csat']` (sem mudança visual para o usuário)
-3. **Tornar o engine genérico**: o app lê `?surveyId=csat` na URL e renderiza os steps da pesquisa correspondente
-4. **Suportar 6 tipos de step:**
-   - `welcome` — tela de boas-vindas
-   - `nps` — escala 0–10 + pergunta sim/não opcional
-   - `scale` — perguntas Likert 1–5 (com seções opcionais)
-   - `radio` — múltipla escolha (uma resposta)
-   - `text` — campo de texto aberto (qualitativa)
-   - `thankyou` — tela final
-5. **Filtro por público:** cada survey declara `publico: ['responsavel', 'aluno']`
-6. **Steps condicionais/restritos:** `condicional: (ans) => ...` e `somentePara: 'responsavel'`
-7. **Notificação de erro:** se `surveyId` não encontrado → tela de erro + POST silencioso ao Apps Script
-
-### O que precisa ser feito em `google-apps-script.js`
-
-1. **Multi-survey no POST:** salvar em aba por surveyId (`Respostas_csat`, `Respostas_xxx`)
-2. **Cabeçalho dinâmico:** criado automaticamente baseado nas chaves do payload
-3. **Handler de erros:**
-   - Aba `Erros` para logar cada ocorrência (timestamp, survey_id, community_id, user_id)
-   - Enviar e-mail para `projetos@raizeducacao.com.br`
-   - Assunto: `ERRO PESQUISA - [surveyId]`
-   - Corpo: escola, usuário, data/hora, total de usuários afetados
-   - Anti-spam: máximo 1 e-mail por hora por surveyId
-4. **GET retorna surveyId** ativo junto com config da escola
-
-### O que NÃO muda
-- Visual e CSS
-- Integração com LayersPortal
-- Mapa das 27 escolas/comunidades
-- Links de indicação por escola
-- Textos das telas de obrigado
+### Legado (pesquisa.html + google-apps-script.js)
+- Engine CSAT completa e funcional
+- NPS, fluxo bilíngue condicional, 3 eixos de avaliação
+- 13 escolas com links de indicação
 - Telas de prazo (não aberta / encerrada)
+- Integração LayersPortal.js
+- Google Sheets via Apps Script
+
+### Fase 0 — Setup de infraestrutura ✅ (commit c581fb2)
+
+**Arquivos criados:**
+
+| Arquivo | Descrição |
+|---|---|
+| `survey-platform/` | Projeto Next.js 16 scaffoldado |
+| `survey-platform/app/layout.tsx` | Root layout (App Router) |
+| `survey-platform/app/page.tsx` | Home page placeholder |
+| `survey-platform/app/globals.css` | Tailwind v4 base styles |
+| `survey-platform/lib/supabase.ts` | Cliente browser (`createBrowserClient`) |
+| `survey-platform/lib/supabase-server.ts` | Cliente server-side com cookies |
+| `survey-platform/lib/supabase-service.ts` | Service role para API routes |
+| `survey-platform/supabase/migrations/001_initial_schema.sql` | Schema completo: 6 tabelas + índices + RLS |
+| `survey-platform/next.config.ts` | Config Next.js (turbopack) |
+| `survey-platform/tsconfig.json` | TypeScript strict |
+| `survey-platform/package.json` | Dependências |
+
+**Dependências instaladas:**
+
+| Pacote | Versão | Uso |
+|---|---|---|
+| `next` | 16.1.6 | Framework principal |
+| `react` / `react-dom` | 19.2.3 | UI |
+| `@supabase/supabase-js` | ^2.99.0 | Cliente Supabase |
+| `@supabase/ssr` | ^0.9.0 | SSR com cookies |
+| `tailwindcss` | ^4 | Estilização |
+| `typescript` | ^5 | Type safety |
+
+**Schema SQL criado (`001_initial_schema.sql`):**
+- `surveys` — pesquisas (slug, status, datas, settings JSONB)
+- `questions` — perguntas com tipo, ordem e condicionais
+- `question_options` — opções de radio/scale_sections
+- `response_sessions` — sessão única por (survey, community, user)
+- `responses` — respostas por pergunta (JSONB)
+- `admin_profiles` — usuários admin (via Supabase Auth)
+- RLS habilitado em todas as tabelas
+- Trigger `updated_at` em `surveys`
 
 ---
 
-## Como testar após implementar
+## Pendência manual (antes de avançar para Fase 2)
+
+Criar projeto no Supabase e preencher `survey-platform/.env.local`:
 
 ```
-1. pesquisa.html?surveyId=csat&school=qi&role=responsavel&nome=Ana&studentName=Pedro&grade=3F
-   → deve funcionar idêntico ao atual
-
-2. pesquisa.html (sem surveyId)
-   → deve carregar CSAT (fallback)
-
-3. pesquisa.html?surveyId=inexistente
-   → deve mostrar tela de erro + disparar POST de erro ao Apps Script
-
-4. pesquisa.html?surveyId=csat&role=aluno
-   → step bilíngue deve aparecer, links de indicação NÃO aparecem
-
-5. Testar submit com webhook configurado
-   → verificar aba Respostas_csat no Sheets
+NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJh...
+SUPABASE_SERVICE_ROLE_KEY=eyJh...
 ```
+
+Rodar `001_initial_schema.sql` no SQL Editor do Supabase.
 
 ---
 
-## Estrutura de URL por escola
+## Próximo passo: Fase 1 — Engine migrada
 
-```
-pesquisa.html?surveyId=csat&communityId=qi-freguesia&onda=1S2026&openDate=2026-03-01&closeDate=2026-06-30
-```
+**Objetivo:** frontend respondente funciona identicamente ao `pesquisa.html` atual, porém em Next.js com TypeScript.
 
-Parâmetros opcionais (quando não vier do LayersPortal):
-- `nome` — nome do usuário
-- `role` — `responsavel` ou `aluno`
-- `studentName` — nome do aluno
-- `grade` — série/turma
-- `school` — slug da escola
-- `tipo` — `escola` ou `creche`
+**O que será criado:**
+- Tipos TypeScript (`SurveyConfig`, `Step`, `Answers`)
+- Utilitário `buildActiveSteps` (lógica condicional)
+- Componentes: `SurveyRunner`, `WelcomeStep`, `StepNPS`, `StepEscala`, `StepRadio`, `StepText`, `ThankYou`, `AindaNaoAberta`, `Encerrada`, `ErroSurvey`
+- Rota respondente: `app/(respondente)/p/[surveySlug]/page.tsx`
+- CSS do legado preservado (mesmo visual)
+- `SURVEYS` hardcoded temporariamente
+
+**Critério de done:** 10 cenários de teste do `migration-plan.md` passando.
 
 ---
 
-## Pendências além do plano atual
+## Roadmap completo
 
-1. **Ativar Google Sheets** — colar `google-apps-script.js` e substituir `SUA_URL_DO_APPS_SCRIPT_AQUI` no `pesquisa.html`
-2. **Resposta da Layers** sobre campos do LayersPortal.js e passagem de parâmetros via URL de portal iFrame
-3. **Hospedar pesquisa.html** — Vercel, Netlify ou GitHub Pages
-4. **Configurar portal na Layers** após respostas acima
+| Fase | Descrição | Status |
+|---|---|---|
+| 0 | Setup Next.js + Supabase clients + schema | ✅ Concluída |
+| 1 | Engine migrada (frontend respondente) | 🔜 Próxima |
+| 2 | Backend real (Supabase API routes) | ⏳ Pendente |
+| 3 | Área admin | ⏳ Pendente |
+| 4 | Google Sheets espelho | ⏳ Pendente |
+| 5 | Polimento e remoção de hardcodes | ⏳ Pendente |
