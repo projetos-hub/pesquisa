@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { SURVEYS } from '@/lib/surveys'
+import { applyConditionals } from '@/lib/survey-config'
 import { buildActiveSteps, stepId } from './utils/buildActiveSteps'
-import type { Answers, SurveyContext, Perfil, NPSAnswer } from './utils/types'
+import type { Answers, SurveyConfig, SurveyContext, Perfil, NPSAnswer } from './utils/types'
 import WelcomeStep from './steps/WelcomeStep'
 import StepNPS from './steps/StepNPS'
 import StepEscala from './steps/StepEscala'
@@ -27,10 +27,12 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const [loading, setLoading] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [ctx, setCtx] = useState<SurveyContext | null>(null)
+  const [survey, setSurvey] = useState<SurveyConfig | null>(null)
+  const [surveyNotFound, setSurveyNotFound] = useState(false)
 
+  // ── Contexto de sessão (via URL params) ──────────────────────────────────────
   useEffect(() => {
-    // Fase 1: contexto carregado via URL params
-    // Fase 2+: tentar LayersPortal, fallback para URL params
+    // Fase 2A+: contexto via URL params — LayersPortal será integrado na Fase 3+
     setCtx({
       userId:      '',
       communityId: searchParams.get('communityId') || '',
@@ -49,8 +51,28 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     })
   }, [surveySlug, searchParams])
 
-  // ── Carregando ───────────────────────────────────────────────────────────────
-  if (!ctx) {
+  // ── Config da pesquisa (via API → Supabase) ───────────────────────────────────
+  useEffect(() => {
+    setSurvey(null)
+    setSurveyNotFound(false)
+
+    fetch(`/api/surveys/${surveySlug}`)
+      .then(res => {
+        if (res.status === 404) {
+          setSurveyNotFound(true)
+          return null
+        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.json() as Promise<SurveyConfig>
+      })
+      .then(data => {
+        if (data) setSurvey(applyConditionals(data))
+      })
+      .catch(() => setSurveyNotFound(true))
+  }, [surveySlug])
+
+  // ── Spinner: aguarda contexto E config da pesquisa ───────────────────────────
+  if (!ctx || (!survey && !surveyNotFound)) {
     return (
       <div className="card">
         <div className="header"><h1>Pesquisa de Satisfação</h1></div>
@@ -62,21 +84,20 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     )
   }
 
+  // ── Survey não encontrado ou erro de rede ────────────────────────────────────
+  if (surveyNotFound || !survey) {
+    return (
+      <div className="card">
+        <div className="header"><h1>Pesquisa de Satisfação</h1></div>
+        <ErroSurvey surveyId={surveySlug} />
+      </div>
+    )
+  }
+
   const {
     surveyId, onda, openDate, closeDate, status,
     school, tipo, nome: nomeCompleto, perfil, nomeAluno, serie,
   } = ctx
-
-  // ── Survey não encontrado ────────────────────────────────────────────────────
-  const survey = SURVEYS[surveyId]
-  if (!survey) {
-    return (
-      <div className="card">
-        <div className="header"><h1>Pesquisa de Satisfação</h1></div>
-        <ErroSurvey surveyId={surveyId} />
-      </div>
-    )
-  }
 
   // ── Perfil sem acesso ────────────────────────────────────────────────────────
   if (survey.publico && !survey.publico.includes(perfil)) {
@@ -131,7 +152,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
       submitPesquisa(newAnswers)
     } else {
       // Recalcula com newAnswers para capturar mudanças condicionais (bilíngue)
-      const newActive = buildActiveSteps(survey, perfil, newAnswers)
+      const newActive = buildActiveSteps(survey!, perfil, newAnswers)
       const nextStep  = newActive[currentIdx + 1]
       if (nextStep) setCurrentKey(stepId(nextStep))
     }
@@ -148,8 +169,8 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     setLoading(true)
     setSubmitError(null)
     try {
-      // TODO Fase 2: substituir por POST /api/surveys/[slug]/submit
-      console.log('[Fase 1] Submit simulado:', {
+      // TODO Fase 2B: substituir por POST /api/surveys/[slug]/submit
+      console.log('[Fase 2A] Submit simulado:', {
         surveyId, onda, school, tipo, perfil, nomeCompleto, nomeAluno, serie,
         ...finalAnswers,
       })

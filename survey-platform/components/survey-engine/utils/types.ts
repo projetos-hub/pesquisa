@@ -6,6 +6,14 @@ export type SurveyStatus = 'aberta' | 'nao_aberta' | 'encerrada'
 // ─── Respostas ────────────────────────────────────────────────────────────────
 export type Answers = Record<string, unknown>
 
+// ─── Spec serializável de condicional (trafega em JSON entre API e cliente) ───
+export interface ConditionalDef {
+  type: 'answer_field_equals'
+  answerKey: string
+  field: string
+  value: string
+}
+
 // ─── Seção de escala (bilíngue etc.) ─────────────────────────────────────────
 export interface StepSection {
   key: string
@@ -17,6 +25,7 @@ export interface StepSection {
 interface BaseStep {
   somentePara?: Perfil
   condicional?: (answers: Answers) => boolean
+  conditional_on?: ConditionalDef   // spec serializável — reconstruído por applyConditionals()
 }
 
 export interface WelcomeStepDef extends BaseStep {
