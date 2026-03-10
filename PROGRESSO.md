@@ -159,7 +159,7 @@ Após esses dois passos, `/p/csat` busca a configuração do banco em vez do har
 **Decisões de implementação:**
 - `condicional` (função JS) não é serializável em JSON → trafega como `conditional_on` (JSONB spec)
 - `applyConditionals()` reconstrói as funções no cliente antes de armazenar no estado
-- API usa `createServiceClient()` (service role) → sem problemas de RLS durante desenvolvimento
+- GET usa anon client (RLS como defesa real) — service client só no submit
 - Seed é idempotente: `ON CONFLICT (slug) DO UPDATE` + `DELETE FROM questions WHERE survey_id`
 
 ---
@@ -176,6 +176,29 @@ Após esses dois passos, `/p/csat` busca a configuração do banco em vez do har
 - `{ duplicate: true }` navega para ThankYou silenciosamente (não é erro do ponto de vista do usuário)
 - Respostas de steps pulados (bilíngue condicional) simplesmente não existem em `answers` → ignoradas automaticamente
 - `communityId`/`userId` vindos de URL params (serão preenchidos via LayersPortal na Fase 3+)
+- Compensação manual: se insert de responses falhar, session é deletada para não bloquear re-envio
+
+---
+
+### Correções pós-review Fase 2 ✅ (commit 5905c02)
+
+| Item | O que foi corrigido |
+|---|---|
+| GET route com service client | Trocado por anon client — RLS ativa para leitura pública |
+| Partial insert sem compensação | Submit deleta session órfã se responses falhar |
+| Sem `UNIQUE(survey_id, key)` | Adicionado em `003_admin_rls_and_constraints.sql` |
+| Sem RLS de leitura para admin | Políticas criadas para `response_sessions`, `responses`, `surveys`, `questions`, `question_options` |
+
+**Pendências identificadas (diferidas para Fase 3+):**
+- `status` da pesquisa calculado no cliente via query param — mover cálculo para o servidor na Fase 3
+- `only_for_roles` usa apenas `[0]` do array — documentado, sem impacto no CSAT atual
+- Validação de `perfil`/`onda` no submit — implementar junto com autenticação LayersPortal
+
+**Rodar no Supabase antes de usar a Fase 3:**
+```sql
+-- SQL Editor do Supabase:
+003_admin_rls_and_constraints.sql
+```
 
 ---
 
