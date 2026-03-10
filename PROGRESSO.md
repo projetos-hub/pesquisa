@@ -36,6 +36,11 @@
 - Integração LayersPortal.js
 - Google Sheets via Apps Script
 
+### Documentação ✅ (commit 5b9db6c)
+- `docs/decisions.md` — decisões arquiteturais com alternativas descartadas
+- `docs/architecture.md` — diagrama, modelo de dados, fluxo de submissão, rotas planejadas
+- `PROGRESSO.md` — atualizado com estado completo da Fase 0
+
 ### Fase 0 — Setup de infraestrutura ✅ (commit c581fb2)
 
 **Arquivos criados:**
@@ -77,6 +82,36 @@
 
 ---
 
+## Checklist de validação da Fase 0
+
+Execute antes de avançar para a Fase 1:
+
+```bash
+cd survey-platform
+
+# 1. Confirmar dependências
+npm list --depth=0
+# next, react, @supabase/supabase-js, @supabase/ssr devem aparecer
+
+# 2. Dev server
+npm run dev
+# → http://localhost:3000 deve abrir (home placeholder do Next.js)
+
+# 3. Build de produção
+npm run build
+# → "✓ Compiled successfully"
+
+# 4. TypeScript sem erros
+npx tsc --noEmit
+# → zero erros
+
+# 5. Estrutura dos arquivos lib/
+ls lib/
+# → supabase.ts  supabase-server.ts  supabase-service.ts
+```
+
+---
+
 ## Pendência manual (antes de avançar para Fase 2)
 
 Criar projeto no Supabase e preencher `survey-platform/.env.local`:
@@ -95,15 +130,22 @@ Rodar `001_initial_schema.sql` no SQL Editor do Supabase.
 
 **Objetivo:** frontend respondente funciona identicamente ao `pesquisa.html` atual, porém em Next.js com TypeScript.
 
-**O que será criado:**
-- Tipos TypeScript (`SurveyConfig`, `Step`, `Answers`)
-- Utilitário `buildActiveSteps` (lógica condicional)
-- Componentes: `SurveyRunner`, `WelcomeStep`, `StepNPS`, `StepEscala`, `StepRadio`, `StepText`, `ThankYou`, `AindaNaoAberta`, `Encerrada`, `ErroSurvey`
-- Rota respondente: `app/(respondente)/p/[surveySlug]/page.tsx`
-- CSS do legado preservado (mesmo visual)
-- `SURVEYS` hardcoded temporariamente
+**O que será criado (em ordem):**
+
+1. `components/survey-engine/utils/types.ts` — contratos TypeScript (`StepType`, `Step`, `Answers`, `SurveyConfig`, `SurveyStatus`)
+2. `components/survey-engine/utils/buildActiveSteps.ts` — lógica condicional (migrada do `pesquisa.html`)
+3. `components/survey-engine/steps/` — um componente por tipo de step
+4. `components/survey-engine/SurveyRunner.tsx` — engine principal com estado e navegação
+5. `components/ui/` — primitivos (`ProgressBar`, `ScaleRow`, `OptionBtn`)
+6. `app/(respondente)/p/[surveySlug]/page.tsx` — rota respondente
+7. CSS do legado preservado (mesmo visual)
+8. `SURVEYS` hardcoded temporariamente (substituído na Fase 2)
+
+**Primeiro arquivo a criar:** `types.ts` — define o contrato de dados antes de qualquer componente.
 
 **Critério de done:** 10 cenários de teste do `migration-plan.md` passando.
+
+**Nota:** a Fase 1 não depende de Supabase. Pode ser executada antes de configurar o `.env.local`.
 
 ---
 
