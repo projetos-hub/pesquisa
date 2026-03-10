@@ -1,0 +1,154 @@
+import { notFound } from 'next/navigation'
+import Link from 'next/link'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
+
+interface PageProps {
+  params: Promise<{ id: string }>
+}
+
+function npsClass(score: number | undefined) {
+  if (score === undefined) return 'text-gray-400'
+  if (score >= 9) return 'text-green-600 font-semibold'
+  if (score >= 7) return 'text-yellow-600 font-semibold'
+  return 'text-red-600 font-semibold'
+}
+
+function npsCategory(score: number | undefined) {
+  if (score === undefined) return '—'
+  if (score >= 9) return `${score} ✓`
+  if (score >= 7) return `${score} ~`
+  return `${score} ✗`
+}
+
+export default async function ResponsesPage({ params }: PageProps) {
+  const { id } = await params
+  const supabase = await createServerSupabaseClient()
+
+  // Survey
+  const { data: survey } = await supabase
+    .from('surveys')
+    .select('id, title, slug')
+    .eq('id', id)
+    .single()
+
+  if (!survey) notFound()
+
+  // Sessions com todas as respostas embutidas
+  const { data: sessions } = await supabase
+    .from('response_sessions')
+    .select('id, submitted_at, perfil, nome_responsavel, nome_aluno, serie, school, onda, responses(question_key, value)')
+    .eq('survey_id', id)
+    .order('submitted_at', { ascending: false })
+
+  return (
+    <div className="p-6">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-3 mb-6">
+        <Link href="/admin/surveys" className="text-gray-400 hover:text-gray-600 text-sm">
+          ← Pesquisas
+        </Link>
+        <span className="text-gray-300">/</span>
+        <Link
+          href={`/admin/surveys/${id}`}
+          className="text-gray-400 hover:text-gray-600 text-sm truncate max-w-xs"
+        >
+          {survey.title}
+        </Link>
+        <span className="text-gray-300">/</span>
+        <h2 className="text-lg font-semibold text-gray-900">Respostas</h2>
+        <span className="ml-auto text-sm text-gray-400">
+          {sessions?.length ?? 0} resposta{sessions?.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+        <table className="w-full text-sm whitespace-nowrap">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Data</th>
+              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Nome</th>
+              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Perfil</th>
+              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Escola</th>
+              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Série</th>
+              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Onda</th>
+              <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">NPS</th>
+              <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Bilíngue</th>
+              <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Pedagógico</th>
+              <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Admin</th>
+              <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Infra</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {sessions?.map(session => {
+              // Indexa respostas por question_key
+              const ans: Record<string, unknown> = {}
+              for (const r of session.responses ?? []) {
+                ans[r.question_key] = r.value
+              }
+
+              const nps     = ans.nps as { nps?: number; participa_bilingue?: string } | undefined
+              const npsScore = nps?.nps
+              const bilingue = nps?.participa_bilingue
+
+              // Média de uma escala (objeto de scores numéricos)
+              function avg(key: string): string {
+                const val = ans[key]
+                if (!val || typeof val !== 'object') return '—'
+                const scores = Object.values(val as Record<string, unknown>)
+                  .map(Number)
+                  .filter(n => !isNaN(n) && n > 0)
+                if (!scores.length) return '—'
+                return (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1)
+              }
+
+              const nome = session.perfil === 'aluno'
+                ? session.nome_aluno || '—'
+                : session.nome_responsavel || '—'
+
+              return (
+                <tr key={session.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-2.5 text-gray-500 text-xs">
+                    {new Date(session.submitted_at).toLocaleDateString('pt-BR', {
+                      day: '2-digit', month: '2-digit', year: '2-digit',
+                      hour: '2-digit', minute: '2-digit',
+                    })}
+                  </td>
+                  <td className="px-4 py-2.5 text-gray-900 max-w-[160px] truncate">{nome}</td>
+                  <td className="px-4 py-2.5">
+                    <span className={`inline-flex text-xs px-2 py-0.5 rounded-full font-medium ${
+                      session.perfil === 'aluno'
+                        ? 'bg-purple-100 text-purple-700'
+                        : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {session.perfil === 'aluno' ? 'Aluno' : 'Responsável'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 text-gray-500 font-mono text-xs">{session.school || '—'}</td>
+                  <td className="px-4 py-2.5 text-gray-500 text-xs">{session.serie || '—'}</td>
+                  <td className="px-4 py-2.5 text-gray-500 text-xs">{session.onda || '—'}</td>
+                  <td className={`px-4 py-2.5 text-center text-sm ${npsClass(npsScore)}`}>
+                    {npsCategory(npsScore)}
+                  </td>
+                  <td className="px-4 py-2.5 text-center text-xs text-gray-500">
+                    {bilingue === 'Sim' ? avg('bilingue') : '—'}
+                  </td>
+                  <td className="px-4 py-2.5 text-center text-sm text-gray-700">{avg('pedagogico')}</td>
+                  <td className="px-4 py-2.5 text-center text-sm text-gray-700">{avg('administrativo')}</td>
+                  <td className="px-4 py-2.5 text-center text-sm text-gray-700">{avg('infraestrutura')}</td>
+                </tr>
+              )
+            })}
+
+            {!sessions?.length && (
+              <tr>
+                <td colSpan={11} className="px-4 py-10 text-center text-gray-400">
+                  Nenhuma resposta recebida ainda.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
