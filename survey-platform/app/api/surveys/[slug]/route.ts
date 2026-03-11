@@ -7,8 +7,10 @@ interface RouteContext {
   params: Promise<{ slug: string }>
 }
 
-export async function GET(_req: Request, { params }: RouteContext) {
+export async function GET(req: Request, { params }: RouteContext) {
   const { slug } = await params
+  const { searchParams } = new URL(req.url)
+  const communityId = (searchParams.get('communityId') ?? '').replace('@', '')
 
   // Anon client: RLS filtra automaticamente surveys com status != 'ativa'
   // Não usar service client aqui — leitura pública não precisa contornar RLS
@@ -28,6 +30,14 @@ export async function GET(_req: Request, { params }: RouteContext) {
 
   if (surveyError || !survey) {
     return NextResponse.json({ error: 'Survey not found' }, { status: 404 })
+  }
+
+  // 2. Valida communityId contra lista de comunidades autorizadas
+  const allowedCommunities = (survey.settings?.allowed_communities ?? []) as string[]
+  if (allowedCommunities.length > 0 && communityId) {
+    if (!allowedCommunities.includes(communityId)) {
+      return NextResponse.json({ error: 'Community not authorized' }, { status: 403 })
+    }
   }
 
   // 2. Busca questions ordenadas

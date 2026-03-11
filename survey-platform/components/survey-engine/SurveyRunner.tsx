@@ -14,6 +14,7 @@ import ThankYou from './steps/ThankYou'
 import AindaNaoAberta from './steps/AindaNaoAberta'
 import Encerrada from './steps/Encerrada'
 import ErroSurvey from './steps/ErroSurvey'
+import AcessoNegado from './steps/AcessoNegado'
 import ProgressBar from '../ui/ProgressBar'
 
 interface SurveyRunnerProps {
@@ -29,6 +30,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const [ctx, setCtx] = useState<SurveyContext | null>(null)
   const [survey, setSurvey] = useState<SurveyConfig | null>(null)
   const [surveyNotFound, setSurveyNotFound] = useState(false)
+  const [accessDenied, setAccessDenied] = useState(false)
 
   // ── Contexto de sessão (via URL params) ──────────────────────────────────────
   useEffect(() => {
@@ -56,12 +58,13 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     setSurvey(null)
     setSurveyNotFound(false)
 
-    fetch(`/api/surveys/${surveySlug}`)
+    const communityId = searchParams.get('communityId') ?? ''
+    const qs = communityId ? `?communityId=${encodeURIComponent(communityId)}` : ''
+
+    fetch(`/api/surveys/${surveySlug}${qs}`)
       .then(res => {
-        if (res.status === 404) {
-          setSurveyNotFound(true)
-          return null
-        }
+        if (res.status === 404) { setSurveyNotFound(true); return null }
+        if (res.status === 403) { setAccessDenied(true); return null }
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         return res.json() as Promise<SurveyConfig>
       })
@@ -80,6 +83,16 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
           <div className="spinner" />
           <p>Carregando...</p>
         </div>
+      </div>
+    )
+  }
+
+  // ── Comunidade não autorizada ─────────────────────────────────────────────────
+  if (accessDenied) {
+    return (
+      <div className="card">
+        <div className="header"><h1>Pesquisa de Satisfação</h1></div>
+        <AcessoNegado />
       </div>
     )
   }
