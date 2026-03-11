@@ -16,6 +16,7 @@ import Encerrada from './steps/Encerrada'
 import ErroSurvey from './steps/ErroSurvey'
 import AcessoNegado from './steps/AcessoNegado'
 import ProgressBar from '../ui/ProgressBar'
+import type { LayersPortalWindow } from '@/lib/layers'
 
 interface SurveyRunnerProps {
   surveySlug: string
@@ -32,25 +33,44 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const [surveyNotFound, setSurveyNotFound] = useState(false)
   const [accessDenied, setAccessDenied] = useState(false)
 
-  // ── Contexto de sessão (via URL params) ──────────────────────────────────────
+  // ── Contexto de sessão (LayersPortal com fallback para URL params) ───────────
   useEffect(() => {
-    // Fase 2A+: contexto via URL params — LayersPortal será integrado na Fase 3+
-    setCtx({
-      userId:      '',
-      communityId: searchParams.get('communityId') || '',
-      session:     '',
-      surveyId:    surveySlug,
-      onda:        searchParams.get('onda')        || '1S2026',
-      openDate:    searchParams.get('openDate')    || '',
-      closeDate:   searchParams.get('closeDate')   || '',
-      status:      (searchParams.get('status')     || 'aberta') as SurveyContext['status'],
-      school:      searchParams.get('school')      || '',
-      tipo:        searchParams.get('tipo')        || 'escola',
-      nome:        searchParams.get('nome')        || searchParams.get('name') || '',
-      perfil:      (searchParams.get('role')       || 'responsavel') as Perfil,
-      nomeAluno:   searchParams.get('studentName') || '',
-      serie:       searchParams.get('grade')       || '',
-    })
+    async function loadCtx() {
+      let userId      = ''
+      let communityId = searchParams.get('communityId') || ''
+      let session     = ''
+
+      // Tenta obter dados reais da Layers — fallback para URL params se não disponível
+      if (typeof window !== 'undefined' && (window as LayersPortalWindow).LayersPortal) {
+        try {
+          await (window as LayersPortalWindow).LayersPortal!.connectedPromise
+          userId      = (window as LayersPortalWindow).LayersPortal!.userId      || ''
+          communityId = (window as LayersPortalWindow).LayersPortal!.communityId || communityId
+          session     = (window as LayersPortalWindow).LayersPortal!.session     || ''
+        } catch {
+          // LayersPortal indisponível — usa URL params
+        }
+      }
+
+      setCtx({
+        userId,
+        communityId,
+        session,
+        surveyId:  surveySlug,
+        onda:      searchParams.get('onda')        || '1S2026',
+        openDate:  searchParams.get('openDate')    || '',
+        closeDate: searchParams.get('closeDate')   || '',
+        status:    (searchParams.get('status')     || 'aberta') as SurveyContext['status'],
+        school:    searchParams.get('school')      || '',
+        tipo:      searchParams.get('tipo')        || 'escola',
+        nome:      searchParams.get('nome')        || searchParams.get('name') || '',
+        perfil:    (searchParams.get('role')       || 'responsavel') as Perfil,
+        nomeAluno: searchParams.get('studentName') || '',
+        serie:     searchParams.get('grade')       || '',
+      })
+    }
+
+    loadCtx()
   }, [surveySlug, searchParams])
 
   // ── Config da pesquisa (via API → Supabase) ───────────────────────────────────
