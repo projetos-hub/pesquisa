@@ -16,13 +16,35 @@ export interface SheetsSyncPayload {
   answers:      Record<string, unknown>
 }
 
+const RETRY_ATTEMPTS = 3
+const RETRY_DELAY_MS = 1_000
+
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function callWebhook(url: string, body: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      signal:  AbortSignal.timeout(10_000),
+    })
+    if (!res.ok) return false
+    const json = await res.json().catch(() => ({}))
+    return (json as { ok?: boolean }).ok === true
+  } catch {
+    return false
+  }
+}
+
 export async function syncToSheets(payload: SheetsSyncPayload): Promise<boolean> {
   const url = process.env.SHEETS_WEBHOOK_URL
   if (!url) return false
 
   // Espalha answers no topo — formato esperado pelo Apps Script (doPost → salvarResposta)
-  // Ex: answers.nps, answers.bilingue, answers.pedagogico, etc. viram campos top-level
-  const body = {
+  const body = JSON.stringify({
     surveyId:     payload.surveyId,
     communityId:  payload.communityId,
     userId:       payload.userId,
@@ -32,17 +54,14 @@ export async function syncToSheets(payload: SheetsSyncPayload): Promise<boolean>
     nomeAluno:    payload.nomeAluno,
     serie:        payload.serie,
     ...payload.answers,
+  })
+
+  // Tenta até RETRY_ATTEMPTS vezes com backoff de RETRY_DELAY_MS entre cada
+  for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++) {
+    const ok = await callWebhook(url, body)
+    if (ok) return true
+    if (attempt < RETRY_ATTEMPTS) await sleep(RETRY_DELAY_MS)
   }
 
-  try {
-    const res = await fetch(url, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(body),
-      signal:  AbortSignal.timeout(10_000),
-    })
-    return res.ok
-  } catch {
-    return false
-  }
+  return false
 }
