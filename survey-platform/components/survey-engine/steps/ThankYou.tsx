@@ -1,22 +1,21 @@
 'use client'
 
-import { SCHOOL_LINKS } from '@/lib/surveys'
-
 interface ThankYouProps {
   nps: number | undefined
   perfil: string
   nomeAluno: string
   school: string
   tipo: string
+  indicacaoLinks?: Record<string, string>
 }
 
-export default function ThankYou({ nps, perfil, nomeAluno, school, tipo }: ThankYouProps) {
+export default function ThankYou({ nps, perfil, nomeAluno, school, tipo, indicacaoLinks }: ThankYouProps) {
   const isResponsavel = perfil !== 'aluno'
   const score = Number(nps)
   const isPromotor = score >= 9
   const isNeutro   = score >= 7 && score <= 8
   const isDetrator = score <= 6
-  const linkIndicacao = SCHOOL_LINKS[school] || null
+  const linkIndicacao = indicacaoLinks?.[school] ?? null
 
   // ── Aluno ──────────────────────────────────────────────────────────────────
   if (!isResponsavel) {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-service'
+import { syncToSheets } from '@/lib/sheets'
 
 interface RouteContext {
   params: Promise<{ slug: string }>
@@ -136,6 +137,26 @@ export async function POST(req: Request, { params }: RouteContext) {
 
       return NextResponse.json({ error: 'Failed to save responses' }, { status: 500 })
     }
+  }
+
+  // ── 5. Espelhar no Google Sheets (falha silenciosa) ──────────────────────────
+  const synced = await syncToSheets({
+    surveyId:     slug,
+    communityId,
+    userId,
+    onda,
+    perfil,
+    nomeCompleto,
+    nomeAluno,
+    serie,
+    answers,
+  })
+
+  if (synced) {
+    await supabase
+      .from('response_sessions')
+      .update({ synced_to_sheets: true, synced_at: new Date().toISOString() })
+      .eq('id', sessionId)
   }
 
   return NextResponse.json({ ok: true, sessionId })

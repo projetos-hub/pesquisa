@@ -282,6 +282,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
             nomeAluno={nomeAluno}
             school={school}
             tipo={tipo}
+            indicacaoLinks={survey.settings?.indicacao_links}
           />
         )}
       </div>

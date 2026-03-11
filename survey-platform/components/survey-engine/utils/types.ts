@@ -82,12 +82,17 @@ export type StepDef =
   | ThankYouStepDef
 
 // ─── Config de pesquisa ───────────────────────────────────────────────────────
+export interface SurveySettings {
+  indicacao_links?: Record<string, string>
+}
+
 export interface SurveyConfig {
   id: string
   titulo: string
   tipo_pesquisa: TipoPesquisa
   publico: Perfil[]
   steps: StepDef[]
+  settings?: SurveySettings
 }
 
 // ─── Contexto de sessão ───────────────────────────────────────────────────────

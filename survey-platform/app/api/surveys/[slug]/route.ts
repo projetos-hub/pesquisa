@@ -21,7 +21,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
   // 1. Busca survey ativa pelo slug
   const { data: survey, error: surveyError } = await supabase
     .from('surveys')
-    .select('id, slug, title, survey_type, target_roles, status')
+    .select('id, slug, title, survey_type, target_roles, status, settings')
     .eq('slug', slug)
     .eq('status', 'ativa')
     .single()

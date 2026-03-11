@@ -1,5 +1,6 @@
 import type {
   SurveyConfig,
+  SurveySettings,
   StepDef,
   StepSection,
   Perfil,
@@ -16,6 +17,7 @@ export interface SurveyRow {
   title: string
   survey_type: string
   target_roles: string[]
+  settings: Record<string, unknown>
 }
 
 export interface QuestionRow {
@@ -152,6 +154,7 @@ export function rowsToConfig(
     tipo_pesquisa: survey.survey_type as TipoPesquisa,
     publico: survey.target_roles as Perfil[],
     steps,
+    settings: (survey.settings ?? {}) as SurveySettings,
   }
 }
 
