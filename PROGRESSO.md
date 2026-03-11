@@ -258,10 +258,6 @@ WHERE email = 'seu@email.com';
 
 ---
 
-## Próximo passo: Fase 4 — Google Sheets espelho
-
----
-
 ## Roadmap completo
 
 | Fase | Descrição | Status |
@@ -272,5 +268,41 @@ WHERE email = 'seu@email.com';
 | 2B | Submit real para Supabase | ✅ Concluída (commit 419b4f8) |
 | 3 | Área admin | ✅ Concluída (commit 5c69ad0) |
 | 3-fix | ERR_TOO_MANY_REDIRECTS no login | ✅ Corrigido (commit 107ccd1) |
-| 4 | Google Sheets espelho | 🔜 Próxima |
-| 5 | Polimento e remoção de hardcodes | ⏳ Pendente |
+| 4 | Google Sheets espelho + retry + cron | ✅ Concluída (commit fcae9e6) |
+| 5 | Polimento e remoção de hardcodes | ✅ Concluída (commit ddd8180) |
+
+---
+
+## Próximos passos
+
+### 1. Deploy na Vercel (bloqueante)
+- Conectar repositório GitHub à Vercel apontando para `survey-platform/` como root
+- Configurar variáveis de ambiente:
+
+| Variável | Descrição |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | URL do projeto Supabase |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Chave anon |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role key |
+| `SHEETS_WEBHOOK_URL` | URL do Apps Script (sem `/a/`) |
+| `CRON_SECRET` | String segura para proteger o cron |
+
+### 2. Configurações no Supabase
+- Rodar `003_admin_rls_and_constraints.sql` no SQL Editor (se ainda não rodou)
+- Adicionar URL de produção em Authentication → Redirect URLs: `https://seu-dominio.vercel.app/admin/auth/callback`
+- Criar usuário admin e inserir em `admin_profiles`
+
+### 3. Migrar SCHOOL_LINKS para o banco
+Links de indicação por escola ainda estão hardcoded em `lib/surveys.ts`.
+Migrar para `surveys.settings.indicacao_links` no Supabase via SQL ou pelo admin.
+
+### 4. Integração LayersPortal.js
+Conectar parâmetros reais da Layers (`userId`, `communityId`, `token`) no `SurveyRunner.tsx`.
+Aguarda resposta da Layers sobre os parâmetros de URL por escola.
+
+### 5. Testes (Playwright + QAT)
+Configurar após deploy no ar. Pré-requisitos:
+- Playwright instalado + configurado
+- Auth state gerado (`tests/e2e/.auth/user.json`)
+- Estrutura `tests/qat/` criada
+- `ANTHROPIC_API_KEY` configurada
