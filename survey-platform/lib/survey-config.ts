@@ -1,6 +1,7 @@
 import type {
   SurveyConfig,
   SurveySettings,
+  SurveyInstallation,
   StepDef,
   StepSection,
   Perfil,
@@ -17,6 +18,14 @@ export interface SurveyRow {
   title: string
   survey_type: string
   target_roles: string[]
+  settings: Record<string, unknown>
+}
+
+export interface InstallationRow {
+  status: string
+  open_date: string | null
+  close_date: string | null
+  theme: Record<string, unknown>
   settings: Record<string, unknown>
 }
 
@@ -52,7 +61,8 @@ export interface OptionRow {
 export function rowsToConfig(
   survey: SurveyRow,
   questions: QuestionRow[],
-  options: OptionRow[]
+  options: OptionRow[],
+  installation?: InstallationRow
 ): SurveyConfig {
   const steps: StepDef[] = [...questions]
     .sort((a, b) => a.order_index - b.order_index)
@@ -148,13 +158,30 @@ export function rowsToConfig(
       }
     })
 
+  const mergedSettings: SurveySettings = {
+    ...(survey.settings ?? {}),
+    ...(installation?.settings ?? {}),
+    ...(installation?.theme && Object.keys(installation.theme).length > 0
+      ? { theme: installation.theme }
+      : {}),
+  } as SurveySettings
+
+  const inst: SurveyInstallation | undefined = installation
+    ? {
+        status: installation.status as SurveyInstallation['status'],
+        ...(installation.open_date  ? { open_date:  installation.open_date }  : {}),
+        ...(installation.close_date ? { close_date: installation.close_date } : {}),
+      }
+    : undefined
+
   return {
     id: survey.slug,
     titulo: survey.title,
     tipo_pesquisa: survey.survey_type as TipoPesquisa,
     publico: survey.target_roles as Perfil[],
     steps,
-    settings: (survey.settings ?? {}) as SurveySettings,
+    settings: mergedSettings,
+    ...(inst ? { installation: inst } : {}),
   }
 }
 

@@ -40,12 +40,15 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
       let communityId = searchParams.get('communityId') || ''
       let session     = ''
 
+      let accountId = searchParams.get('accountId') || ''
+
       // Tenta obter dados reais da Layers — fallback para URL params se não disponível
       if (typeof window !== 'undefined' && (window as LayersPortalWindow).LayersPortal) {
         try {
           await (window as LayersPortalWindow).LayersPortal!.connectedPromise
           userId      = (window as LayersPortalWindow).LayersPortal!.userId      || ''
           communityId = (window as LayersPortalWindow).LayersPortal!.communityId || communityId
+          accountId   = (window as LayersPortalWindow).LayersPortal!.accountId   || accountId
           session     = (window as LayersPortalWindow).LayersPortal!.session     || ''
         } catch {
           // LayersPortal indisponível — usa URL params
@@ -55,6 +58,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
       setCtx({
         userId,
         communityId,
+        accountId,
         session,
         surveyId:  surveySlug,
         onda:      searchParams.get('onda')        || '1S2026',
@@ -92,6 +96,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
         if (data) setSurvey(applyConditionals(data))
       })
       .catch(() => setSurveyNotFound(true))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [surveySlug])
 
   // ── Spinner: aguarda contexto E config da pesquisa ───────────────────────────
@@ -128,10 +133,15 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   }
 
   const {
-    surveyId, onda, openDate, closeDate, status,
+    onda,
     school, tipo, nome: nomeCompleto, perfil, nomeAluno, serie,
     communityId, userId,
   } = ctx
+
+  // Status e datas: instalação do banco tem prioridade sobre URL params
+  const status    = (survey.installation?.status    ?? ctx.status)    as SurveyContext['status']
+  const openDate  =  survey.installation?.open_date  ?? ctx.openDate
+  const closeDate =  survey.installation?.close_date ?? ctx.closeDate
 
   // ── Perfil sem acesso ────────────────────────────────────────────────────────
   if (survey.publico && !survey.publico.includes(perfil)) {

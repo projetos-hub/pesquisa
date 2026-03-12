@@ -81,9 +81,24 @@ export type StepDef =
   | TextStepDef
   | ThankYouStepDef
 
+// ─── Tema visual por comunidade ───────────────────────────────────────────────
+export interface SurveyTheme {
+  primaryColor?: string
+  logo?: string
+  nomeEscola?: string
+}
+
 // ─── Config de pesquisa ───────────────────────────────────────────────────────
 export interface SurveySettings {
   indicacao_links?: Record<string, string>
+  theme?: SurveyTheme
+}
+
+// ─── Instalação da pesquisa por comunidade ────────────────────────────────────
+export interface SurveyInstallation {
+  status: 'ativa' | 'pausada' | 'encerrada' | 'nao_aberta'
+  open_date?: string
+  close_date?: string
 }
 
 export interface SurveyConfig {
@@ -93,12 +108,14 @@ export interface SurveyConfig {
   publico: Perfil[]
   steps: StepDef[]
   settings?: SurveySettings
+  installation?: SurveyInstallation
 }
 
 // ─── Contexto de sessão ───────────────────────────────────────────────────────
 export interface SurveyContext {
   userId: string
   communityId: string
+  accountId: string
   session: string
   surveyId: string
   onda: string

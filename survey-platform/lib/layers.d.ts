@@ -3,6 +3,7 @@ export interface LayersPortalInstance {
   connectedPromise: Promise<void>
   userId:           string
   communityId:      string
+  accountId:        string
   session:          string
 }
 
