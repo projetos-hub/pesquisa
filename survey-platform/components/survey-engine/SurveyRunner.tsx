@@ -45,7 +45,12 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
       // Tenta obter dados reais da Layers — fallback para URL params se não disponível
       if (typeof window !== 'undefined' && (window as LayersPortalWindow).LayersPortal) {
         try {
-          await (window as LayersPortalWindow).LayersPortal!.connectedPromise
+          await Promise.race([
+            (window as LayersPortalWindow).LayersPortal!.connectedPromise,
+            new Promise<void>((_, reject) =>
+              setTimeout(() => reject(new Error('LayersPortal timeout')), 3000)
+            ),
+          ])
           userId      = (window as LayersPortalWindow).LayersPortal!.userId      || ''
           communityId = (window as LayersPortalWindow).LayersPortal!.communityId || communityId
           accountId   = (window as LayersPortalWindow).LayersPortal!.accountId   || accountId
