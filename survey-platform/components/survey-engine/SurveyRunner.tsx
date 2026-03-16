@@ -274,6 +274,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
           <WelcomeStep
             nome={nomeCompleto} nomeAluno={nomeAluno} serie={serie}
             perfil={perfil} tipo={tipo}
+            theme={survey.settings?.theme}
             onStart={() => {
               const nextStep = activeSteps[1]
               if (nextStep) setCurrentKey(stepId(nextStep))
