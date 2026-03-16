@@ -4,16 +4,22 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // Rotas da pesquisa — só podem ser embutidas via iFrame pela Layers
+        // Rotas da pesquisa — podem ser embutidas via iFrame por qualquer origem
         source: '/p/:path*',
         headers: [
           {
             key: 'Content-Security-Policy',
-            value: "frame-ancestors 'self' https://*.layers.education https://layers.education",
+            value: "frame-ancestors *",
           },
+        ],
+      },
+      {
+        // Portal de entrada — pode ser embutido via iFrame por qualquer origem
+        source: '/portal',
+        headers: [
           {
-            key: 'X-Frame-Options',
-            value: 'ALLOW-FROM https://layers.education',
+            key: 'Content-Security-Policy',
+            value: "frame-ancestors *",
           },
         ],
       },
