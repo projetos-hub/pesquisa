@@ -24,16 +24,12 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        // Área admin — nunca pode ser embutida em iFrame
+        // Área admin — temporariamente aberta para iframe
         source: '/admin/:path*',
         headers: [
           {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-          {
             key: 'Content-Security-Policy',
-            value: "frame-ancestors 'none'",
+            value: "frame-ancestors *",
           },
         ],
       },
