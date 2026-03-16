@@ -83,12 +83,16 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   }, [surveySlug, searchParams])
 
   // ── Config da pesquisa (via API → Supabase) ───────────────────────────────────
+  // Aguarda ctx para usar communityId do LayersPortal (não só URL params)
   useEffect(() => {
+    if (!ctx) return
+
     setSurvey(null)
     setSurveyNotFound(false)
 
-    const communityId = searchParams.get('communityId') ?? ''
-    const qs = communityId ? `?communityId=${encodeURIComponent(communityId)}` : ''
+    const qs = ctx.communityId
+      ? `?communityId=${encodeURIComponent(ctx.communityId)}`
+      : ''
 
     fetch(`/api/surveys/${surveySlug}${qs}`)
       .then(res => {
@@ -102,7 +106,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
       })
       .catch(() => setSurveyNotFound(true))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [surveySlug])
+  }, [surveySlug, ctx])
 
   // ── Spinner: aguarda contexto E config da pesquisa ───────────────────────────
   if (!ctx || (!survey && !surveyNotFound)) {
