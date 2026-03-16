@@ -19,6 +19,39 @@ function mapRole(roles: string[][]): 'responsavel' | 'aluno' {
   return 'responsavel'
 }
 
+async function fetchSerie(
+  entityId: string,
+  headers: Record<string, string>,
+): Promise<string> {
+  try {
+    // 1. Busca matrículas ativas da comunidade e filtra pelo membro
+    const enrollRes = await fetch(`${BASE_URL}/v1/enrollments/search?active=true`, {
+      headers,
+      signal: AbortSignal.timeout(5_000),
+    })
+    if (!enrollRes.ok) return ''
+
+    const enrollData = await enrollRes.json() as {
+      hits?: { entity?: string; group?: string }[]
+    }
+
+    const groupId = enrollData.hits?.find(e => e.entity === entityId)?.group
+    if (!groupId) return ''
+
+    // 2. Busca o grupo para obter o alias (série)
+    const groupRes = await fetch(`${BASE_URL}/v1/groups/${groupId}`, {
+      headers,
+      signal: AbortSignal.timeout(5_000),
+    })
+    if (!groupRes.ok) return ''
+
+    const group = await groupRes.json() as { alias?: string; name?: string }
+    return group.alias || group.name || ''
+  } catch {
+    return ''
+  }
+}
+
 export async function fetchLayersUser(
   userId: string,
   communityId: string,
@@ -38,7 +71,6 @@ export async function fetchLayersUser(
       headers,
       signal: AbortSignal.timeout(5_000),
     })
-
     if (!userRes.ok) return null
 
     const user = await userRes.json() as {
@@ -48,25 +80,36 @@ export async function fetchLayersUser(
 
     const perfil = mapRole(user.roles ?? [])
     let nomeAluno = ''
+    let serie     = ''
 
-    // 2. Se responsável, busca aluno relacionado
     if (perfil === 'responsavel') {
+      // 2a. Responsável → busca aluno relacionado
       const relRes = await fetch(`${BASE_URL}/v1/users/${userId}/related`, {
         headers,
         signal: AbortSignal.timeout(5_000),
       })
-
       if (relRes.ok) {
-        const rel = await relRes.json() as { members?: { name?: string }[] }
-        nomeAluno = rel.members?.[0]?.name ?? ''
+        const rel = await relRes.json() as {
+          members?: { _id?: string; name?: string }[]
+        }
+        const student = rel.members?.[0]
+        nomeAluno = student?.name ?? ''
+
+        // 2b. Série do aluno via enrollment → group
+        if (student?._id) {
+          serie = await fetchSerie(student._id, headers)
+        }
       }
+    } else {
+      // 3. Aluno → série via próprio enrollment
+      serie = await fetchSerie(userId, headers)
     }
 
     return {
-      nome:      user.name  ?? '',
+      nome: user.name ?? '',
       perfil,
       nomeAluno,
-      serie:     '',  // requer lookup de enrollment + group — não implementado
+      serie,
     }
   } catch {
     return null
