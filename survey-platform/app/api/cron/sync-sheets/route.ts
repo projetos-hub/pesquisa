@@ -74,6 +74,7 @@ export async function GET(req: Request) {
       nomeCompleto: session.nome_responsavel ?? '',
       nomeAluno:    session.nome_aluno      ?? '',
       serie:        session.serie           ?? '',
+      nomeEscola:   '',
       answers,
     })
 

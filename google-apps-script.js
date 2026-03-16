@@ -89,6 +89,9 @@ const COMUNIDADES = {
 
   // UNIFICADO
   'unificado-zonasul': { school:'unificado', tipo:'escola', nome:'Colégio Unificado Zona Sul' },
+
+  // RAIZ EDUCAÇÃO
+  'raizeducacao': { school:'raizeducacao', tipo:'escola', nome:'Raiz Educação' },
 };
 
 // ─── 📋 COLUNAS DO CSAT ───────────────────────────────────────────────────────
@@ -198,9 +201,18 @@ function salvarResposta(data) {
   return salvarRespostaDinamica(data, surveyId);
 }
 
+function logDebug(data) {
+  const sheet = getOrCreateSheet('_Debug', ['timestamp', 'payload_raw']);
+  sheet.appendRow([new Date().toISOString(), JSON.stringify(data)]);
+}
+
 function salvarRespostaCsat(data) {
-  const sheet  = getOrCreateSheet('Respostas_csat', COLUNAS_CSAT);
-  const escola = comunidadeInfo(data.communityId);
+  logDebug(data);
+
+  const sheet      = getOrCreateSheet('Respostas_csat', COLUNAS_CSAT);
+  const escola     = comunidadeInfo(data.communityId);
+  const escolaNome = data.nomeEscola || escola.nome;
+  const escolaSlug = data.schoolSlug || escola.school;
 
   const bil = data.bilingue       || {};
   const ped = data.pedagogico     || {};
@@ -219,8 +231,8 @@ function salvarRespostaCsat(data) {
     CONFIG.onda,
     'csat',
     data.communityId  || '',
-    escola.nome,
-    escola.school,
+    escolaNome,
+    escolaSlug,
     escola.tipo,
     data.perfil       || '',
     data.nomeCompleto || '',

@@ -60,6 +60,18 @@ export async function POST(req: Request, { params }: RouteContext) {
     return NextResponse.json({ error: 'Survey not found' }, { status: 404 })
   }
 
+  // ── 1b. Busca nomeEscola do survey_communities.theme ──────────────────────
+  let nomeEscola = ''
+  if (communityId) {
+    const { data: comm } = await supabase
+      .from('survey_communities')
+      .select('theme')
+      .eq('survey_id', survey.id)
+      .eq('community_id', communityId)
+      .single()
+    nomeEscola = (comm?.theme as { nomeEscola?: string })?.nomeEscola ?? ''
+  }
+
   // ── 2. Insere response_session (idempotente) ───────────────────────────────
   //
   // upsert com ignoreDuplicates: true envia ON CONFLICT DO NOTHING.
@@ -149,6 +161,7 @@ export async function POST(req: Request, { params }: RouteContext) {
     nomeCompleto,
     nomeAluno,
     serie,
+    nomeEscola,
     answers,
   })
 
