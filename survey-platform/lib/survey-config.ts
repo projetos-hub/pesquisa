@@ -171,6 +171,9 @@ export function rowsToConfig(
         status: installation.status as SurveyInstallation['status'],
         ...(installation.open_date  ? { open_date:  installation.open_date }  : {}),
         ...(installation.close_date ? { close_date: installation.close_date } : {}),
+        ...(installation.theme && Object.keys(installation.theme).length > 0
+          ? { theme: installation.theme as SurveyInstallation['theme'] }
+          : {}),
       }
     : undefined
 

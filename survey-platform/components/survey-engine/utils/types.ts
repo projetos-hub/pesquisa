@@ -86,6 +86,8 @@ export interface SurveyTheme {
   primaryColor?: string
   logo?: string
   nomeEscola?: string
+  welcomeMessage?: string
+  thankyouMessage?: string
 }
 
 // ─── Config de pesquisa ───────────────────────────────────────────────────────
@@ -99,6 +101,7 @@ export interface SurveyInstallation {
   status: 'ativa' | 'pausada' | 'encerrada' | 'nao_aberta'
   open_date?: string
   close_date?: string
+  theme?: SurveyTheme
 }
 
 export interface SurveyConfig {
