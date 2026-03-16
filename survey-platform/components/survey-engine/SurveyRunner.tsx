@@ -148,6 +148,15 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const openDate  =  survey.installation?.open_date  ?? ctx.openDate
   const closeDate =  survey.installation?.close_date ?? ctx.closeDate
 
+  // CSS vars de tema por comunidade (injetadas inline no .card)
+  const theme = survey.installation?.theme ?? survey.settings?.theme
+  const themeVars = theme?.primaryColor
+    ? {
+        '--color-primary':   theme.primaryColor,
+        '--color-secondary': theme.secondaryColor ?? theme.primaryColor,
+      } as React.CSSProperties
+    : undefined
+
   // ── Perfil sem acesso ────────────────────────────────────────────────────────
   if (survey.publico && !survey.publico.includes(perfil)) {
     return (
@@ -256,7 +265,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div className="card">
+    <div className="card" style={themeVars}>
       <div className="header">
         <h1>{survey.titulo}</h1>
       </div>

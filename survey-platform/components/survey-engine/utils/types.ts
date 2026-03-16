@@ -84,6 +84,7 @@ export type StepDef =
 // ─── Tema visual por comunidade ───────────────────────────────────────────────
 export interface SurveyTheme {
   primaryColor?: string
+  secondaryColor?: string
   logo?: string
   nomeEscola?: string
   welcomeMessage?: string
