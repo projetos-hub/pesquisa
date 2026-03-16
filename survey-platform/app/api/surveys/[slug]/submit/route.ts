@@ -9,6 +9,7 @@ interface RouteContext {
 interface SubmitBody {
   communityId?: string
   userId?: string
+  accountId?: string
   onda?: string
   school?: string
   tipo?: string
@@ -32,6 +33,7 @@ export async function POST(req: Request, { params }: RouteContext) {
   const {
     communityId = '',
     userId = '',
+    accountId = '',
     onda = '',
     school = '',
     tipo = '',
@@ -41,6 +43,9 @@ export async function POST(req: Request, { params }: RouteContext) {
     serie = '',
     answers,
   } = body
+
+  // Garante unicidade mesmo se userId vier vazio no embed Layers
+  const effectiveUserId = userId || accountId
 
   if (!answers || typeof answers !== 'object') {
     return NextResponse.json({ error: 'answers is required' }, { status: 400 })
@@ -83,7 +88,7 @@ export async function POST(req: Request, { params }: RouteContext) {
       {
         survey_id:        survey.id,
         community_id:     communityId,
-        user_id:          userId,
+        user_id:          effectiveUserId,
         perfil,
         nome_responsavel: nomeCompleto,
         nome_aluno:       nomeAluno,
@@ -155,7 +160,7 @@ export async function POST(req: Request, { params }: RouteContext) {
   const synced = await syncToSheets({
     surveyId:     slug,
     communityId,
-    userId,
+    userId:       effectiveUserId,
     onda,
     perfil,
     nomeCompleto,

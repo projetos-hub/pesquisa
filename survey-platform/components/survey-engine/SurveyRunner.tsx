@@ -140,7 +140,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const {
     onda,
     school, tipo, nome: nomeCompleto, perfil, nomeAluno, serie,
-    communityId, userId,
+    communityId, userId, accountId,
   } = ctx
 
   // Status e datas: instalação do banco tem prioridade sobre URL params
@@ -233,6 +233,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
         body: JSON.stringify({
           communityId,
           userId,
+          accountId,
           onda,
           school,
           tipo,
