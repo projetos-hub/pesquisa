@@ -1,48 +1,74 @@
 // ─── Layers Hub API — enriquecimento de perfil do usuário ────────────────────
 //
-// Dependências necessárias (obter com equipe Layers):
-//   LAYERS_CLIENT_ID     — env var
-//   LAYERS_CLIENT_SECRET — env var
-//
-// Endpoints e autenticação a confirmar na documentação da Layers Hub API.
-// Enquanto as credenciais não estiverem disponíveis, a função retorna null
-// e o submit continua normalmente sem os dados de perfil.
+// Documentação completa: docs/layers-api.md
+// Auth: Bearer LAYERS_API_TOKEN (env var) + community-id header
+// Base URL: https://api.layers.digital
+
+const BASE_URL = 'https://api.layers.digital'
 
 export interface LayersUserProfile {
-  nome?:      string
-  perfil?:    string
-  nomeAluno?: string
-  serie?:     string
+  nome:      string
+  perfil:    'responsavel' | 'aluno'
+  nomeAluno: string
+  serie:     string
+}
+
+function mapRole(roles: string[][]): 'responsavel' | 'aluno' {
+  const flat = roles.flat()
+  if (flat.includes('student')) return 'aluno'
+  return 'responsavel'
 }
 
 export async function fetchLayersUser(
   userId: string,
-  session: string,
+  communityId: string,
 ): Promise<LayersUserProfile | null> {
-  const clientId     = process.env.LAYERS_CLIENT_ID
-  const clientSecret = process.env.LAYERS_CLIENT_SECRET
+  const token = process.env.LAYERS_API_TOKEN
 
-  // Sem credenciais configuradas: fallback silencioso
-  if (!clientId || !clientSecret || !userId || !session) return null
+  if (!token || !userId || !communityId) return null
 
-  // TODO: implementar chamada à Layers Hub API após receber documentação e credenciais.
-  // Estrutura esperada:
-  //
-  // const res = await fetch(`${LAYERS_HUB_BASE_URL}/users/${userId}`, {
-  //   headers: {
-  //     Authorization: `Bearer ${session}`,
-  //     'X-Client-Id': clientId,
-  //   },
-  //   signal: AbortSignal.timeout(5_000),
-  // })
-  // if (!res.ok) return null
-  // const user = await res.json()
-  // return {
-  //   nome:      user.name      ?? '',
-  //   perfil:    user.role      ?? '',
-  //   nomeAluno: user.children?.[0]?.name  ?? '',
-  //   serie:     user.children?.[0]?.grade ?? '',
-  // }
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'community-id':  communityId,
+  }
 
-  return null
+  try {
+    // 1. Dados do usuário (nome + roles)
+    const userRes = await fetch(`${BASE_URL}/v1/users/${userId}`, {
+      headers,
+      signal: AbortSignal.timeout(5_000),
+    })
+
+    if (!userRes.ok) return null
+
+    const user = await userRes.json() as {
+      name?: string
+      roles?: string[][]
+    }
+
+    const perfil = mapRole(user.roles ?? [])
+    let nomeAluno = ''
+
+    // 2. Se responsável, busca aluno relacionado
+    if (perfil === 'responsavel') {
+      const relRes = await fetch(`${BASE_URL}/v1/users/${userId}/related`, {
+        headers,
+        signal: AbortSignal.timeout(5_000),
+      })
+
+      if (relRes.ok) {
+        const rel = await relRes.json() as { members?: { name?: string }[] }
+        nomeAluno = rel.members?.[0]?.name ?? ''
+      }
+    }
+
+    return {
+      nome:      user.name  ?? '',
+      perfil,
+      nomeAluno,
+      serie:     '',  // requer lookup de enrollment + group — não implementado
+    }
+  } catch {
+    return null
+  }
 }

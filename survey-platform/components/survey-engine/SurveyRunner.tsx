@@ -33,16 +33,15 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const [surveyNotFound, setSurveyNotFound] = useState(false)
   const [accessDenied, setAccessDenied] = useState(false)
 
-  // ── Contexto de sessão (LayersPortal com fallback para URL params) ───────────
+  // ── Contexto de sessão (LayersPortal + Layers Hub API) ──────────────────────
   useEffect(() => {
     async function loadCtx() {
       let userId      = ''
       let communityId = searchParams.get('communityId') || ''
       let session     = ''
+      let accountId   = searchParams.get('accountId')   || ''
 
-      let accountId = searchParams.get('accountId') || ''
-
-      // Tenta obter dados reais da Layers — fallback para URL params se não disponível
+      // 1. Tenta obter contexto do LayersPortal
       if (typeof window !== 'undefined' && (window as LayersPortalWindow).LayersPortal) {
         try {
           await Promise.race([
@@ -60,6 +59,30 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
         }
       }
 
+      // 2. Enriquece com dados da Layers Hub API (nome, perfil, nomeAluno)
+      //    URL params têm prioridade (útil para testes)
+      let hubNome      = ''
+      let hubPerfil: Perfil = 'responsavel'
+      let hubNomeAluno = ''
+
+      const effectiveId = userId || accountId
+      if (effectiveId && communityId) {
+        try {
+          const qs = new URLSearchParams({ userId: effectiveId, communityId })
+          const res = await fetch(`/api/user-context?${qs}`)
+          if (res.ok) {
+            const profile = await res.json() as {
+              nome: string; perfil: Perfil; nomeAluno: string; serie: string
+            }
+            hubNome      = profile.nome      || ''
+            hubPerfil    = profile.perfil    || 'responsavel'
+            hubNomeAluno = profile.nomeAluno || ''
+          }
+        } catch {
+          // Hub API indisponível — continua com URL params
+        }
+      }
+
       setCtx({
         userId,
         communityId,
@@ -72,9 +95,9 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
         status:    (searchParams.get('status')     || 'aberta') as SurveyContext['status'],
         school:    searchParams.get('school')      || '',
         tipo:      searchParams.get('tipo')        || 'escola',
-        nome:      searchParams.get('nome')        || searchParams.get('name') || '',
-        perfil:    (searchParams.get('role')       || 'responsavel') as Perfil,
-        nomeAluno: searchParams.get('studentName') || '',
+        nome:      searchParams.get('nome') || searchParams.get('name') || hubNome,
+        perfil:    ((searchParams.get('role') || hubPerfil) as Perfil),
+        nomeAluno: searchParams.get('studentName') || hubNomeAluno,
         serie:     searchParams.get('grade')       || '',
       })
     }
