@@ -321,6 +321,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
 
         {currentStep?.type === 'nps' && (
           <StepNPS
+            key={currentStep.key}
             step={currentStep}
             onNext={d => next('nps', d)}
             onBack={back}
@@ -330,6 +331,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
 
         {currentStep?.type === 'scale' && (
           <StepEscala
+            key={currentStep.key}
             step={currentStep}
             tipo={tipo}
             onNext={d => next(currentStep.key, d)}
@@ -341,6 +343,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
 
         {currentStep?.type === 'radio' && (
           <StepRadio
+            key={currentStep.key}
             step={currentStep}
             tipo={tipo}
             onNext={d => next(currentStep.key, d)}
@@ -352,6 +355,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
 
         {currentStep?.type === 'text' && (
           <StepText
+            key={currentStep.key}
             step={currentStep}
             tipo={tipo}
             onNext={d => next(currentStep.key, d)}
