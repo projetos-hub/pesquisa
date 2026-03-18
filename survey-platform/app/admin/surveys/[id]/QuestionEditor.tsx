@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef } from 'react'
 import { createQuestion, saveQuestionOptions, deleteQuestion, moveQuestion } from '../actions'
 
 interface QuestionRow {
@@ -59,6 +59,7 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
   const [addAccept, setAddAccept]       = useState('')
   const [addRequired, setAddRequired]   = useState(true)
   const [addOptions, setAddOptions]     = useState<string[]>(['', ''])
+  const optionRefs = useRef<(HTMLInputElement | null)[]>([])
 
   function notify(msg: string, isError = false) {
     if (isError) { setError(msg); setSuccess(null) }
@@ -80,8 +81,23 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
     setAddOptions(prev => prev.filter((_, i) => i !== idx))
   }
 
-  function addOptionRow() {
-    setAddOptions(prev => [...prev, ''])
+  function addOptionRow(focusIdx?: number) {
+    setAddOptions(prev => {
+      const next = [...prev, '']
+      const idx = focusIdx ?? next.length - 1
+      setTimeout(() => optionRefs.current[idx]?.focus(), 0)
+      return next
+    })
+  }
+
+  function handleOptionKeyDown(e: React.KeyboardEvent<HTMLInputElement>, idx: number) {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    if (idx < addOptions.length - 1) {
+      optionRefs.current[idx + 1]?.focus()
+    } else {
+      addOptionRow(addOptions.length)
+    }
   }
 
   async function handleAdd() {
@@ -357,8 +373,10 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
                     <div key={idx} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       <span style={{ color: '#a0aec0', fontSize: '.8rem', minWidth: 20, textAlign: 'right' }}>{idx + 1}.</span>
                       <input
+                        ref={el => { optionRefs.current[idx] = el }}
                         value={opt}
                         onChange={e => updateOption(idx, e.target.value)}
+                        onKeyDown={e => handleOptionKeyDown(e, idx)}
                         placeholder={`Opção ${idx + 1}`}
                         style={{ ...inputStyle, flex: 1 }}
                       />
@@ -370,7 +388,7 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
                     </div>
                   ))}
                 </div>
-                <button onClick={addOptionRow}
+                <button onClick={() => addOptionRow()}
                   style={{ marginTop: 8, fontSize: '.82rem', color: '#667eea', background: 'none', border: '1px dashed #667eea', borderRadius: 6, padding: '5px 12px', cursor: 'pointer' }}>
                   + Adicionar opção
                 </button>
