@@ -7,9 +7,20 @@ interface Survey {
   id: string
   title: string
   status: string
+  survey_type: string
   open_date: string | null
   close_date: string | null
 }
+
+const SURVEY_TYPES = [
+  { value: 'quantitativa',  label: 'Quantitativa (escala + NPS)' },
+  { value: 'qualitativa',   label: 'Qualitativa (perguntas abertas)' },
+  { value: 'evento',        label: 'Evento (avaliação pós-evento)' },
+  { value: 'clima',         label: 'Clima organizacional' },
+  { value: 'engajamento',   label: 'Engajamento' },
+  { value: 'diagnostico',   label: 'Diagnóstico' },
+  { value: 'misto',         label: 'Misto (aberta + fechada)' },
+]
 
 type State = { error?: string; ok?: boolean }
 
@@ -54,6 +65,19 @@ export default function SurveyEditForm({ survey }: { survey: Survey }) {
           required
           className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+        <select
+          name="survey_type"
+          defaultValue={survey.survey_type}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          {SURVEY_TYPES.map(({ value, label }) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
       </div>
 
       <div>

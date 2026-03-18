@@ -23,10 +23,11 @@ export async function updateSurvey(
     return { error: 'Não autorizado' }
   }
 
-  const title      = formData.get('title')      as string
-  const status     = formData.get('status')     as string
-  const open_date  = (formData.get('open_date')  as string) || null
-  const close_date = (formData.get('close_date') as string) || null
+  const title       = formData.get('title')        as string
+  const status      = formData.get('status')       as string
+  const survey_type = (formData.get('survey_type') as string) || null
+  const open_date   = (formData.get('open_date')   as string) || null
+  const close_date  = (formData.get('close_date')  as string) || null
 
   if (!title?.trim())  return { error: 'Título é obrigatório' }
   if (!status?.trim()) return { error: 'Status é obrigatório' }
@@ -34,7 +35,7 @@ export async function updateSurvey(
   const supabase = createServiceClient()
   const { error } = await supabase
     .from('surveys')
-    .update({ title: title.trim(), status, open_date, close_date })
+    .update({ title: title.trim(), status, ...(survey_type ? { survey_type } : {}), open_date, close_date })
     .eq('id', id)
 
   if (error) return { error: error.message }

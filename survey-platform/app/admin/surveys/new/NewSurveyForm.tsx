@@ -62,7 +62,12 @@ export default function NewSurveyForm() {
           className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
           <option value="quantitativa">Quantitativa (escala + NPS)</option>
-          <option value="qualitativa">Qualitativa (aberta)</option>
+          <option value="qualitativa">Qualitativa (perguntas abertas)</option>
+          <option value="evento">Evento (avaliação pós-evento)</option>
+          <option value="clima">Clima organizacional</option>
+          <option value="engajamento">Engajamento</option>
+          <option value="diagnostico">Diagnóstico</option>
+          <option value="misto">Misto (aberta + fechada)</option>
         </select>
       </div>
 
