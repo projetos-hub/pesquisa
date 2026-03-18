@@ -17,6 +17,7 @@ export default function StepCheckbox({ step, tipo, onNext, onBack, isLast, loadi
   const [tentou, setTentou] = useState(false)
   const resolve = (l: string) => l.replace(/\{tipo\}/g, tipo)
 
+  const opcoes = [...step.opcoes].sort((a, b) => a.localeCompare(b, 'pt-BR'))
   const min = step.minSelecoes ?? (step.obrigatorio ? 1 : 0)
   const max = step.maxSelecoes ?? Infinity
   const ok = selected.length >= min
@@ -46,7 +47,7 @@ export default function StepCheckbox({ step, tipo, onNext, onBack, isLast, loadi
           </p>
         )}
         <div className="option-list">
-          {step.opcoes.map(op => {
+          {opcoes.map(op => {
             const sel = selected.includes(op)
             const disabled = !sel && selected.length >= max
             return (

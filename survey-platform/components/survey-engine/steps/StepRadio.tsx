@@ -17,6 +17,7 @@ export default function StepRadio({ step, tipo, onNext, onBack, isLast, loading 
   const [ans, setAns] = useState<string | null>(null)
   const [tentou, setTentou] = useState(false)
   const resolve = (l: string) => l.replace(/\{tipo\}/g, tipo)
+  const opcoes = [...step.opcoes].sort((a, b) => a.localeCompare(b, 'pt-BR'))
 
   function handleNext() {
     if (!ans) { setTentou(true); return }
@@ -30,7 +31,7 @@ export default function StepRadio({ step, tipo, onNext, onBack, isLast, loading 
       <div className="q-group">
         <p className="question-label">{resolve(step.pergunta)}</p>
         <div className="option-list">
-          {step.opcoes.map(op => (
+          {opcoes.map(op => (
             <OptionBtn key={op} label={resolve(op)} selected={ans === op} onClick={() => setAns(op)} />
           ))}
         </div>
