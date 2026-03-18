@@ -15,7 +15,13 @@ interface StepRadioProps {
 
 export default function StepRadio({ step, tipo, onNext, onBack, isLast, loading }: StepRadioProps) {
   const [ans, setAns] = useState<string | null>(null)
+  const [tentou, setTentou] = useState(false)
   const resolve = (l: string) => l.replace(/\{tipo\}/g, tipo)
+
+  function handleNext() {
+    if (!ans) { setTentou(true); return }
+    onNext(ans)
+  }
 
   return (
     <div>
@@ -29,9 +35,19 @@ export default function StepRadio({ step, tipo, onNext, onBack, isLast, loading 
           ))}
         </div>
       </div>
+      {tentou && !ans && (
+        <p style={{ color: '#e53e3e', fontSize: '.85rem', marginBottom: 8, textAlign: 'right' }}>
+          ⚠️ Selecione uma opção para continuar.
+        </p>
+      )}
       <div className="btn-row">
         <button className="btn btn-secondary" onClick={onBack}>← Voltar</button>
-        <button className="btn btn-primary" disabled={!ans || loading} onClick={() => onNext(ans!)}>
+        <button
+          className="btn btn-primary"
+          disabled={loading}
+          style={!ans && !loading ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+          onClick={handleNext}
+        >
           {loading ? 'Enviando…' : isLast ? 'Enviar pesquisa ✓' : 'Próximo →'}
         </button>
       </div>

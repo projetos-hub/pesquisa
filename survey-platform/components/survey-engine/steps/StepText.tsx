@@ -14,8 +14,14 @@ interface StepTextProps {
 
 export default function StepText({ step, tipo, onNext, onBack, isLast, loading }: StepTextProps) {
   const [txt, setTxt] = useState('')
+  const [tentou, setTentou] = useState(false)
   const resolve = (l: string) => l.replace(/\{tipo\}/g, tipo)
   const ok = !step.obrigatorio || txt.trim().length > 0
+
+  function handleNext() {
+    if (!ok) { setTentou(true); return }
+    onNext(txt.trim())
+  }
 
   return (
     <div>
@@ -29,13 +35,20 @@ export default function StepText({ step, tipo, onNext, onBack, isLast, loading }
           value={txt}
           onChange={e => setTxt(e.target.value)}
         />
-        {step.obrigatorio && !txt.trim() && (
-          <p style={{ fontSize: '.8rem', color: '#e53e3e', marginTop: 4 }}>Campo obrigatório</p>
+        {tentou && !ok && (
+          <p style={{ fontSize: '.85rem', color: '#e53e3e', marginTop: 4 }}>
+            ⚠️ Este campo é obrigatório.
+          </p>
         )}
       </div>
       <div className="btn-row">
         <button className="btn btn-secondary" onClick={onBack}>← Voltar</button>
-        <button className="btn btn-primary" disabled={!ok || loading} onClick={() => onNext(txt.trim())}>
+        <button
+          className="btn btn-primary"
+          disabled={loading}
+          style={!ok && !loading ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+          onClick={handleNext}
+        >
           {loading ? 'Enviando…' : isLast ? 'Enviar pesquisa ✓' : 'Próximo →'}
         </button>
       </div>

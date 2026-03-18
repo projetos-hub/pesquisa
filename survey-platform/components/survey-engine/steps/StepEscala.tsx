@@ -16,9 +16,9 @@ interface StepEscalaProps {
 export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading }: StepEscalaProps) {
   const resolve = (l: string) => l.replace(/\{tipo\}/g, tipo)
 
-  // Estado separado para lista simples e para seções
   const [simpleRatings, setSimpleRatings] = useState<Record<number, number>>({})
   const [sectionRatings, setSectionRatings] = useState<Record<string, Record<number, number>>>({})
+  const [tentou, setTentou] = useState(false)
 
   // ── Escala com seções (bilíngue) ────────────────────────────────────────────
   if (step.secoes) {
@@ -30,6 +30,11 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
         ...acc,
         [sec.key]: { ...(sectionRatings[sec.key] || {}) },
       }), {})
+
+    function handleNext() {
+      if (!allOk) { setTentou(true); return }
+      onNext(buildAns())
+    }
 
     return (
       <div>
@@ -53,9 +58,19 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
             ))}
           </div>
         ))}
+        {tentou && !allOk && (
+          <p style={{ color: '#e53e3e', fontSize: '.85rem', marginBottom: 8, textAlign: 'right' }}>
+            ⚠️ Avalie todos os itens para continuar.
+          </p>
+        )}
         <div className="btn-row">
           <button className="btn btn-secondary" onClick={onBack}>← Voltar</button>
-          <button className="btn btn-primary" disabled={!allOk || loading} onClick={() => onNext(buildAns())}>
+          <button
+            className="btn btn-primary"
+            disabled={loading}
+            style={!allOk && !loading ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+            onClick={handleNext}
+          >
             {loading ? 'Enviando…' : isLast ? 'Enviar pesquisa ✓' : 'Próximo →'}
           </button>
         </div>
@@ -66,9 +81,13 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
   // ── Lista simples de perguntas ──────────────────────────────────────────────
   const perguntas = (step.perguntas || []).map(resolve)
   const ok = perguntas.every((_, i) => simpleRatings[i] != null)
-  // Chave = label da pergunta, valor = nota (igual ao original)
   const buildAns = () =>
     perguntas.reduce<Record<string, unknown>>((a, l, i) => ({ ...a, [l]: simpleRatings[i] }), {})
+
+  function handleNextSimple() {
+    if (!ok) { setTentou(true); return }
+    onNext(buildAns())
+  }
 
   return (
     <div>
@@ -82,9 +101,19 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
           onChange={v => setSimpleRatings(p => ({ ...p, [i]: v }))}
         />
       ))}
+      {tentou && !ok && (
+        <p style={{ color: '#e53e3e', fontSize: '.85rem', marginBottom: 8, textAlign: 'right' }}>
+          ⚠️ Avalie todos os itens para continuar.
+        </p>
+      )}
       <div className="btn-row">
         <button className="btn btn-secondary" onClick={onBack}>← Voltar</button>
-        <button className="btn btn-primary" disabled={!ok || loading} onClick={() => onNext(buildAns())}>
+        <button
+          className="btn btn-primary"
+          disabled={loading}
+          style={!ok && !loading ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+          onClick={handleNextSimple}
+        >
           {loading ? 'Enviando…' : isLast ? 'Enviar pesquisa ✓' : 'Próximo →'}
         </button>
       </div>

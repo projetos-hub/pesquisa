@@ -14,8 +14,14 @@ interface StepNPSProps {
 export default function StepNPS({ step, tipo, onNext, onBack }: StepNPSProps) {
   const [nps, setNps] = useState<number | null>(null)
   const [bil, setBil] = useState<string | null>(null)
+  const [tentou, setTentou] = useState(false)
   const perguntaBilingue = step.perguntaBilingue || false
   const ok = nps !== null && (!perguntaBilingue || bil !== null)
+
+  function handleNext() {
+    if (!ok) { setTentou(true); return }
+    onNext({ nps: nps!, ...(perguntaBilingue ? { participa_bilingue: bil! } : {}) })
+  }
 
   return (
     <div>
@@ -43,12 +49,18 @@ export default function StepNPS({ step, tipo, onNext, onBack }: StepNPSProps) {
           </div>
         </div>
       )}
+      {tentou && !ok && (
+        <p style={{ color: '#e53e3e', fontSize: '.85rem', marginBottom: 8, textAlign: 'right' }}>
+          ⚠️ Responda todas as perguntas para continuar.
+        </p>
+      )}
       <div className="btn-row">
         <button className="btn btn-secondary" onClick={onBack}>← Voltar</button>
         <button
           className="btn btn-primary"
-          disabled={!ok}
-          onClick={() => onNext({ nps: nps!, ...(perguntaBilingue ? { participa_bilingue: bil! } : {}) })}
+          disabled={false}
+          style={!ok ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+          onClick={handleNext}
         >
           Próximo →
         </button>
