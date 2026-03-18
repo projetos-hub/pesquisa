@@ -36,7 +36,9 @@ export async function GET(req: Request) {
         slug,
         title,
         target_roles,
-        status
+        status,
+        open_date,
+        close_date
       )
     `)
     .eq('community_id', communityId)
@@ -53,14 +55,17 @@ export async function GET(req: Request) {
   }
 
   const surveys: ResolvedSurvey[] = data.map(row => {
-    const s = (Array.isArray(row.surveys) ? row.surveys[0] : row.surveys) as { slug: string; title: string; target_roles: string[]; status: string }
+    const s = (Array.isArray(row.surveys) ? row.surveys[0] : row.surveys) as {
+      slug: string; title: string; target_roles: string[]; status: string
+      open_date: string | null; close_date: string | null
+    }
     return {
       slug: s.slug,
       title: s.title,
       target_roles: s.target_roles,
       status: row.status as ResolvedSurvey['status'],
-      open_date: row.open_date,
-      close_date: row.close_date,
+      open_date:  row.open_date  ?? s.open_date,
+      close_date: row.close_date ?? s.close_date,
     }
   })
 
