@@ -119,8 +119,10 @@ function corsHeaders(output) {
   return output;
 }
 
+const SPREADSHEET_ID = '1MC2oTwlsZi9Yh2h2L7APNdnWG5_wGc9d-ie3sV-v1JE';
+
 function getOrCreateSheet(name, headers) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   let sheet = ss.getSheetByName(name);
   if (!sheet) {
     sheet = ss.insertSheet(name);
