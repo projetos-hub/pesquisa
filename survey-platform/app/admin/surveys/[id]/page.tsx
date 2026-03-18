@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import SurveyEditForm from './SurveyEditForm'
+import QuestionEditor from './QuestionEditor'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -19,6 +20,26 @@ export default async function SurveyDetailPage({ params }: PageProps) {
     .single()
 
   if (!survey) notFound()
+
+  // Busca perguntas com opções
+  const { data: questionsRaw } = await supabase
+    .from('questions')
+    .select('id, order_index, type, key, title, description, required, settings')
+    .eq('survey_id', id)
+    .order('order_index', { ascending: true })
+
+  const { data: optionsRaw } = await supabase
+    .from('question_options')
+    .select('id, question_id, order_index, label')
+    .in('question_id', (questionsRaw ?? []).map(q => q.id))
+    .order('order_index', { ascending: true })
+
+  const questions = (questionsRaw ?? []).map(q => ({
+    ...q,
+    settings: (q.settings ?? {}) as Record<string, unknown>,
+    description: q.description as string | null,
+    options: (optionsRaw ?? []).filter(o => o.question_id === q.id),
+  }))
 
   // Stats de respostas
   const { data: sessions } = await supabase
@@ -102,6 +123,12 @@ export default async function SurveyDetailPage({ params }: PageProps) {
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Metadados</h3>
           <SurveyEditForm survey={survey} />
+        </div>
+
+        {/* Editor de perguntas */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">Perguntas</h3>
+          <QuestionEditor surveyId={id} questions={questions} />
         </div>
       </div>
     </div>

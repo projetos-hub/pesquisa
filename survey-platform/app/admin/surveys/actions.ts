@@ -87,3 +87,133 @@ export async function createSurvey(formData: FormData): Promise<{ error?: string
   revalidatePath('/admin/surveys')
   redirect(`/admin/surveys/${data.id}`)
 }
+
+// ── Cria nova pergunta ────────────────────────────────────────────────────────
+export async function createQuestion(
+  surveyId: string,
+  formData: FormData
+): Promise<{ error?: string }> {
+  try { await requireAuth() } catch { return { error: 'Não autorizado' } }
+
+  const type        = formData.get('type')        as string
+  const key         = formData.get('key')         as string
+  const title       = formData.get('title')       as string
+  const description = (formData.get('description') as string) || null
+  const required    = formData.get('required') === 'true'
+  const pergunta    = (formData.get('pergunta')    as string) || ''
+  const placeholder = (formData.get('placeholder') as string) || ''
+  const accept      = (formData.get('accept')      as string) || ''
+
+  if (!type || !key || !title) return { error: 'Tipo, key e título são obrigatórios' }
+  if (!/^[a-z0-9_]+$/.test(key)) return { error: 'Key deve conter apenas letras minúsculas, números e underscore' }
+
+  const supabase = createServiceClient()
+
+  // Próximo order_index
+  const { data: existing } = await supabase
+    .from('questions')
+    .select('order_index')
+    .eq('survey_id', surveyId)
+    .order('order_index', { ascending: false })
+    .limit(1)
+  const nextOrder = (existing?.[0]?.order_index ?? -1) + 1
+
+  const settings: Record<string, unknown> = {}
+  if (pergunta)    settings.pergunta    = pergunta
+  if (placeholder) settings.placeholder = placeholder
+  if (accept)      settings.accept      = accept
+
+  const { error } = await supabase
+    .from('questions')
+    .insert({
+      survey_id:   surveyId,
+      order_index: nextOrder,
+      type,
+      key,
+      title:       title.trim(),
+      description: description?.trim() || null,
+      required,
+      settings: Object.keys(settings).length ? settings : {},
+    })
+
+  if (error) {
+    if (error.code === '23505') return { error: 'Já existe uma pergunta com essa key nesta pesquisa' }
+    return { error: error.message }
+  }
+
+  revalidatePath(`/admin/surveys/${surveyId}`)
+  return {}
+}
+
+// ── Salva opções de uma pergunta ─────────────────────────────────────────────
+export async function saveQuestionOptions(
+  questionId: string,
+  surveyId: string,
+  labels: string[]
+): Promise<{ error?: string }> {
+  try { await requireAuth() } catch { return { error: 'Não autorizado' } }
+
+  const supabase = createServiceClient()
+  await supabase.from('question_options').delete().eq('question_id', questionId)
+
+  const rows = labels
+    .map((l) => l.trim())
+    .filter(l => l.length > 0)
+    .map((label, i) => ({ question_id: questionId, order_index: i, label, value: `opt_${i}` }))
+
+  if (rows.length > 0) {
+    const { error } = await supabase.from('question_options').insert(rows)
+    if (error) return { error: error.message }
+  }
+
+  revalidatePath(`/admin/surveys/${surveyId}`)
+  return {}
+}
+
+// ── Deleta pergunta ───────────────────────────────────────────────────────────
+export async function deleteQuestion(
+  questionId: string,
+  surveyId: string
+): Promise<{ error?: string }> {
+  try { await requireAuth() } catch { return { error: 'Não autorizado' } }
+
+  const supabase = createServiceClient()
+  const { error } = await supabase.from('questions').delete().eq('id', questionId)
+  if (error) return { error: error.message }
+
+  revalidatePath(`/admin/surveys/${surveyId}`)
+  return {}
+}
+
+// ── Move pergunta (reordena) ──────────────────────────────────────────────────
+export async function moveQuestion(
+  questionId: string,
+  surveyId: string,
+  direction: 'up' | 'down'
+): Promise<{ error?: string }> {
+  try { await requireAuth() } catch { return { error: 'Não autorizado' } }
+
+  const supabase = createServiceClient()
+  const { data: questions } = await supabase
+    .from('questions')
+    .select('id, order_index')
+    .eq('survey_id', surveyId)
+    .order('order_index', { ascending: true })
+
+  if (!questions) return { error: 'Perguntas não encontradas' }
+
+  const idx = questions.findIndex(q => q.id === questionId)
+  if (idx < 0) return { error: 'Pergunta não encontrada' }
+
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+  if (swapIdx < 0 || swapIdx >= questions.length) return {}
+
+  const a = questions[idx]
+  const b = questions[swapIdx]
+
+  await supabase.from('questions').update({ order_index: b.order_index }).eq('id', a.id)
+  await supabase.from('questions').update({ order_index: a.order_index }).eq('id', b.id)
+
+  revalidatePath(`/admin/surveys/${surveyId}`)
+  return {}
+}

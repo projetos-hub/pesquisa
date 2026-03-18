@@ -10,6 +10,8 @@ import StepNPS from './steps/StepNPS'
 import StepEscala from './steps/StepEscala'
 import StepRadio from './steps/StepRadio'
 import StepText from './steps/StepText'
+import StepCheckbox from './steps/StepCheckbox'
+import StepFileUpload from './steps/StepFileUpload'
 import ThankYou from './steps/ThankYou'
 import AindaNaoAberta from './steps/AindaNaoAberta'
 import Encerrada from './steps/Encerrada'
@@ -355,6 +357,30 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
 
         {currentStep?.type === 'text' && (
           <StepText
+            key={currentStep.key}
+            step={currentStep}
+            tipo={tipo}
+            onNext={d => next(currentStep.key, d)}
+            onBack={back}
+            isLast={isLastData}
+            loading={loading}
+          />
+        )}
+
+        {currentStep?.type === 'checkbox' && (
+          <StepCheckbox
+            key={currentStep.key}
+            step={currentStep}
+            tipo={tipo}
+            onNext={d => next(currentStep.key, d)}
+            onBack={back}
+            isLast={isLastData}
+            loading={loading}
+          />
+        )}
+
+        {currentStep?.type === 'file_upload' && (
+          <StepFileUpload
             key={currentStep.key}
             step={currentStep}
             tipo={tipo}

@@ -73,6 +73,28 @@ export interface ThankYouStepDef extends BaseStep {
   key?: string
 }
 
+export interface CheckboxStepDef extends BaseStep {
+  type: 'checkbox'
+  key: string
+  titulo: string
+  desc?: string
+  pergunta: string
+  opcoes: string[]
+  obrigatorio?: boolean
+  minSelecoes?: number
+  maxSelecoes?: number
+}
+
+export interface FileUploadStepDef extends BaseStep {
+  type: 'file_upload'
+  key: string
+  titulo: string
+  desc?: string
+  pergunta: string
+  accept?: string   // e.g. ".pdf,.jpg,.png"
+  obrigatorio?: boolean
+}
+
 export type StepDef =
   | WelcomeStepDef
   | NPSStepDef
@@ -80,6 +102,8 @@ export type StepDef =
   | RadioStepDef
   | TextStepDef
   | ThankYouStepDef
+  | CheckboxStepDef
+  | FileUploadStepDef
 
 // ─── Tema visual por comunidade ───────────────────────────────────────────────
 export interface SurveyTheme {

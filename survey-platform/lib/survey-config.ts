@@ -149,6 +149,32 @@ export function rowsToConfig(
             ...base,
           }
 
+        case 'checkbox':
+          return {
+            type: 'checkbox',
+            key: q.key,
+            titulo: q.title,
+            ...(q.description ? { desc: q.description } : {}),
+            pergunta: (q.settings?.pergunta as string) ?? '',
+            opcoes: qOptions.map(o => o.label),
+            obrigatorio: q.required,
+            ...(q.settings?.minSelecoes ? { minSelecoes: q.settings.minSelecoes as number } : {}),
+            ...(q.settings?.maxSelecoes ? { maxSelecoes: q.settings.maxSelecoes as number } : {}),
+            ...base,
+          }
+
+        case 'file_upload':
+          return {
+            type: 'file_upload',
+            key: q.key,
+            titulo: q.title,
+            ...(q.description ? { desc: q.description } : {}),
+            pergunta: (q.settings?.pergunta as string) ?? '',
+            ...(q.settings?.accept ? { accept: q.settings.accept as string } : {}),
+            obrigatorio: q.required,
+            ...base,
+          }
+
         case 'thankyou':
           return { type: 'thankyou', ...base }
 
