@@ -42,7 +42,7 @@ export async function GET(req: Request) {
     .eq('community_id', communityId)
     .eq('active', true)
     .eq('surveys.status', 'ativa')
-    .order('open_date', { ascending: false })
+    .order('close_date', { ascending: true, nullsFirst: false })
 
   if (error) {
     return NextResponse.json({ error: 'Failed to resolve surveys' }, { status: 500 })

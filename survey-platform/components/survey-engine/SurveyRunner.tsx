@@ -290,7 +290,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   }
 
   const isWelcome  = currentStep?.type === 'welcome'
-  const isThankyou = currentStep?.type === 'thankyou'
+  const isThankyou = currentStep?.type === 'thankyou' || currentKey === 'thankyou'
   const npsAnswer  = answers.nps as NPSAnswer | undefined
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -391,7 +391,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
           />
         )}
 
-        {currentStep?.type === 'thankyou' && (
+        {isThankyou && (
           <ThankYou
             nps={npsAnswer?.nps}
             perfil={perfil}

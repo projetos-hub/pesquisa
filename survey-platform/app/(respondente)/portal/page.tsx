@@ -130,6 +130,12 @@ export default function PortalPage() {
 
   // Seleção de pesquisa (múltiplas ativas)
   if (surveys && surveys.length > 1) {
+    function fmtDate(d: string | null) {
+      if (!d) return null
+      const [y, m, day] = d.split('-')
+      return `${day}/${m}/${y}`
+    }
+
     return (
       <div className="card">
         <div className="header"><h1>Pesquisas disponíveis</h1></div>
@@ -139,14 +145,16 @@ export default function PortalPage() {
             {surveys.map(s => (
               <button
                 key={s.slug}
-                className="btn-primary"
-                onClick={() => {
-                  // communityId já está no state — os demais params não estão disponíveis aqui
-                  // O SurveyRunner fará nova captura do LayersPortal quando carregar
-                  router.push(`/p/${s.slug}?communityId=${encodeURIComponent(communityId)}`)
-                }}
+                className="btn btn-primary"
+                style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 2, padding: '14px 18px' }}
+                onClick={() => router.push(`/p/${s.slug}?communityId=${encodeURIComponent(communityId)}`)}
               >
-                {s.title}
+                <span style={{ fontWeight: 600, fontSize: '1rem' }}>{s.title}</span>
+                {s.close_date && (
+                  <span style={{ fontSize: '.8rem', opacity: 0.8 }}>
+                    Data de fim: {fmtDate(s.close_date)}
+                  </span>
+                )}
               </button>
             ))}
           </div>
