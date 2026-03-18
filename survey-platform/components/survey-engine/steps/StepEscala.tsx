@@ -48,6 +48,7 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
                 key={i}
                 label={resolve(l)}
                 value={sectionRatings[sec.key]?.[i]}
+                highlight={tentou && sectionRatings[sec.key]?.[i] == null}
                 onChange={v =>
                   setSectionRatings(p => ({
                     ...p,
@@ -59,8 +60,8 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
           </div>
         ))}
         {tentou && !allOk && (
-          <p style={{ color: '#e53e3e', fontSize: '.85rem', marginBottom: 8, textAlign: 'right' }}>
-            ⚠️ Avalie todos os itens para continuar.
+          <p style={{ color: '#e53e3e', fontSize: '.85rem', marginBottom: 8 }}>
+            ⚠️ Avalie os itens marcados em vermelho para continuar.
           </p>
         )}
         <div className="btn-row">
@@ -98,6 +99,7 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
           key={i}
           label={l}
           value={simpleRatings[i]}
+          highlight={tentou && simpleRatings[i] == null}
           onChange={v => setSimpleRatings(p => ({ ...p, [i]: v }))}
         />
       ))}
