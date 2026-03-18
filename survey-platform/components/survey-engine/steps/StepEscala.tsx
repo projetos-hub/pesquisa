@@ -25,6 +25,9 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
     const allOk = step.secoes.every(sec =>
       sec.perguntas.every((_, i) => sectionRatings[sec.key]?.[i] != null)
     )
+    const pendentes = step.secoes.reduce((n, sec) =>
+      n + sec.perguntas.filter((_, i) => sectionRatings[sec.key]?.[i] == null).length, 0
+    )
     const buildAns = () =>
       step.secoes!.reduce<Record<string, unknown>>((acc, sec) => ({
         ...acc,
@@ -61,7 +64,7 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
         ))}
         {tentou && !allOk && (
           <p style={{ color: '#e53e3e', fontSize: '.85rem', marginBottom: 8 }}>
-            ⚠️ Avalie os itens marcados em vermelho para continuar.
+            ⚠️ Avalie {pendentes === 1 ? 'o item marcado' : `os ${pendentes} itens marcados`} em vermelho para continuar.
           </p>
         )}
         <div className="btn-row">
@@ -82,6 +85,7 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
   // ── Lista simples de perguntas ──────────────────────────────────────────────
   const perguntas = (step.perguntas || []).map(resolve)
   const ok = perguntas.every((_, i) => simpleRatings[i] != null)
+  const pendentesSimples = perguntas.filter((_, i) => simpleRatings[i] == null).length
   const buildAns = () =>
     perguntas.reduce<Record<string, unknown>>((a, l, i) => ({ ...a, [l]: simpleRatings[i] }), {})
 
@@ -105,7 +109,7 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
       ))}
       {tentou && !ok && (
         <p style={{ color: '#e53e3e', fontSize: '.85rem', marginBottom: 8, textAlign: 'right' }}>
-          ⚠️ Avalie todos os itens para continuar.
+          ⚠️ Avalie {pendentesSimples === 1 ? 'o item marcado' : `os ${pendentesSimples} itens marcados`} em vermelho para continuar.
         </p>
       )}
       <div className="btn-row">
