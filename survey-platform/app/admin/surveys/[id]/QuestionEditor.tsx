@@ -58,7 +58,8 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
   const [addPlaceholder, setAddPlaceholder] = useState('')
   const [addAccept, setAddAccept]       = useState('')
   const [addRequired, setAddRequired]   = useState(true)
-  const [addOptions, setAddOptions]     = useState<string[]>(['', ''])
+  const [addOptions, setAddOptions]         = useState<string[]>(['', ''])
+  const [addCorrectAnswer, setAddCorrectAnswer] = useState<string>('')
   const optionRefs = useRef<(HTMLInputElement | null)[]>([])
 
   function notify(msg: string, isError = false) {
@@ -70,7 +71,7 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
   function resetForm() {
     setAddKey(''); setAddTitle(''); setAddDesc(''); setAddPergunta('')
     setAddPlaceholder(''); setAddAccept(''); setAddOptions(['', ''])
-    setAddRequired(true); setShowAdd(false)
+    setAddCorrectAnswer(''); setAddRequired(true); setShowAdd(false)
   }
 
   function updateOption(idx: number, val: string) {
@@ -78,7 +79,11 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
   }
 
   function removeOption(idx: number) {
-    setAddOptions(prev => prev.filter((_, i) => i !== idx))
+    setAddOptions(prev => {
+      const removed = prev[idx]
+      if (removed && removed === addCorrectAnswer) setAddCorrectAnswer('')
+      return prev.filter((_, i) => i !== idx)
+    })
   }
 
   function addOptionRow(focusIdx?: number) {
@@ -101,6 +106,9 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
   }
 
   async function handleAdd() {
+    if (!addKey.trim()) { notify('Preencha a key da pergunta.', true); return }
+    if (!addTitle.trim()) { notify('Preencha o título da pergunta.', true); return }
+
     const fd = new FormData()
     fd.set('type', addType)
     fd.set('key', addKey)
@@ -110,6 +118,7 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
     fd.set('pergunta', addPergunta)
     fd.set('placeholder', addPlaceholder)
     fd.set('accept', addAccept)
+    if (addCorrectAnswer) fd.set('correctAnswer', addCorrectAnswer)
 
     startTransition(async () => {
       const res = await createQuestion(surveyId, fd)
@@ -180,9 +189,7 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
   }
 
   const sorted = [...questions].sort((a, b) => a.order_index - b.order_index)
-  const canAdd = !!addKey && !!addTitle && (
-    !HAS_OPTIONS.includes(addType) || addOptions.some(o => o.trim())
-  )
+  const canAdd = true
 
   return (
     <div>
@@ -392,6 +399,34 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
                   style={{ marginTop: 8, fontSize: '.82rem', color: '#667eea', background: 'none', border: '1px dashed #667eea', borderRadius: 6, padding: '5px 12px', cursor: 'pointer' }}>
                   + Adicionar opção
                 </button>
+
+                {/* Resposta correta (só múltipla escolha) */}
+                {addType === 'radio' && addOptions.some(o => o.trim()) && (
+                  <div style={{ marginTop: 12, padding: '10px 12px', background: '#fffbeb', border: '1px solid #fbd38d', borderRadius: 8 }}>
+                    <label style={{ fontSize: '.82rem', fontWeight: 500, color: '#744210', display: 'block', marginBottom: 6 }}>
+                      Resposta correta <span style={{ fontWeight: 400, color: '#975a16' }}>(opcional)</span>
+                    </label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {addOptions.filter(o => o.trim()).map(opt => (
+                        <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '.85rem', color: '#2d3748' }}>
+                          <input
+                            type="radio"
+                            name="correctAnswer"
+                            checked={addCorrectAnswer === opt}
+                            onChange={() => setAddCorrectAnswer(opt)}
+                          />
+                          {opt}
+                        </label>
+                      ))}
+                      {addCorrectAnswer && (
+                        <button onClick={() => setAddCorrectAnswer('')}
+                          style={{ alignSelf: 'flex-start', marginTop: 4, fontSize: '.75rem', color: '#e53e3e', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                          Remover resposta correta
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

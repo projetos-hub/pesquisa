@@ -101,9 +101,10 @@ export async function createQuestion(
   const title       = formData.get('title')       as string
   const description = (formData.get('description') as string) || null
   const required    = formData.get('required') === 'true'
-  const pergunta    = (formData.get('pergunta')    as string) || ''
-  const placeholder = (formData.get('placeholder') as string) || ''
-  const accept      = (formData.get('accept')      as string) || ''
+  const pergunta       = (formData.get('pergunta')       as string) || ''
+  const placeholder    = (formData.get('placeholder')    as string) || ''
+  const accept         = (formData.get('accept')         as string) || ''
+  const correctAnswer  = (formData.get('correctAnswer')  as string) || ''
 
   if (!type || !key || !title) return { error: 'Tipo, key e título são obrigatórios' }
   if (!/^[a-z0-9_]+$/.test(key)) return { error: 'Key deve conter apenas letras minúsculas, números e underscore' }
@@ -120,9 +121,10 @@ export async function createQuestion(
   const nextOrder = (existing?.[0]?.order_index ?? -1) + 1
 
   const settings: Record<string, unknown> = {}
-  if (pergunta)    settings.pergunta    = pergunta
-  if (placeholder) settings.placeholder = placeholder
-  if (accept)      settings.accept      = accept
+  if (pergunta)      settings.pergunta      = pergunta
+  if (placeholder)   settings.placeholder   = placeholder
+  if (accept)        settings.accept        = accept
+  if (correctAnswer) settings.correctAnswer = correctAnswer
 
   const { data: created, error } = await supabase
     .from('questions')
