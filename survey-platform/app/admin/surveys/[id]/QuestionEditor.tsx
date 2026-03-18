@@ -51,8 +51,9 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
 
   // ── Formulário de nova pergunta ─────────────────────────────────────────────
   const [addType, setAddType]           = useState('text')
-  const [addKey, setAddKey]             = useState('')
   const [addTitle, setAddTitle]         = useState('')
+  const [addKey, setAddKey]             = useState('')
+  const [keyEdited, setKeyEdited]       = useState(false)
   const [addDesc, setAddDesc]           = useState('')
   const [addPergunta, setAddPergunta]   = useState('')
   const [addPlaceholder, setAddPlaceholder] = useState('')
@@ -68,10 +69,24 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
     setTimeout(() => { setError(null); setSuccess(null) }, 4000)
   }
 
+  function slugify(text: string) {
+    return text
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 40)
+  }
+
+  function handleTitleChange(val: string) {
+    setAddTitle(val)
+    if (!keyEdited) setAddKey(slugify(val))
+  }
+
   function resetForm() {
     setAddKey(''); setAddTitle(''); setAddDesc(''); setAddPergunta('')
     setAddPlaceholder(''); setAddAccept(''); setAddOptions(['', ''])
-    setAddCorrectAnswer(''); setAddRequired(true); setShowAdd(false)
+    setAddCorrectAnswer(''); setAddRequired(true); setKeyEdited(false); setShowAdd(false)
   }
 
   function updateOption(idx: number, val: string) {
@@ -311,20 +326,24 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
               </div>
             </div>
 
-            {/* Key + Título */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div>
-                <label style={{ fontSize: '.85rem', fontWeight: 500, color: '#4a5568', display: 'block', marginBottom: 4 }}>
-                  Key <span style={{ color: '#a0aec0', fontWeight: 400 }}>(identificador único)</span>
-                </label>
-                <input value={addKey} onChange={e => setAddKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
-                  placeholder="ex: satisfacao_geral" style={{ ...inputStyle, fontFamily: 'monospace' }} />
-              </div>
-              <div>
-                <label style={{ fontSize: '.85rem', fontWeight: 500, color: '#4a5568', display: 'block', marginBottom: 4 }}>Título</label>
-                <input value={addTitle} onChange={e => setAddTitle(e.target.value)}
-                  placeholder="Título exibido no topo do step" style={inputStyle} />
-              </div>
+            {/* Título */}
+            <div>
+              <label style={{ fontSize: '.85rem', fontWeight: 500, color: '#4a5568', display: 'block', marginBottom: 4 }}>
+                Título <span style={{ color: '#e53e3e' }}>*</span>
+              </label>
+              <input value={addTitle} onChange={e => handleTitleChange(e.target.value)}
+                placeholder="Ex: Satisfação geral" style={inputStyle} autoFocus />
+              {addKey && (
+                <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: '.75rem', color: '#a0aec0' }}>ID: </span>
+                  <input
+                    value={addKey}
+                    onChange={e => { setAddKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_')); setKeyEdited(true) }}
+                    style={{ fontSize: '.75rem', color: '#718096', fontFamily: 'monospace', background: 'none', border: 'none', borderBottom: '1px dashed #cbd5e0', padding: '0 2px', width: `${Math.max(addKey.length, 10)}ch` }}
+                    title="Identificador técnico — gerado automaticamente"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Descrição */}
