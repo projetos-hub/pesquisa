@@ -114,10 +114,9 @@ function comunidadeInfo(communityId) {
 }
 
 function corsHeaders(output) {
-  return output
-    .setHeader('Access-Control-Allow-Origin', '*')
-    .setHeader('Access-Control-Allow-Methods', 'GET, POST')
-    .setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // Apps Script Web App com acesso "Qualquer pessoa" já libera CORS automaticamente.
+  // TextOutput não suporta setHeader — retorna direto.
+  return output;
 }
 
 function getOrCreateSheet(name, headers) {
