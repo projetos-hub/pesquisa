@@ -93,7 +93,7 @@ export async function createSurvey(formData: FormData): Promise<{ error?: string
 export async function createQuestion(
   surveyId: string,
   formData: FormData
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; id?: string }> {
   try { await requireAuth() } catch { return { error: 'Não autorizado' } }
 
   const type        = formData.get('type')        as string
@@ -124,7 +124,7 @@ export async function createQuestion(
   if (placeholder) settings.placeholder = placeholder
   if (accept)      settings.accept      = accept
 
-  const { error } = await supabase
+  const { data: created, error } = await supabase
     .from('questions')
     .insert({
       survey_id:   surveyId,
@@ -136,6 +136,8 @@ export async function createQuestion(
       required,
       settings: Object.keys(settings).length ? settings : {},
     })
+    .select('id')
+    .single()
 
   if (error) {
     if (error.code === '23505') return { error: 'Já existe uma pergunta com essa key nesta pesquisa' }
@@ -143,7 +145,7 @@ export async function createQuestion(
   }
 
   revalidatePath(`/admin/surveys/${surveyId}`)
-  return {}
+  return { id: created.id }
 }
 
 // ── Salva opções de uma pergunta ─────────────────────────────────────────────
