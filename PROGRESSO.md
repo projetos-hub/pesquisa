@@ -273,6 +273,43 @@ WHERE email = 'seu@email.com';
 
 ---
 
+## Convenção de School Assets — Definida em 2026-04-01
+
+### Bucket Supabase Storage
+- **Nome do bucket:** `school-assets` (visibilidade: **public**)
+- **Pasta:** `logos/`
+- **Arquivo:** `{community_id}.svg` — ex: `qi-freguesia.svg`, `leonardodavinci-alfa.svg`
+
+### Formato de arquivo
+| Prioridade | Formato | Motivo |
+|---|---|---|
+| ✅ 1º | SVG | Vetorial, transparente, ~2-10KB |
+| ✅ 2º | PNG-24 | Fallback — fundo transparente obrigatório |
+| ❌ Evitar | JPEG | Sem transparência |
+
+### URL a salvar em `survey_communities.theme.logo`
+```
+https://{project-ref}.supabase.co/storage/v1/object/public/school-assets/logos/{community_id}.svg
+```
+
+### SQL para inserir logo de uma escola
+```sql
+UPDATE survey_communities
+SET theme = jsonb_set(
+  COALESCE(theme, '{}'),
+  '{logo}',
+  '"https://{project-ref}.supabase.co/storage/v1/object/public/school-assets/logos/qi-freguesia.svg"'
+)
+WHERE community_id = 'qi-freguesia';
+```
+
+### Como testar
+1. Upload do arquivo no bucket `school-assets/logos/`
+2. Inserir URL via SQL acima
+3. Acessar `/p/csat?communityId={id}` → logo aparece no WelcomeStep
+
+---
+
 ## Próximos passos
 
 ### 1. Deploy na Vercel (bloqueante)
