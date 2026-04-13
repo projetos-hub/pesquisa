@@ -74,13 +74,6 @@ export default async function ResponsesPage({ params, searchParams }: PageProps)
         <span className="ml-auto text-sm text-gray-400">
           {sessions?.length ?? 0} resposta{sessions?.length !== 1 ? 's' : ''}
         </span>
-        <a
-          href={`/api/admin/export?surveyId=${id}`}
-          download
-          className="ml-3 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
-        >
-          ⬇ Exportar XLSX
-        </a>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
