@@ -107,17 +107,23 @@ export default async function SurveyDetailPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* Link para respostas */}
-        {total > 0 && (
-          <div className="flex justify-end">
+        {/* Links para respostas e identidade visual */}
+        <div className="flex justify-end gap-4">
+          <Link
+            href={`/admin/surveys/${id}/communities`}
+            className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+          >
+            Identidade Visual →
+          </Link>
+          {total > 0 && (
             <Link
               href={`/admin/surveys/${id}/responses`}
               className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
             >
               Ver todas as respostas →
             </Link>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Formulário de edição */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
