@@ -2,7 +2,7 @@
 
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-service'
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 
 interface ResponseRow {
   id: string
@@ -78,78 +78,99 @@ export async function GET(request: Request) {
       })
     }
 
-    // Build flattened rows: one row per session, all question answers as columns
+    // Discover all dynamic column names
     const allDynamicKeys = new Set<string>()
-
-    // First pass: discover all dynamic column names
     sessions.forEach(session => {
       session.responses.forEach(resp => {
         const value = resp.value as Record<string, unknown> | unknown
         if (value && typeof value === 'object' && !Array.isArray(value)) {
-          // It's an object: expand into subkeys
           Object.keys(value as object).forEach(subkey => {
             allDynamicKeys.add(`${resp.question_key}_${subkey}`)
           })
         } else {
-          // It's a scalar: use question_key as column
           allDynamicKeys.add(resp.question_key)
         }
       })
     })
 
-    // Build final data rows
-    const rows = sessions.map(session => {
-      const row: Record<string, unknown> = {
-        'Data': session.submitted_at ? new Date(session.submitted_at).toLocaleString('pt-BR') : '',
-        'Perfil': session.perfil,
-        'Nome Responsável': session.nome_responsavel,
-        'Nome Aluno': session.nome_aluno,
-        'Série': session.serie,
-        'Escola': session.school,
-        'Comunidade': session.community_id,
-        'Onda': session.onda,
-      }
+    // Create workbook with ExcelJS (UTF-8 encoding nativo)
+    const workbook = new ExcelJS.Workbook()
+    const worksheet = workbook.addWorksheet('Respostas')
 
-      // Add dynamic columns
-      allDynamicKeys.forEach(key => {
-        row[key] = ''
-      })
+    // Define header columns
+    const headers = [
+      'Data',
+      'Perfil',
+      'Nome Responsável',
+      'Nome Aluno',
+      'Série',
+      'Escola',
+      'Comunidade',
+      'Onda',
+      ...Array.from(allDynamicKeys).sort(),
+    ]
+    worksheet.addRow(headers)
 
-      // Fill in answers
+    // Style header row
+    const headerRow = worksheet.getRow(1)
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } }
+    headerRow.alignment = { horizontal: 'center', vertical: 'middle' }
+
+    // Add data rows
+    sessions.forEach(session => {
+      const row: unknown[] = [
+        session.submitted_at ? new Date(session.submitted_at).toLocaleString('pt-BR') : '',
+        session.perfil,
+        session.nome_responsavel,
+        session.nome_aluno,
+        session.serie,
+        session.school,
+        session.community_id,
+        session.onda,
+      ]
+
+      // Build answer map
+      const answerMap: Record<string, unknown> = {}
       session.responses.forEach(resp => {
         const value = resp.value as Record<string, unknown> | unknown
         if (value && typeof value === 'object' && !Array.isArray(value)) {
-          // Expand object into subkeys
           Object.entries(value as Record<string, unknown>).forEach(([subkey, val]) => {
             const colName = `${resp.question_key}_${subkey}`
-            row[colName] = val
+            answerMap[colName] = val
           })
         } else {
-          // Scalar value
-          row[resp.question_key] = value
+          answerMap[resp.question_key] = value
         }
       })
 
-      return row
+      // Add answers in same order as headers
+      Array.from(allDynamicKeys)
+        .sort()
+        .forEach(key => {
+          row.push(answerMap[key] ?? '')
+        })
+
+      worksheet.addRow(row)
     })
 
-    // Create workbook and sheet
-    const ws = XLSX.utils.json_to_sheet(rows)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Respostas')
+    // Auto-fit columns
+    worksheet.columns.forEach(col => {
+      col.width = 18
+    })
 
-    // Generate filename with current date
+    // Generate filename
     const now = new Date()
     const dateStr = now.toISOString().split('T')[0]
     const filename = `respostas-${survey.slug}-${dateStr}.xlsx`
 
-    // Write to array (preserva UTF-8 corretamente — type:'buffer' corrompe acentos no Next.js)
-    const arr = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer
+    // Write to buffer with UTF-8 encoding
+    const buffer = await workbook.xlsx.writeBuffer()
 
-    return new Response(new Uint8Array(arr), {
+    return new Response(buffer, {
       status: 200,
       headers: {
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet; charset=utf-8',
         'Content-Disposition': `attachment; filename="${filename}"`,
       },
     })
