@@ -36,6 +36,13 @@ export default async function AdminLayout({
             <span>📋</span>
             Pesquisas
           </Link>
+          <Link
+            href="/admin/communities"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            <span>🎨</span>
+            Identidade Visual
+          </Link>
         </nav>
 
         <div className="p-3 border-t border-gray-200">

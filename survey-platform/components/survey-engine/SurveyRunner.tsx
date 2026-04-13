@@ -133,6 +133,16 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [surveySlug, ctx])
 
+  // ── Tema: injeta CSS vars no :root para afetar o fundo do layout ─────────────
+  useEffect(() => {
+    const primary   = survey?.installation?.theme?.primaryColor   ?? survey?.settings?.theme?.primaryColor
+    const secondary = survey?.installation?.theme?.secondaryColor ?? survey?.settings?.theme?.secondaryColor
+    if (primary) {
+      document.documentElement.style.setProperty('--color-primary', primary)
+      document.documentElement.style.setProperty('--color-secondary', secondary ?? primary)
+    }
+  }, [survey])
+
   // ── Spinner: aguarda contexto E config da pesquisa ───────────────────────────
   if (!ctx || (!survey && !surveyNotFound)) {
     return (
@@ -177,8 +187,8 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const openDate  =  survey.installation?.open_date  ?? ctx.openDate
   const closeDate =  survey.installation?.close_date ?? ctx.closeDate
 
-  // CSS vars de tema por comunidade (injetadas inline no .card)
-  const theme = survey.installation?.theme ?? survey.settings?.theme
+  // CSS vars de tema por comunidade — aplicadas no :root para afetar o fundo também
+  const theme = survey?.installation?.theme ?? survey?.settings?.theme
   const themeVars = theme?.primaryColor
     ? {
         '--color-primary':   theme.primaryColor,
