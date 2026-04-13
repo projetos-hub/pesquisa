@@ -143,10 +143,10 @@ export async function GET(request: Request) {
     const dateStr = now.toISOString().split('T')[0]
     const filename = `respostas-${survey.slug}-${dateStr}.xlsx`
 
-    // Write to buffer and return
-    const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' })
+    // Write to array (preserva UTF-8 corretamente — type:'buffer' corrompe acentos no Next.js)
+    const arr = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer
 
-    return new Response(buf, {
+    return new Response(new Uint8Array(arr), {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
