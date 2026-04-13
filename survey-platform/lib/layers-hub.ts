@@ -4,6 +4,8 @@
 // Auth: Bearer LAYERS_API_TOKEN (env var) + community-id header
 // Base URL: https://api.layers.digital
 
+import { unstable_cache } from 'next/cache'
+
 const BASE_URL = 'https://api.layers.digital'
 
 export interface LayersUserProfile {
@@ -52,7 +54,8 @@ async function fetchSerie(
   }
 }
 
-export async function fetchLayersUser(
+// ── Função interna (não-cacheada) para o fetch real ───────────────────────────
+async function _fetchLayersUserUncached(
   userId: string,
   communityId: string,
 ): Promise<LayersUserProfile | null> {
@@ -114,4 +117,19 @@ export async function fetchLayersUser(
   } catch {
     return null
   }
+}
+
+// ── Versão cacheada com TTL de 30 minutos ────────────────────────────────────
+// Reduz 4 chamadas HTTP externas por usuário a 1 chamada a cada 30 minutos.
+const _fetchLayersUserCached = unstable_cache(
+  _fetchLayersUserUncached,
+  ['layers-user'], // Identificador do cache
+  { revalidate: 1800 } // 30 minutos = 1800 segundos
+)
+
+export async function fetchLayersUser(
+  userId: string,
+  communityId: string,
+): Promise<LayersUserProfile | null> {
+  return _fetchLayersUserCached(userId, communityId)
 }
