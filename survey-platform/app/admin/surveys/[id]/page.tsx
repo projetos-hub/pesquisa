@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import SurveyEditForm from './SurveyEditForm'
 import QuestionEditor from './QuestionEditor'
+import CommunityInstallManager from './CommunityInstallManager'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -40,6 +41,13 @@ export default async function SurveyDetailPage({ params }: PageProps) {
     description: q.description as string | null,
     options: (optionsRaw ?? []).filter(o => o.question_id === q.id),
   }))
+
+  // Comunidades instaladas
+  const { data: installs } = await supabase
+    .from('survey_communities')
+    .select('community_id, status, active')
+    .eq('survey_id', id)
+    .order('community_id', { ascending: true })
 
   // Stats de respostas
   const { data: sessions } = await supabase
@@ -106,6 +114,18 @@ export default async function SurveyDetailPage({ params }: PageProps) {
             </div>
           </div>
         )}
+
+        {/* Comunidades instaladas */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">Comunidades</h3>
+          <p className="text-xs text-gray-400 mb-4">
+            Define em quais comunidades esta pesquisa aparece no portal Layers.
+          </p>
+          <CommunityInstallManager
+            surveyId={id}
+            installs={installs ?? []}
+          />
+        </div>
 
         {/* Links para respostas e identidade visual */}
         <div className="flex justify-end gap-4">
