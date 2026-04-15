@@ -66,6 +66,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
       let hubNome      = ''
       let hubPerfil: Perfil = 'responsavel'
       let hubNomeAluno = ''
+      let hubSerie     = ''
 
       const effectiveId = userId || accountId
       if (effectiveId && communityId) {
@@ -79,12 +80,17 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
             hubNome      = profile.nome      || ''
             hubPerfil    = profile.perfil    || 'responsavel'
             hubNomeAluno = profile.nomeAluno || ''
+            hubSerie     = profile.serie     || ''
           }
         } catch {
           // Hub API indisponível — continua com URL params
         }
       }
 
+      // Hub API tem prioridade sobre URL params para campos com acentos.
+      // URL params do Layers podem vir com encoding Latin-1 (%E3 em vez de %C3%A3),
+      // produzindo \ufffd ao decodificar como UTF-8. O Hub API retorna JSON UTF-8 correto.
+      // URL params ficam como fallback (testes sem userId real).
       setCtx({
         userId,
         communityId,
@@ -97,10 +103,10 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
         status:    (searchParams.get('status')     || 'aberta') as SurveyContext['status'],
         school:    searchParams.get('school')      || '',
         tipo:      searchParams.get('tipo')        || 'escola',
-        nome:      searchParams.get('nome') || searchParams.get('name') || hubNome,
+        nome:      hubNome      || searchParams.get('nome') || searchParams.get('name') || '',
         perfil:    ((searchParams.get('role') || hubPerfil) as Perfil),
-        nomeAluno: searchParams.get('studentName') || hubNomeAluno,
-        serie:     searchParams.get('grade')       || '',
+        nomeAluno: hubNomeAluno || searchParams.get('studentName') || '',
+        serie:     hubSerie     || searchParams.get('grade')       || '',
       })
     }
 
