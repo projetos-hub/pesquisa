@@ -20,6 +20,7 @@ interface SessionRow {
   nome_responsavel: string
   nome_aluno: string
   serie: string
+  email: string
   school: string
   onda: string
   responses: ResponseRow[]
@@ -67,7 +68,7 @@ export async function GET(request: Request) {
     // Fetch all sessions + responses for this survey
     const { data: sessions, error: sessionsError } = await serviceSupabase
       .from('response_sessions')
-      .select('id, survey_id, community_id, user_id, submitted_at, perfil, nome_responsavel, nome_aluno, serie, school, onda, responses(id, question_key, value)')
+      .select('id, survey_id, community_id, user_id, submitted_at, perfil, nome_responsavel, nome_aluno, serie, email, school, onda, responses(id, question_key, value)')
       .eq('survey_id', surveyId)
       .order('submitted_at', { ascending: false }) as { data: SessionRow[] | null; error: unknown }
 
@@ -104,6 +105,7 @@ export async function GET(request: Request) {
       'Nome Responsável',
       'Nome Aluno',
       'Série',
+      'E-mail',
       'Escola',
       'Comunidade',
       'Onda',
@@ -125,6 +127,7 @@ export async function GET(request: Request) {
         session.nome_responsavel,
         session.nome_aluno,
         session.serie,
+        session.email,
         session.school,
         session.community_id,
         session.onda,

@@ -1,6 +1,5 @@
 // ─── Layers Hub API — enriquecimento de perfil do usuário ────────────────────
 //
-// Documentação completa: docs/layers-api.md
 // Auth: Bearer LAYERS_API_TOKEN (env var) + community-id header
 // Base URL: https://api.layers.digital
 
@@ -13,11 +12,19 @@ export interface LayersUserProfile {
   perfil:    'responsavel' | 'aluno'
   nomeAluno: string
   serie:     string
+  email:     string
+  meta: {
+    roles:       string[]
+    lastSeenAt:  string | null
+    groupsIds:   string[]
+    membersId:   string[]
+    address:     Record<string, string | null>
+    fields:      Record<string, unknown>
+  }
 }
 
-function mapRole(roles: string[][]): 'responsavel' | 'aluno' {
-  const flat = roles.flat()
-  if (flat.includes('student')) return 'aluno'
+function mapRole(roles: string[]): 'responsavel' | 'aluno' {
+  if (roles.includes('student')) return 'aluno'
   return 'responsavel'
 }
 
@@ -26,7 +33,6 @@ async function fetchSerie(
   headers: Record<string, string>,
 ): Promise<string> {
   try {
-    // 1. Busca matrículas ativas da comunidade e filtra pelo membro
     const enrollRes = await fetch(`${BASE_URL}/v1/enrollments/search?active=true`, {
       headers,
       signal: AbortSignal.timeout(5_000),
@@ -40,7 +46,6 @@ async function fetchSerie(
     const groupId = enrollData.hits?.find(e => e.entity === entityId)?.group
     if (!groupId) return ''
 
-    // 2. Busca o grupo para obter o alias (série)
     const groupRes = await fetch(`${BASE_URL}/v1/groups/${groupId}`, {
       headers,
       signal: AbortSignal.timeout(5_000),
@@ -54,7 +59,6 @@ async function fetchSerie(
   }
 }
 
-// ── Função interna (não-cacheada) para o fetch real ───────────────────────────
 async function _fetchLayersUserUncached(
   userId: string,
   communityId: string,
@@ -69,7 +73,6 @@ async function _fetchLayersUserUncached(
   }
 
   try {
-    // 1. Dados do usuário (nome + roles)
     const userRes = await fetch(`${BASE_URL}/v1/users/${userId}`, {
       headers,
       signal: AbortSignal.timeout(5_000),
@@ -77,20 +80,21 @@ async function _fetchLayersUserUncached(
     if (!userRes.ok) return null
 
     const user = await userRes.json() as {
-      name?: string
-      roles?: string[][]
-      [key: string]: unknown
+      name?:       string
+      email?:      string
+      roles?:      string[]
+      lastSeenAt?: string | null
+      groupsIds?:  string[]
+      membersId?:  string[]
+      address?:    Record<string, string | null>
+      fields?:     Record<string, unknown>
     }
-
-    // TODO: remover após diagnóstico — ver quais campos a Layers retorna
-    console.log('[layers-hub] user payload:', JSON.stringify(user))
 
     const perfil = mapRole(user.roles ?? [])
     let nomeAluno = ''
     let serie     = ''
 
     if (perfil === 'responsavel') {
-      // 2a. Responsável → busca aluno relacionado
       const relRes = await fetch(`${BASE_URL}/v1/users/${userId}/related`, {
         headers,
         signal: AbortSignal.timeout(5_000),
@@ -101,34 +105,39 @@ async function _fetchLayersUserUncached(
         }
         const student = rel.members?.[0]
         nomeAluno = student?.name ?? ''
-
-        // 2b. Série do aluno via enrollment → group
         if (student?._id) {
           serie = await fetchSerie(student._id, headers)
         }
       }
     } else {
-      // 3. Aluno → série via próprio enrollment
       serie = await fetchSerie(userId, headers)
     }
 
     return {
-      nome: user.name ?? '',
+      nome:      user.name  ?? '',
+      email:     user.email ?? '',
       perfil,
       nomeAluno,
       serie,
+      meta: {
+        roles:      user.roles      ?? [],
+        lastSeenAt: user.lastSeenAt ?? null,
+        groupsIds:  user.groupsIds  ?? [],
+        membersId:  user.membersId  ?? [],
+        address:    user.address    ?? {},
+        fields:     user.fields     ?? {},
+      },
     }
   } catch {
     return null
   }
 }
 
-// ── Versão cacheada com TTL de 30 minutos ────────────────────────────────────
-// Reduz 4 chamadas HTTP externas por usuário a 1 chamada a cada 30 minutos.
+// Cache de 30 minutos — reduz chamadas à Layers API
 const _fetchLayersUserCached = unstable_cache(
   _fetchLayersUserUncached,
-  ['layers-user'], // Identificador do cache
-  { revalidate: 1800 } // 30 minutos = 1800 segundos
+  ['layers-user'],
+  { revalidate: 1800 }
 )
 
 export async function fetchLayersUser(
