@@ -1,8 +1,26 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-service'
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 
 export async function POST(req: Request) {
   try {
+    // ── Rate limiting: máx 10 uploads por IP a cada 1 hora ────────────────────
+    const clientIp = getClientIp(req)
+    const { allowed, retryAfter } = checkRateLimit(clientIp, {
+      maxRequests: 10,
+      windowMs: 3_600_000, // 1 hora
+    })
+
+    if (!allowed) {
+      return NextResponse.json(
+        { error: `Rate limit exceeded. Retry after ${retryAfter}s` },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(retryAfter) },
+        }
+      )
+    }
+
     const form = await req.formData()
     const file = form.get('file') as File | null
     if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 })

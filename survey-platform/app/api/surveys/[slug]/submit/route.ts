@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-service'
-import { syncToSheets } from '@/lib/sheets'
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 
 interface RouteContext {
   params: Promise<{ slug: string }>
@@ -22,6 +22,23 @@ interface SubmitBody {
 
 export async function POST(req: Request, { params }: RouteContext) {
   const { slug } = await params
+
+  // ── Rate limiting: máx 100 submissões por IP a cada 1 hora ──────────────────
+  const clientIp = getClientIp(req)
+  const { allowed, retryAfter } = checkRateLimit(clientIp, {
+    maxRequests: 100,
+    windowMs: 3_600_000, // 1 hora
+  })
+
+  if (!allowed) {
+    return NextResponse.json(
+      { error: `Rate limit exceeded. Retry after ${retryAfter}s` },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(retryAfter) },
+      }
+    )
+  }
 
   let body: SubmitBody
   try {
@@ -156,26 +173,11 @@ export async function POST(req: Request, { params }: RouteContext) {
     }
   }
 
-  // ── 5. Espelhar no Google Sheets (falha silenciosa) ──────────────────────────
-  const synced = await syncToSheets({
-    surveyId:     slug,
-    communityId,
-    userId:       effectiveUserId,
-    onda,
-    perfil,
-    nomeCompleto,
-    nomeAluno,
-    serie,
-    nomeEscola,
-    answers,
-  })
-
-  if (synced) {
-    await supabase
-      .from('response_sessions')
-      .update({ synced_to_sheets: true, synced_at: new Date().toISOString() })
-      .eq('id', sessionId)
-  }
+  // ── 5. Responder imediatamente ao usuário ────────────────────────────────────
+  //
+  // Sincronização com Google Sheets é feita pelo cron (a cada 11h UTC).
+  // As sessions com synced_to_sheets = false serão processadas quando o cron rodar.
+  // Isso permite responder ao usuário em <100ms em vez de ficar esperando até 30s.
 
   return NextResponse.json({ ok: true, sessionId })
 }
