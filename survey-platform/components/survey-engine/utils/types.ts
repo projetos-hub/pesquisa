@@ -156,6 +156,8 @@ export interface SurveyContext {
   perfil: Perfil
   nomeAluno: string
   serie: string
+  email: string
+  layersMeta: Record<string, unknown>
 }
 
 // ─── Resposta NPS ─────────────────────────────────────────────────────────────
