@@ -17,6 +17,8 @@ interface SubmitBody {
   nomeCompleto?: string
   nomeAluno?: string
   serie?: string
+  email?: string
+  layersMeta?: Record<string, unknown>
   answers: Record<string, unknown>
 }
 
@@ -58,6 +60,8 @@ export async function POST(req: Request, { params }: RouteContext) {
     nomeCompleto = '',
     nomeAluno = '',
     serie = '',
+    email = '',
+    layersMeta = {},
     answers,
   } = body
 
@@ -112,6 +116,8 @@ export async function POST(req: Request, { params }: RouteContext) {
         serie,
         school,
         onda,
+        email:            email || null,
+        layers_meta:      Object.keys(layersMeta).length > 0 ? layersMeta : null,
       },
       {
         onConflict:       'survey_id,community_id,user_id',

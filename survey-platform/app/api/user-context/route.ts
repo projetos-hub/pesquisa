@@ -1,11 +1,21 @@
 import { NextResponse } from 'next/server'
 import { fetchLayersUser } from '@/lib/layers-hub'
+import type { LayersUserProfile } from '@/lib/layers-hub'
 
-const EMPTY: { nome: string; perfil: 'responsavel'; nomeAluno: string; serie: string } = {
+const EMPTY: LayersUserProfile = {
   nome:      '',
+  email:     '',
   perfil:    'responsavel',
   nomeAluno: '',
   serie:     '',
+  meta: {
+    roles:      [],
+    lastSeenAt: null,
+    groupsIds:  [],
+    membersId:  [],
+    address:    {},
+    fields:     {},
+  },
 }
 
 export async function GET(req: Request) {

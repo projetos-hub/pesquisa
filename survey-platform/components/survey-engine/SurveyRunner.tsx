@@ -67,6 +67,8 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
       let hubPerfil: Perfil = 'responsavel'
       let hubNomeAluno = ''
       let hubSerie     = ''
+      let hubEmail     = ''
+      let hubMeta: Record<string, unknown> = {}
 
       const effectiveId = userId || accountId
       if (effectiveId && communityId) {
@@ -76,11 +78,14 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
           if (res.ok) {
             const profile = await res.json() as {
               nome: string; perfil: Perfil; nomeAluno: string; serie: string
+              email: string; meta: Record<string, unknown>
             }
             hubNome      = profile.nome      || ''
             hubPerfil    = profile.perfil    || 'responsavel'
             hubNomeAluno = profile.nomeAluno || ''
             hubSerie     = profile.serie     || ''
+            hubEmail     = profile.email     || ''
+            hubMeta      = profile.meta      || {}
           }
         } catch {
           // Hub API indisponível — continua com URL params
@@ -107,6 +112,8 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
         perfil:    ((searchParams.get('role') || hubPerfil) as Perfil),
         nomeAluno: hubNomeAluno || searchParams.get('studentName') || '',
         serie:     hubSerie     || searchParams.get('grade')       || '',
+        email:     hubEmail,
+        layersMeta: hubMeta,
       })
     }
 
@@ -185,7 +192,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const {
     onda,
     school, tipo, nome: nomeCompleto, perfil, nomeAluno, serie,
-    communityId, userId, accountId,
+    communityId, userId, accountId, email, layersMeta,
   } = ctx
 
   // Status e datas: instalação do banco tem prioridade sobre URL params
@@ -286,6 +293,8 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
           nomeCompleto,
           nomeAluno,
           serie,
+          email,
+          layersMeta,
           answers: finalAnswers,
         }),
       })
