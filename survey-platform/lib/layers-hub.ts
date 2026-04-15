@@ -79,7 +79,11 @@ async function _fetchLayersUserUncached(
     const user = await userRes.json() as {
       name?: string
       roles?: string[][]
+      [key: string]: unknown
     }
+
+    // TODO: remover após diagnóstico — ver quais campos a Layers retorna
+    console.log('[layers-hub] user payload:', JSON.stringify(user))
 
     const perfil = mapRole(user.roles ?? [])
     let nomeAluno = ''
