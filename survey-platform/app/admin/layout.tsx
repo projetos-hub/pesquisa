@@ -44,6 +44,13 @@ export default async function AdminLayout({
             Exportar
           </Link>
           <Link
+            href="/admin/dispatch"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            <span>📢</span>
+            Disparos
+          </Link>
+          <Link
             href="/admin/communities"
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
           >
