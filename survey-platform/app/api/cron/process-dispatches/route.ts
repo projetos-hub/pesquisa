@@ -1,8 +1,10 @@
 // GET /api/cron/process-dispatches
-// Vercel Cron: a cada 5 minutos — processa disparos agendados cujo horário chegou
+// Vercel Cron: a cada 5 minutos
+// Processa: (1) dispatches agendados cujo horário chegou
+//           (2) jobs personalizados em andamento (status 'sending')
 
 import { createServiceClient } from '@/lib/supabase-service'
-import { executeDispatch } from '@/lib/layers-notifications'
+import { executeDispatch, executePersonalizedJob, type DispatchRecord } from '@/lib/layers-notifications'
 
 function isAuthorized(req: Request): boolean {
   const auth   = req.headers.get('authorization') ?? ''
@@ -18,45 +20,83 @@ export async function GET(request: Request) {
 
   const supabase = createServiceClient()
 
-  // Busca dispatches agendados cujo horário já chegou
-  const { data: pending, error } = await supabase
+  // ── 1. Dispatches agendados com horário chegado ────────────────────────────
+  const { data: scheduled } = await supabase
     .from('survey_dispatches')
     .select('id')
     .eq('status', 'scheduled')
     .lte('scheduled_at', new Date().toISOString())
 
-  if (error) {
-    console.error('[cron/process-dispatches] erro ao buscar dispatches:', error)
-    return Response.json({ error: 'Erro ao buscar dispatches' }, { status: 500 })
-  }
-
-  if (!pending || pending.length === 0) {
-    return Response.json({ ok: true, processed: 0, message: 'Nenhum dispatch pendente' })
-  }
-
-  // Processa cada dispatch em paralelo
-  const results = await Promise.allSettled(
-    pending.map(async (d: { id: string }) => {
+  const scheduledResults = await Promise.allSettled(
+    (scheduled ?? []).map(async (d: { id: string }) => {
       const result = await executeDispatch(d.id)
       return { dispatchId: d.id, ...result }
     })
   )
 
-  const processed = results.filter(r => r.status === 'fulfilled').length
-  const errors    = results.filter(r => r.status === 'rejected').length
+  // ── 2. Jobs personalizados em andamento (próximo lote) ────────────────────
+  // Busca dispatches personalizados com jobs ainda em 'sending'
+  const { data: inProgressDispatches } = await supabase
+    .from('survey_dispatches')
+    .select('id')
+    .eq('status', 'sending')
+    .eq('personalized', true)
+    .limit(5)
 
-  const summary = results.map(r =>
-    r.status === 'fulfilled'
-      ? r.value
-      : { error: String(r.reason) }
+  const inProgressJobs: { id: string; community_id: string; dispatchId: string }[] = []
+
+  for (const d of inProgressDispatches ?? []) {
+    const { data: jobs } = await supabase
+      .from('survey_dispatch_jobs')
+      .select('id, community_id, processed_users, total_users')
+      .eq('dispatch_id', d.id)
+      .eq('status', 'sending')
+      .limit(3)
+
+    for (const j of jobs ?? []) {
+      const job = j as { id: string; community_id: string; processed_users: number; total_users: number | null }
+      if (job.total_users === null || job.processed_users < job.total_users) {
+        inProgressJobs.push({ id: job.id, community_id: job.community_id, dispatchId: d.id as string })
+      }
+    }
+  }
+
+  const personalizedResults = await Promise.allSettled(
+    inProgressJobs.map(async (job) => {
+      const { data: dispatch } = await supabase
+        .from('survey_dispatches')
+        .select('*')
+        .eq('id', job.dispatchId)
+        .single()
+
+      if (!dispatch) return { jobId: job.id, processed: 0, failed: 0, hasMore: false }
+
+      const result = await executePersonalizedJob(
+        job.id,
+        dispatch as DispatchRecord,
+        job.community_id,
+        '',
+      )
+      return { jobId: job.id, ...result }
+    })
   )
 
-  console.log(`[cron/process-dispatches] processed=${processed} errors=${errors}`)
+  const processedScheduled    = scheduledResults.filter(r => r.status === 'fulfilled').length
+  const processedPersonalized = personalizedResults.filter(r => r.status === 'fulfilled').length
+  const errors = [
+    ...scheduledResults.filter(r => r.status === 'rejected'),
+    ...personalizedResults.filter(r => r.status === 'rejected'),
+  ].length
+
+  console.log(
+    `[cron/process-dispatches] scheduled=${processedScheduled} ` +
+    `personalized=${processedPersonalized} errors=${errors}`
+  )
 
   return Response.json({
-    ok:        true,
-    processed,
+    ok:                   true,
+    processed_scheduled:  processedScheduled,
+    processed_personalized: processedPersonalized,
     errors,
-    summary,
   })
 }

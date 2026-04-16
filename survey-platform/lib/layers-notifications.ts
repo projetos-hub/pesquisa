@@ -6,6 +6,11 @@
 
 import { createServiceClient } from './supabase-service'
 
+// Delay entre chamadas no modo personalizado (ms) — evita rate limit
+const PERSONALIZED_DELAY_MS = 150
+// Máximo de usuários processados por execução de cron no modo personalizado
+const PERSONALIZED_BATCH_SIZE = 30
+
 const LAYERS_BASE_URL = 'https://api.layers.digital'
 const PORTAL_ALIAS    = '@raizeducacao:pesquisa'
 
@@ -31,6 +36,22 @@ export interface DispatchRecord {
   target_community_ids: string[] | null
   target_group_alias:   string | null
   target_roles:         TargetRole[]
+  personalized:         boolean
+}
+
+interface LayersUserListItem {
+  _id:       string
+  name?:     string
+  email?:    string
+  roles?:    string[]
+  membersId?: string[]
+}
+
+interface PersonalizedVars {
+  nome:       string
+  nomeAluno:  string
+  nomeEscola: string
+  serie:      string
 }
 
 interface LayersTopic {
@@ -206,6 +227,193 @@ export async function sendToOneCommunity(
   }
 }
 
+// ─── fetchCommunityUsers ──────────────────────────────────────────────────────
+//
+// Busca usuários de uma comunidade via Layers Hub API com paginação.
+
+async function fetchCommunityUsers(
+  communityId: string,
+  roles: TargetRole[],
+  limit = 200,
+  offset = 0,
+): Promise<{ users: LayersUserListItem[]; total: number }> {
+  const token = process.env.LAYERS_API_TOKEN
+  if (!token) return { users: [], total: 0 }
+
+  try {
+    const params = new URLSearchParams({
+      active: 'true',
+      limit:  String(limit),
+      offset: String(offset),
+    })
+    // Filtra por role se não for 'all'
+    if (roles.length > 0 && !(roles.includes('guardian') && roles.includes('student') && roles.includes('admin'))) {
+      params.set('role', roles[0]) // Layers aceita um role por vez
+    }
+
+    const res = await fetch(`${LAYERS_BASE_URL}/v1/users?${params}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'community-id':  communityId,
+      },
+      signal: AbortSignal.timeout(10_000),
+    })
+
+    if (!res.ok) return { users: [], total: 0 }
+
+    const data = await res.json() as unknown
+    if (Array.isArray(data)) {
+      return { users: data as LayersUserListItem[], total: (data as unknown[]).length }
+    }
+    if (typeof data === 'object' && data !== null) {
+      const d = data as { hits?: LayersUserListItem[]; total?: number }
+      return { users: d.hits ?? [], total: d.total ?? 0 }
+    }
+    return { users: [], total: 0 }
+  } catch {
+    return { users: [], total: 0 }
+  }
+}
+
+// ─── interpolatePlaceholders ──────────────────────────────────────────────────
+//
+// Substitui {{variavel}} no texto pelos dados do usuário.
+// Fallbacks garantem que a mensagem sempre faz sentido mesmo sem o dado.
+
+function interpolatePlaceholders(text: string, vars: PersonalizedVars): string {
+  return text
+    .replace(/\{\{nome\}\}/g,       vars.nome       || 'você')
+    .replace(/\{\{nomeAluno\}\}/g,  vars.nomeAluno  || 'seu filho(a)')
+    .replace(/\{\{nomeEscola\}\}/g, vars.nomeEscola || 'a escola')
+    .replace(/\{\{serie\}\}/g,      vars.serie      || 'a turma')
+}
+
+// ─── buildPersonalizedPayload ─────────────────────────────────────────────────
+//
+// Monta payload personalizado para um usuário específico.
+
+function buildPersonalizedPayload(
+  dispatch:    DispatchRecord,
+  communityId: string,
+  user:        LayersUserListItem,
+  nomeEscola:  string,
+): LayersPayload {
+  const vars: PersonalizedVars = {
+    nome:       user.name?.split(' ')[0] ?? '',
+    nomeAluno:  '',   // preenchido se for guardian
+    nomeEscola,
+    serie:      '',
+  }
+
+  const title = interpolatePlaceholders(dispatch.push_title ?? dispatch.title, vars)
+  const body  = interpolatePlaceholders(dispatch.push_body  ?? dispatch.body,  vars)
+
+  const payload: LayersPayload = {
+    targets: {
+      topics: [{ kind: 'user', id: user._id }],
+      roles:  dispatch.target_roles,
+    },
+    title,
+    body,
+    action: {
+      type:        'portal',
+      portalAlias: PORTAL_ALIAS,
+      path:        '/',
+    },
+  }
+
+  const channels: LayersPayload['channels'] = {}
+
+  if (dispatch.channels.includes('pushNotification')) {
+    channels.pushNotification = { title, body }
+  }
+
+  if (dispatch.channels.includes('email')) {
+    const emailTitle = interpolatePlaceholders(dispatch.email_title ?? dispatch.title, vars)
+    const emailBody  = interpolatePlaceholders(dispatch.email_body  ?? dispatch.body,  vars)
+    channels.email = {
+      title:       emailTitle,
+      body:        emailBody,
+      actionLabel: dispatch.email_action_label || 'Responder Pesquisa',
+      ...(dispatch.email_background_url ? { backgroundUrl: dispatch.email_background_url } : {}),
+    }
+  }
+
+  if (Object.keys(channels).length > 0) payload.channels = channels
+
+  return payload
+}
+
+// ─── executePersonalizedJob ───────────────────────────────────────────────────
+//
+// Processa um job de disparo personalizado em lotes.
+// Cada execução de cron processa até PERSONALIZED_BATCH_SIZE usuários.
+// A próxima execução continua de onde parou usando processed_users como offset.
+
+export async function executePersonalizedJob(
+  jobId:       string,
+  dispatch:    DispatchRecord,
+  communityId: string,
+  nomeEscola:  string,
+): Promise<{ processed: number; failed: number; hasMore: boolean }> {
+  const supabase = createServiceClient()
+
+  // Busca progresso atual do job
+  const { data: job } = await supabase
+    .from('survey_dispatch_jobs')
+    .select('processed_users, failed_users, total_users')
+    .eq('id', jobId)
+    .single()
+
+  const offset = job?.processed_users ?? 0
+
+  // Busca lote de usuários
+  const { users, total } = await fetchCommunityUsers(
+    communityId,
+    dispatch.target_roles,
+    PERSONALIZED_BATCH_SIZE,
+    offset,
+  )
+
+  // Atualiza total se primeira execução
+  if (offset === 0 && total > 0) {
+    await supabase
+      .from('survey_dispatch_jobs')
+      .update({ total_users: total, status: 'sending' })
+      .eq('id', jobId)
+  }
+
+  let processed = 0
+  let failed    = 0
+
+  for (const user of users) {
+    const payload = buildPersonalizedPayload(dispatch, communityId, user, nomeEscola)
+    const result  = await sendToOneCommunity(communityId, payload)
+
+    if (result.success) processed++
+    else                failed++
+
+    // Delay entre chamadas para respeitar rate limit
+    await new Promise(r => setTimeout(r, PERSONALIZED_DELAY_MS))
+  }
+
+  const newProcessed = offset + processed
+  const hasMore      = newProcessed < (total || 0)
+
+  // Atualiza progresso no job
+  await supabase
+    .from('survey_dispatch_jobs')
+    .update({
+      processed_users: newProcessed,
+      failed_users:    (job?.failed_users ?? 0) + failed,
+      status:          hasMore ? 'sending' : (failed === users.length && users.length > 0 ? 'failed' : 'sent'),
+      sent_at:         hasMore ? null : new Date().toISOString(),
+    })
+    .eq('id', jobId)
+
+  return { processed, failed, hasMore }
+}
+
 // ─── executeDispatch ──────────────────────────────────────────────────────────
 //
 // Processa todos os jobs pendentes de um dispatch.
@@ -241,7 +449,59 @@ export async function executeDispatch(dispatchId: string): Promise<DispatchResul
     .update({ status: 'sending', started_at: new Date().toISOString() })
     .eq('id', dispatchId)
 
-  // Executa todos os jobs em paralelo
+  const dispatchRecord = dispatch as DispatchRecord & { personalized?: boolean }
+
+  // ── Modo personalizado: delega para executePersonalizedJob ────────────────
+  if (dispatchRecord.personalized) {
+    // Busca nome da escola para placeholder {{nomeEscola}}
+    const { data: communityRow } = await supabase
+      .from('survey_communities')
+      .select('theme')
+      .eq('survey_id', dispatch.survey_id)
+      .limit(1)
+      .single()
+    const nomeEscola = (communityRow?.theme as { nomeEscola?: string } | null)?.nomeEscola ?? ''
+
+    const results = await Promise.allSettled(
+      jobs.map(async (job: { id: string; community_id: string }) => {
+        const res = await executePersonalizedJob(
+          job.id,
+          dispatchRecord as DispatchRecord,
+          job.community_id,
+          nomeEscola,
+        )
+        return { communityId: job.community_id, success: res.failed === 0, hasMore: res.hasMore }
+      })
+    )
+
+    const jobResults: JobResult[] = results.map(r =>
+      r.status === 'fulfilled'
+        ? { communityId: r.value.communityId, success: r.value.success }
+        : { communityId: 'unknown', success: false, error: String(r.reason) }
+    )
+
+    const sent   = jobResults.filter(r => r.success).length
+    const failed = jobResults.filter(r => !r.success).length
+    const anyHasMore = results.some(r => r.status === 'fulfilled' && r.value.hasMore)
+
+    const finalStatus = anyHasMore
+      ? 'sending'  // mais lotes pendentes para o cron processar
+      : failed === 0 ? 'sent' : sent === 0 ? 'failed' : 'partial_failure'
+
+    await supabase
+      .from('survey_dispatches')
+      .update({
+        status:         finalStatus,
+        completed_jobs: sent,
+        failed_jobs:    failed,
+        ...(anyHasMore ? {} : { completed_at: new Date().toISOString() }),
+      })
+      .eq('id', dispatchId)
+
+    return { sent, failed, jobs: jobResults }
+  }
+
+  // ── Modo grupo: 1 chamada por comunidade ──────────────────────────────────
   const results = await Promise.allSettled(
     jobs.map(async (job: { id: string; community_id: string }) => {
       const payload = buildNotificationPayload(dispatch as DispatchRecord, job.community_id)
