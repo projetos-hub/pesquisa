@@ -185,7 +185,7 @@ Lista matrículas. Liga usuário a grupo (turma).
 - `GET /v1/members` — Listar membros
 - `GET /v1/enrollments/{id}` — Ver matrícula específica
 - AppMaker API — Gerenciar instalações
-- Notifications API — Enviar notificações push/email (usado no cron)
+- **Notifications API** — documentação completa em `docs/layers-notifications.md`
 - Data Sync — Sync bidirecional (não necessário agora)
 
 ---

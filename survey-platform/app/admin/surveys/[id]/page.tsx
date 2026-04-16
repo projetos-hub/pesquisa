@@ -127,6 +127,24 @@ export default async function SurveyDetailPage({ params }: PageProps) {
           />
         </div>
 
+        {/* Card de disparos */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700">Disparos</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Envie notificações push e email para as famílias via Layers.
+              </p>
+            </div>
+            <Link
+              href={`/admin/surveys/${id}/dispatch`}
+              className="bg-indigo-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+            >
+              📢 Disparar
+            </Link>
+          </div>
+        </div>
+
         {/* Links para respostas e identidade visual */}
         <div className="flex justify-end gap-4">
           <Link

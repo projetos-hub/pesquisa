@@ -64,7 +64,9 @@
       "Bash(PYTHONIOENCODING=utf-8 python3:*)",
       "WebFetch(domain:raizeducacao.com.br)",
       "WebFetch(domain:www.brandcolorcode.com)",
-      "WebFetch(domain:brandfetch.com)"
+      "WebFetch(domain:brandfetch.com)",
+      "WebFetch(domain:developers.layers.education)",
+      "WebFetch(domain:api.layers.digital)"
     ],
     "deny": [
       "Read(.env)",
