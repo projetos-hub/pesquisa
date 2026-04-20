@@ -13,10 +13,11 @@ async function requireAuth() {
 
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireAuth()
+    const { id } = await params
 
     const formData = await req.formData()
     const file = formData.get('file') as File
@@ -76,7 +77,7 @@ export async function POST(
         }
 
         entries.push({
-          survey_id: params.id,
+          survey_id: id,
           community_id: communityId,
           email: email.toLowerCase(),
           nome,
@@ -93,7 +94,7 @@ export async function POST(
     await supabase
       .from('survey_sample_lists')
       .delete()
-      .eq('survey_id', params.id)
+      .eq('survey_id', id)
 
     // INSERT em batch com UPSERT
     const { error } = await supabase
@@ -126,26 +127,27 @@ export async function POST(
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireAuth()
+    const { id } = await params
 
     const supabase = createServiceClient()
 
     const { data } = await supabase
       .from('survey_sample_lists')
       .select('*')
-      .eq('survey_id', params.id)
+      .eq('survey_id', id)
       .order('community_id, email')
 
     // Agrupar por community
-    const byCommun ity: Record<string, any[]> = {}
+    const byCommunity: Record<string, any[]> = {}
     data?.forEach(entry => {
-      if (!byCommun ity[entry.community_id]) {
-        byCommun ity[entry.community_id] = []
+      if (!byCommunity[entry.community_id]) {
+        byCommunity[entry.community_id] = []
       }
-      byCommun ity[entry.community_id].push({
+      byCommunity[entry.community_id].push({
         email: entry.email,
         nome: entry.nome,
         layers_user_id: entry.layers_user_id,
@@ -154,11 +156,11 @@ export async function GET(
     })
 
     const totalEntries = data?.length || 0
-    const schools = Object.keys(byCommun ity).length
+    const schools = Object.keys(byCommunity).length
     const resolved = data?.filter(e => e.layers_user_id).length || 0
 
     return Response.json({
-      by_community: byCommun ity,
+      by_community: byCommunity,
       totals: {
         total_entries: totalEntries,
         schools,
@@ -173,17 +175,18 @@ export async function GET(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireAuth()
+    const { id } = await params
 
     const supabase = createServiceClient()
 
     const { error } = await supabase
       .from('survey_sample_lists')
       .delete()
-      .eq('survey_id', params.id)
+      .eq('survey_id', id)
 
     if (error) {
       return Response.json({ error: 'Failed to delete' }, { status: 500 })
