@@ -66,7 +66,9 @@
       "WebFetch(domain:www.brandcolorcode.com)",
       "WebFetch(domain:brandfetch.com)",
       "WebFetch(domain:developers.layers.education)",
-      "WebFetch(domain:api.layers.digital)"
+      "WebFetch(domain:api.layers.digital)",
+      "mcp__google-workspace__search_drive_files",
+      "mcp__google-workspace__get_drive_file_content"
     ],
     "deny": [
       "Read(.env)",
