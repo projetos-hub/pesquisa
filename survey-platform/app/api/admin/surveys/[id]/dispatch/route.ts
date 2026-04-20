@@ -44,6 +44,9 @@ const DispatchSchema = z.object({
   target_group_alias:   z.string().optional().nullable(),
   target_roles:         z.array(z.enum(['guardian', 'student', 'admin'])).min(1),
 
+  // Modo de disparo
+  personalized: z.boolean().optional(),
+
   // Agendamento
   scheduled_at: z.string().datetime({ offset: true }).optional().nullable(),
 
@@ -101,6 +104,23 @@ export async function POST(
       )
     }
 
+    // Detectar se é disparo amostral
+    const { data: hasSample } = await supabase
+      .from('survey_sample_lists')
+      .select('id')
+      .eq('survey_id', surveyId)
+      .limit(1)
+
+    const isAmostral = hasSample && hasSample.length > 0
+
+    // Se é amostral, requer modo personalizado
+    if (isAmostral && !body.personalized) {
+      return Response.json(
+        { error: 'Pesquisas amostrais só funcionam em modo Personalizado' },
+        { status: 422 },
+      )
+    }
+
     const isScheduled = !!body.scheduled_at
     const initialStatus = isScheduled ? 'scheduled' : 'sending'
 
@@ -122,6 +142,7 @@ export async function POST(
         target_community_ids: body.target_community_ids ?? null,
         target_group_alias:   body.target_group_alias ?? null,
         target_roles:         body.target_roles as TargetRole[],
+        personalized:         body.personalized ?? false,
         scheduled_at:         body.scheduled_at ?? null,
         status:               initialStatus,
         total_jobs:           targetCommunities.length,

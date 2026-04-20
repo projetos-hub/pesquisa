@@ -146,3 +146,39 @@ export async function fetchLayersUser(
 ): Promise<LayersUserProfile | null> {
   return _fetchLayersUserCached(userId, communityId)
 }
+
+export async function fetchLayersUserByEmail(
+  communityId: string,
+  email: string,
+): Promise<string | null> {
+  const token = process.env.LAYERS_API_TOKEN
+
+  if (!token || !communityId || !email) return null
+
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'community-id':  communityId,
+  }
+
+  try {
+    const res = await fetch(
+      `${BASE_URL}/v1/users?email=${encodeURIComponent(email)}&active=true&limit=1`,
+      {
+        headers,
+        signal: AbortSignal.timeout(3_000),
+      }
+    )
+    if (!res.ok) return null
+
+    const data = await res.json() as {
+      _id?: string
+      hits?: { _id?: string }[]
+    }
+
+    // Trata dois formatos de resposta: array direto ou objeto paginado
+    const userId = data._id || data.hits?.[0]?._id
+    return userId || null
+  } catch {
+    return null
+  }
+}

@@ -127,6 +127,24 @@ export default async function SurveyDetailPage({ params }: PageProps) {
           />
         </div>
 
+        {/* Card de amostra */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700">Amostra Segmentada</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Faça upload de uma lista de usuários para segmentar esta pesquisa.
+              </p>
+            </div>
+            <Link
+              href={`/admin/surveys/${id}/sample`}
+              className="bg-indigo-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+            >
+              📋 Gerenciar
+            </Link>
+          </div>
+        </div>
+
         {/* Card de disparos */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between">

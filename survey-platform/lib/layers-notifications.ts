@@ -344,6 +344,149 @@ function buildPersonalizedPayload(
   return payload
 }
 
+// ─── executePersonalizedJobSample ────────────────────────────────────────────
+//
+// Processa disparo personalizado para amostra segmentada.
+// Busca usuários de survey_sample_lists ao invés de Layers Hub API.
+// Só dispara para entries com layers_user_id resolvido.
+
+export async function executePersonalizedJobSample(
+  jobId:       string,
+  dispatch:    DispatchRecord,
+  communityId: string,
+): Promise<{ processed: number; failed: number; hasMore: boolean }> {
+  const supabase = createServiceClient()
+
+  // Busca progresso atual do job
+  const { data: job } = await supabase
+    .from('survey_dispatch_jobs')
+    .select('processed_users, failed_users, total_users')
+    .eq('id', jobId)
+    .single()
+
+  const offset = job?.processed_users ?? 0
+
+  // Contar total de entries na amostra com layers_user_id resolvido (primeira execução)
+  if (offset === 0) {
+    const { count } = await supabase
+      .from('survey_sample_lists')
+      .select('*', { count: 'exact', head: true })
+      .eq('survey_id', dispatch.survey_id)
+      .eq('community_id', communityId)
+      .not('layers_user_id', 'is', null)
+
+    const total = count || 0
+    if (total > 0) {
+      await supabase
+        .from('survey_dispatch_jobs')
+        .update({ total_users: total, status: 'sending' })
+        .eq('id', jobId)
+    }
+  }
+
+  // Busca lote de entries na amostra
+  const { data: sampleEntries } = await supabase
+    .from('survey_sample_lists')
+    .select('id, email, nome, layers_user_id')
+    .eq('survey_id', dispatch.survey_id)
+    .eq('community_id', communityId)
+    .not('layers_user_id', 'is', null)
+    .order('created_at')
+    .range(offset, offset + PERSONALIZED_BATCH_SIZE - 1)
+
+  let processed = 0
+  let failed    = 0
+
+  for (const entry of sampleEntries || []) {
+    if (!entry.layers_user_id) continue
+
+    try {
+      // Monta payload personalizado para entrada da amostra
+      const payload: LayersPayload = {
+        targets: {
+          topics: [{ kind: 'user', id: entry.layers_user_id }],
+          roles:  dispatch.target_roles,
+        },
+        title:  dispatch.title,
+        body:   dispatch.body,
+        action: {
+          type:        'portal',
+          portalAlias: PORTAL_ALIAS,
+          path:        '/',
+        },
+      }
+
+      // Interpolar placeholders com dados da amostra
+      const vars: PersonalizedVars = {
+        nome:       entry.nome?.split(' ')[0] ?? '',
+        nomeAluno:  '',
+        nomeEscola: '',
+        serie:      '',
+      }
+
+      const title = interpolatePlaceholders(dispatch.push_title ?? dispatch.title, vars)
+      const body  = interpolatePlaceholders(dispatch.push_body  ?? dispatch.body,  vars)
+      payload.title = title
+      payload.body  = body
+
+      // Canais customizados
+      const channels: LayersPayload['channels'] = {}
+
+      if (dispatch.channels.includes('pushNotification')) {
+        channels.pushNotification = { title, body }
+      }
+
+      if (dispatch.channels.includes('email')) {
+        const emailTitle = interpolatePlaceholders(dispatch.email_title ?? dispatch.title, vars)
+        const emailBody  = interpolatePlaceholders(dispatch.email_body  ?? dispatch.body,  vars)
+        channels.email = {
+          title:       emailTitle,
+          body:        emailBody,
+          actionLabel: dispatch.email_action_label || 'Responder Pesquisa',
+          ...(dispatch.email_background_url ? { backgroundUrl: dispatch.email_background_url } : {}),
+        }
+      }
+
+      if (Object.keys(channels).length > 0) payload.channels = channels
+
+      // Enviar notificação
+      const result = await sendToOneCommunity(communityId, payload)
+      if (result.success) processed++
+      else                failed++
+    } catch (err) {
+      console.error(`[sample-dispatch] Erro ao disparar para ${entry.email}:`, err)
+      failed++
+    }
+
+    // Delay entre chamadas para respeitar rate limit
+    await new Promise(r => setTimeout(r, PERSONALIZED_DELAY_MS))
+  }
+
+  const newProcessed = offset + processed
+  const { count: totalCount } = await supabase
+    .from('survey_sample_lists')
+    .select('*', { count: 'exact', head: true })
+    .eq('survey_id', dispatch.survey_id)
+    .eq('community_id', communityId)
+    .not('layers_user_id', 'is', null)
+
+  const total = totalCount || 0
+  const hasMore = newProcessed < total
+
+  // Atualiza progresso no job
+  await supabase
+    .from('survey_dispatch_jobs')
+    .update({
+      processed_users: newProcessed,
+      failed_users:    (job?.failed_users ?? 0) + failed,
+      status:          hasMore ? 'sending' : (failed === (sampleEntries?.length || 0) && (sampleEntries?.length || 0) > 0 ? 'failed' : 'sent'),
+      sent_at:         hasMore ? null : new Date().toISOString(),
+    })
+    .eq('id', jobId)
+
+  return { processed, failed, hasMore }
+}
+
 // ─── executePersonalizedJob ───────────────────────────────────────────────────
 //
 // Processa um job de disparo personalizado em lotes.
@@ -451,7 +594,34 @@ export async function executeDispatch(dispatchId: string): Promise<DispatchResul
 
   const dispatchRecord = dispatch as DispatchRecord & { personalized?: boolean }
 
-  // ── Modo personalizado: delega para executePersonalizedJob ────────────────
+  // ── Detectar se é disparo amostral ─────────────────────────────────────────
+  const { data: hasSample } = await supabase
+    .from('survey_sample_lists')
+    .select('id')
+    .eq('survey_id', dispatchRecord.survey_id)
+    .limit(1)
+
+  const isAmostral = hasSample && hasSample.length > 0
+
+  // Se é amostral, requer modo personalizado
+  if (isAmostral && !dispatchRecord.personalized) {
+    // Marca dispatch como erro
+    await supabase
+      .from('survey_dispatches')
+      .update({
+        status: 'failed',
+        error_message: 'Pesquisas amostrais só funcionam em modo Personalizado',
+      })
+      .eq('id', dispatchId)
+
+    return { sent: 0, failed: jobs.length, jobs: jobs.map(j => ({
+      communityId: (j as { community_id: string }).community_id,
+      success: false,
+      error: 'SAMPLE_REQUIRES_PERSONALIZED'
+    })) }
+  }
+
+  // ── Modo personalizado: delega para executePersonalizedJob ou executePersonalizedJobSample
   if (dispatchRecord.personalized) {
     // Busca nome da escola para placeholder {{nomeEscola}}
     const { data: communityRow } = await supabase
@@ -462,14 +632,21 @@ export async function executeDispatch(dispatchId: string): Promise<DispatchResul
       .single()
     const nomeEscola = (communityRow?.theme as { nomeEscola?: string } | null)?.nomeEscola ?? ''
 
+    // Se é amostral, usa executePersonalizedJobSample; senão, usa executePersonalizedJob
     const results = await Promise.allSettled(
       jobs.map(async (job: { id: string; community_id: string }) => {
-        const res = await executePersonalizedJob(
-          job.id,
-          dispatchRecord as DispatchRecord,
-          job.community_id,
-          nomeEscola,
-        )
+        const res = isAmostral
+          ? await executePersonalizedJobSample(
+              job.id,
+              dispatchRecord as DispatchRecord,
+              job.community_id,
+            )
+          : await executePersonalizedJob(
+              job.id,
+              dispatchRecord as DispatchRecord,
+              job.community_id,
+              nomeEscola,
+            )
         return { communityId: job.community_id, success: res.failed === 0, hasMore: res.hasMore }
       })
     )

@@ -127,10 +127,13 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
 
     setSurvey(null)
     setSurveyNotFound(false)
+    setAccessDenied(false)
 
-    const qs = ctx.communityId
-      ? `?communityId=${encodeURIComponent(ctx.communityId)}`
-      : ''
+    const params = new URLSearchParams()
+    if (ctx.communityId) params.append('communityId', ctx.communityId)
+    if (ctx.email) params.append('email', ctx.email)
+
+    const qs = params.toString() ? `?${params.toString()}` : ''
 
     fetch(`/api/surveys/${surveySlug}${qs}`)
       .then(res => {

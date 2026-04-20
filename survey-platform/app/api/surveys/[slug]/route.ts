@@ -89,11 +89,59 @@ export async function GET(req: Request, { params }: RouteContext) {
   const { slug } = await params
   const { searchParams } = new URL(req.url)
   const communityId = (searchParams.get('communityId') ?? '').replace('@', '')
+  const email = searchParams.get('email')
 
   const result = await getCachedSurveyConfig(slug, communityId)
 
   if (result.error) {
     return NextResponse.json({ error: result.error }, { status: result.status })
+  }
+
+  // CHECAGEM 3: Validar email na amostra se survey possui segmentação
+  if (result.data?.id && communityId) {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+      { auth: { persistSession: false } }
+    )
+
+    const { data: sampleEntries } = await supabase
+      .from('survey_sample_lists')
+      .select('id')
+      .eq('survey_id', result.data.id)
+      .eq('community_id', communityId)
+      .limit(1)
+
+    if (sampleEntries && sampleEntries.length > 0) {
+      // Survey possui amostra — validar email
+      if (!email) {
+        return NextResponse.json(
+          {
+            error: 'not_in_sample',
+            message: 'Email não fornecido para pesquisa segmentada',
+          },
+          { status: 403 }
+        )
+      }
+
+      const { data: userInSample } = await supabase
+        .from('survey_sample_lists')
+        .select('id')
+        .eq('survey_id', result.data.id)
+        .eq('community_id', communityId)
+        .eq('email', email.toLowerCase())
+        .limit(1)
+
+      if (!userInSample || userInSample.length === 0) {
+        return NextResponse.json(
+          {
+            error: 'not_in_sample',
+            message: 'Você não está na amostra desta pesquisa',
+          },
+          { status: 403 }
+        )
+      }
+    }
   }
 
   return NextResponse.json(result.data)
