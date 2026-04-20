@@ -30,4 +30,18 @@ Stack: Next.js 16 + React 19 + Supabase + Tailwind CSS 4 + Vercel.
 App URL: https://pesquisa-nu-sand.vercel.app
 Repo: https://github.com/projetos-hub/pesquisa
 
+---
+
+## Supabase
+
+**Project ID:** `qnpvlhfjknnvfiyxrhhl`  
+**Project Name:** Mini-App Layers Pesquisa  
+**Project URL:** https://qnpvlhfjknnvfiyxrhhl.supabase.co  
+**Region:** us-east-1  
+**Status:** ACTIVE_HEALTHY
+
+Usar para MCP Supabase: `supabase__*` functions com `project_id="qnpvlhfjknnvfiyxrhhl"`
+
+---
+
 Leia `PROGRESSO.md` para entender o estado atual e próximos passos.
