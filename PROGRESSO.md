@@ -9,7 +9,7 @@
 
 ---
 
-## Estado atual: Fase 3 concluída + fix ERR_TOO_MANY_REDIRECTS aplicado
+## Estado atual: Fase 6 concluída (Segmentação Amostral)
 
 ---
 
@@ -270,6 +270,7 @@ WHERE email = 'seu@email.com';
 | 3-fix | ERR_TOO_MANY_REDIRECTS no login | ✅ Corrigido (commit 107ccd1) |
 | 4 | Google Sheets espelho + retry + cron | ✅ Concluída (commit fcae9e6) |
 | 5 | Polimento e remoção de hardcodes | ✅ Concluída (commit ddd8180) |
+| 6 | Segmentação amostral por escola | ✅ Concluída (commit 20a08a8) — amostra Excel, acesso por email, disparo amostral personalizado |
 
 ---
 
@@ -312,34 +313,15 @@ WHERE community_id = 'qi-freguesia';
 
 ## Próximos passos
 
-### 1. Deploy na Vercel (bloqueante)
+### 1. Fase 7 — Deploy na Vercel ⏳
 - Conectar repositório GitHub à Vercel apontando para `survey-platform/` como root
-- Configurar variáveis de ambiente:
+- Configurar variáveis de ambiente (SUPABASE_*, LAYERS_API_TOKEN, CRON_SECRET, etc.)
+- Rodar migrations no Supabase (003, 005, 006, 007, 008, 009 já aplicadas em produção)
 
-| Variável | Descrição |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | URL do projeto Supabase |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Chave anon |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service role key |
-| `SHEETS_WEBHOOK_URL` | URL do Apps Script (sem `/a/`) |
-| `CRON_SECRET` | String segura para proteger o cron |
+### 3. Testes (Playwright + QAT)
+- Configurar estrutura de testes e2e + smoke tests
+- Criar cenários QAT após deploy
 
-### 2. Configurações no Supabase
-- Rodar `003_admin_rls_and_constraints.sql` no SQL Editor (se ainda não rodou)
-- Adicionar URL de produção em Authentication → Redirect URLs: `https://seu-dominio.vercel.app/admin/auth/callback`
-- Criar usuário admin e inserir em `admin_profiles`
-
-### 3. Migrar SCHOOL_LINKS para o banco
-Links de indicação por escola ainda estão hardcoded em `lib/surveys.ts`.
-Migrar para `surveys.settings.indicacao_links` no Supabase via SQL ou pelo admin.
-
-### 4. Integração LayersPortal.js
-Conectar parâmetros reais da Layers (`userId`, `communityId`, `token`) no `SurveyRunner.tsx`.
-Aguarda resposta da Layers sobre os parâmetros de URL por escola.
-
-### 5. Testes (Playwright + QAT)
-Configurar após deploy no ar. Pré-requisitos:
-- Playwright instalado + configurado
-- Auth state gerado (`tests/e2e/.auth/user.json`)
-- Estrutura `tests/qat/` criada
-- `ANTHROPIC_API_KEY` configurada
+### 4. Integração LayersPortal.js — Refinamento
+- Testes com LayersPortal real (userId, communityId) passando pelo iFrame
+- Captura de email + layers_meta já implementada; validar com dados reais
