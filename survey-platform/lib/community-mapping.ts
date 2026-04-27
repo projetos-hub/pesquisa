@@ -45,9 +45,63 @@ export const NOMEFANTASIA_TO_COMMUNITY_ID: Record<string, string> = {
   "GLOBAL TREE RIO 2": "w370xa35",
   "SARA DAWSEY - TIJUCA": "y9490m37",
   "SARAH DAWSEY - JUIZ DE FORA": "sarahdawsey-juizdefora",
+
+  // Holding / administrativo
+  "RAIZ EDUCAÇÃO":  "raizeducacao",
+  "RAIZ EDUCACAO":  "raizeducacao",
+
+  // Variantes TOTVS — "COLEGIO E CURSO" em vez de "COLÉGIO"
+  "COLEGIO E CURSO MATRIZ EDUCACAO BANGU":              "matriz-bangu",
+  "COLEGIO E CURSO MATRIZ EDUCACAO CAMPO GRANDE":       "matriz-campogrande",
+  "COLEGIO E CURSO MATRIZ EDUCACAO CAXIAS":             "matriz-caxias",
+  "COLEGIO E CURSO MATRIZ EDUCACAO MADUREIRA":          "matriz-madureira",
+  "COLEGIO E CURSO MATRIZ EDUCACAO NOVA IGUACU":        "matriz-novaiguacu",
+  "COLEGIO E CURSO MATRIZ EDUCACAO RETIRO DOS ARTISTAS":"matriz-retirodosartistas",
+  "COLEGIO E CURSO MATRIZ EDUCACAO ROCHA MIRANDA":      "matriz-rochamiranda",
+  "COLEGIO E CURSO MATRIZ EDUCACAO SAO JOAO DE MERITI": "matriz-saojoaodemeriti",
+  "COLEGIO E CURSO MATRIZ EDUCACAO TAQUARA":            "matriz-taquara",
+  "COLEGIO E CURSO MATRIZ EDUCACAO TIJUCA":             "matriz-tijuca",
+
+  // Variantes TOTVS — traço antes do campus
+  "COLÉGIO LEONARDO DA VINCI - ALFA":   "leonardodavinci-alfa",
+  "COLÉGIO LEONARDO DA VINCI - BETA":   "leonardodavinci-beta",
+  "COLÉGIO LEONARDO DA VINCI - GAMA":   "leonardodavinci-gama",
+  "COLEGIO LEONARDO DA VINCI - ALFA":   "leonardodavinci-alfa",
+  "COLEGIO LEONARDO DA VINCI - BETA":   "leonardodavinci-beta",
+  "COLEGIO LEONARDO DA VINCI - GAMA":   "leonardodavinci-gama",
+
+  // Variantes TOTVS — Sarah Dawsey com "COLEGIO" na frente
+  "COLEGIO SARAH DAWSEY - JUIZ DE FORA": "sarahdawsey-juizdefora",
+  "COLÉGIO SARAH DAWSEY - JUIZ DE FORA": "sarahdawsey-juizdefora",
+  "COLEGIO SARA DAWSEY - TIJUCA":        "y9490m37",
+  "COLÉGIO SARA DAWSEY - TIJUCA":        "y9490m37",
+
+  // Variantes TOTVS — Sá Pereira
+  "ESCOLA SA PEREIRA (R. DA MATRIZ)":    "xa7y5zam",
+  "ESCOLA SA PEREIRA - FUND E MEDIO":    "xa7y5zam",
+  "ESCOLA SA PEREIRA - INFANTIL":        "w213sfza",
+  "COLEGIO SA PEREIRA":                  "xa7y5zam",
 }
 
+function normalize(s: string): string {
+  return s
+    .toUpperCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // remove acentos
+    .replace(/\s+/g, ' ')            // normaliza espaços
+}
+
+// Índice normalizado para lookup acento-insensível
+const NORMALIZED_INDEX: Record<string, string> = Object.fromEntries(
+  Object.entries(NOMEFANTASIA_TO_COMMUNITY_ID).map(([k, v]) => [normalize(k), v])
+)
+
 export function resolveCommunityId(nomeFantasia: string): string | null {
-  const normalized = nomeFantasia.toUpperCase().trim()
-  return NOMEFANTASIA_TO_COMMUNITY_ID[normalized] || null
+  const raw = nomeFantasia.toUpperCase().trim()
+  // 1. Exact match (com acento)
+  if (NOMEFANTASIA_TO_COMMUNITY_ID[raw]) return NOMEFANTASIA_TO_COMMUNITY_ID[raw]
+  // 2. Acento-insensível
+  const norm = normalize(nomeFantasia)
+  return NORMALIZED_INDEX[norm] || null
 }

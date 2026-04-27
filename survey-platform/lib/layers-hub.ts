@@ -170,13 +170,20 @@ export async function fetchLayersUserByEmail(
     )
     if (!res.ok) return null
 
-    const data = await res.json() as {
-      _id?: string
-      hits?: { _id?: string }[]
-    }
+    const data = await res.json() as
+      | { _id?: string; hits?: { _id?: string }[] }
+      | { _id?: string }[]
 
-    // Trata dois formatos de resposta: array direto ou objeto paginado
-    const userId = data._id || data.hits?.[0]?._id
+    // Trata 3 formatos possíveis da Layers Hub API:
+    // 1. Array direto: [{ _id, ... }]
+    // 2. Objeto paginado: { hits: [{ _id }] }
+    // 3. Objeto único: { _id }
+    let userId: string | undefined
+    if (Array.isArray(data)) {
+      userId = data[0]?._id
+    } else {
+      userId = data._id || data.hits?.[0]?._id
+    }
     return userId || null
   } catch {
     return null

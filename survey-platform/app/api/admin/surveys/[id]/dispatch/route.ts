@@ -39,7 +39,7 @@ const DispatchSchema = z.object({
     .min(1, 'Selecione ao menos um canal'),
 
   // Segmentação
-  target_scope:         z.enum(['all', 'communities', 'group']),
+  target_scope:         z.enum(['all', 'communities', 'group', 'sample']),
   target_community_ids: z.array(z.string()).optional().nullable(),
   target_group_alias:   z.string().optional().nullable(),
   target_roles:         z.array(z.enum(['guardian', 'student', 'admin'])).min(1),
@@ -90,6 +90,28 @@ export async function POST(
       return Response.json({ error: 'Survey não encontrada' }, { status: 404 })
     }
 
+    // Validação específica para scope 'sample'
+    if (body.target_scope === 'sample') {
+      if (!body.personalized) {
+        return Response.json(
+          { error: 'Disparos para amostra requerem modo Personalizado ativado' },
+          { status: 422 },
+        )
+      }
+      const { count } = await supabase
+        .from('survey_sample_lists')
+        .select('*', { count: 'exact', head: true })
+        .eq('survey_id', surveyId)
+        .not('layers_user_id', 'is', null)
+
+      if (!count || count === 0) {
+        return Response.json(
+          { error: 'Nenhum email resolvido na amostra. Faça upload da lista antes de disparar.' },
+          { status: 422 },
+        )
+      }
+    }
+
     // Resolve comunidades-alvo
     const targetCommunities = await resolveTargetCommunities(
       surveyId,
@@ -100,23 +122,6 @@ export async function POST(
     if (targetCommunities.length === 0) {
       return Response.json(
         { error: 'Nenhuma comunidade encontrada para os critérios selecionados' },
-        { status: 422 },
-      )
-    }
-
-    // Detectar se é disparo amostral
-    const { data: hasSample } = await supabase
-      .from('survey_sample_lists')
-      .select('id')
-      .eq('survey_id', surveyId)
-      .limit(1)
-
-    const isAmostral = hasSample && hasSample.length > 0
-
-    // Se é amostral, requer modo personalizado
-    if (isAmostral && !body.personalized) {
-      return Response.json(
-        { error: 'Pesquisas amostrais só funcionam em modo Personalizado' },
         { status: 422 },
       )
     }

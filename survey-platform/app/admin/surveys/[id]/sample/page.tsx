@@ -3,10 +3,11 @@ import { redirect } from 'next/navigation'
 import SampleUpload from './SampleUpload'
 
 interface Props {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export default async function SamplePage({ params }: Props) {
+  const { id } = await params
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -17,7 +18,7 @@ export default async function SamplePage({ params }: Props) {
   const { data: survey } = await supabase
     .from('surveys')
     .select('id, title, slug')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   if (!survey) {
@@ -32,7 +33,7 @@ export default async function SamplePage({ params }: Props) {
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <SampleUpload surveyId={params.id} surveySlug={survey.slug} />
+        <SampleUpload surveyId={id} surveySlug={survey.slug} />
       </div>
     </div>
   )

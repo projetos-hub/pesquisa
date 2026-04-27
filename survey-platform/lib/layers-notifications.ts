@@ -16,7 +16,7 @@ const PORTAL_ALIAS    = '@raizeducacao:pesquisa'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
-export type TargetScope = 'all' | 'communities' | 'group'
+export type TargetScope = 'all' | 'communities' | 'group' | 'sample'
 export type TargetRole  = 'guardian' | 'student' | 'admin'
 export type Channel     = 'pushNotification' | 'email'
 
@@ -115,8 +115,22 @@ export async function resolveTargetCommunities(
     return [communityIds[0]]
   }
 
-  // scope === 'all' — busca todas as instalações ativas da survey
   const supabase = createServiceClient()
+
+  // scope === 'sample' — retorna comunidades que têm entradas na amostra
+  if (scope === 'sample') {
+    const { data } = await supabase
+      .from('survey_sample_lists')
+      .select('community_id')
+      .eq('survey_id', surveyId)
+      .not('layers_user_id', 'is', null)
+
+    if (!data) return []
+    const unique = [...new Set(data.map((r: { community_id: string }) => r.community_id))]
+    return unique
+  }
+
+  // scope === 'all' — busca todas as instalações ativas da survey
   const { data, error } = await supabase
     .from('survey_communities')
     .select('community_id')
@@ -391,6 +405,7 @@ export async function executePersonalizedJobSample(
     .eq('survey_id', dispatch.survey_id)
     .eq('community_id', communityId)
     .not('layers_user_id', 'is', null)
+    .neq('layers_user_id', 'NOT_FOUND')
     .order('created_at')
     .range(offset, offset + PERSONALIZED_BATCH_SIZE - 1)
 
@@ -400,6 +415,7 @@ export async function executePersonalizedJobSample(
   for (const entry of sampleEntries || []) {
     if (!entry.layers_user_id) continue
 
+    let sendResult: JobResult | null = null
     try {
       // Monta payload personalizado para entrada da amostra
       const payload: LayersPayload = {
@@ -450,13 +466,24 @@ export async function executePersonalizedJobSample(
       if (Object.keys(channels).length > 0) payload.channels = channels
 
       // Enviar notificação
-      const result = await sendToOneCommunity(communityId, payload)
-      if (result.success) processed++
-      else                failed++
+      sendResult = await sendToOneCommunity(communityId, payload)
+      if (sendResult.success) processed++
+      else                    failed++
     } catch (err) {
       console.error(`[sample-dispatch] Erro ao disparar para ${entry.email}:`, err)
       failed++
     }
+
+    // Inserir audit log (fire-and-forget; falha não bloqueia o envio)
+    void supabase.from('notification_audit_logs').insert({
+      dispatch_id: dispatch.id,
+      job_id:      jobId,
+      email:       entry.email,
+      nome:        entry.nome ?? null,
+      status:      sendResult?.success ? 'sent' : 'failed',
+      error:       sendResult?.error ?? null,
+      sent_at:     sendResult?.success ? new Date().toISOString() : null,
+    })
 
     // Delay entre chamadas para respeitar rate limit
     await new Promise(r => setTimeout(r, PERSONALIZED_DELAY_MS))
@@ -594,24 +621,11 @@ export async function executeDispatch(dispatchId: string): Promise<DispatchResul
 
   const dispatchRecord = dispatch as DispatchRecord & { personalized?: boolean }
 
-  // ── Detectar se é disparo amostral ─────────────────────────────────────────
-  const { data: hasSample } = await supabase
-    .from('survey_sample_lists')
-    .select('id')
-    .eq('survey_id', dispatchRecord.survey_id)
-    .limit(1)
-
-  const isAmostral = hasSample && hasSample.length > 0
-
-  // Se é amostral, requer modo personalizado
-  if (isAmostral && !dispatchRecord.personalized) {
-    // Marca dispatch como erro
+  // scope 'sample' requer modo personalizado
+  if (dispatchRecord.target_scope === 'sample' && !dispatchRecord.personalized) {
     await supabase
       .from('survey_dispatches')
-      .update({
-        status: 'failed',
-        error_message: 'Pesquisas amostrais só funcionam em modo Personalizado',
-      })
+      .update({ status: 'failed' })
       .eq('id', dispatchId)
 
     return { sent: 0, failed: jobs.length, jobs: jobs.map(j => ({
@@ -620,6 +634,8 @@ export async function executeDispatch(dispatchId: string): Promise<DispatchResul
       error: 'SAMPLE_REQUIRES_PERSONALIZED'
     })) }
   }
+
+  const isSampleScope = dispatchRecord.target_scope === 'sample'
 
   // ── Modo personalizado: delega para executePersonalizedJob ou executePersonalizedJobSample
   if (dispatchRecord.personalized) {
@@ -632,10 +648,10 @@ export async function executeDispatch(dispatchId: string): Promise<DispatchResul
       .single()
     const nomeEscola = (communityRow?.theme as { nomeEscola?: string } | null)?.nomeEscola ?? ''
 
-    // Se é amostral, usa executePersonalizedJobSample; senão, usa executePersonalizedJob
+    // scope 'sample' → executePersonalizedJobSample; outros → executePersonalizedJob
     const results = await Promise.allSettled(
       jobs.map(async (job: { id: string; community_id: string }) => {
-        const res = isAmostral
+        const res = isSampleScope
           ? await executePersonalizedJobSample(
               job.id,
               dispatchRecord as DispatchRecord,

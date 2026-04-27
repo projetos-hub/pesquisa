@@ -60,6 +60,13 @@ export default async function DispatchPage({ params }: PageProps) {
     email_action_label: string | null; email_background_url: string | null;
   }[]
 
+  // Contagem de emails resolvidos na amostra
+  const { count: sampleCount } = await service
+    .from('survey_sample_lists')
+    .select('*', { count: 'exact', head: true })
+    .eq('survey_id', surveyId)
+    .not('layers_user_id', 'is', null)
+
   // Histórico de disparos (não templates)
   const { data: dispatches } = await service
     .from('survey_dispatches')
@@ -109,6 +116,7 @@ export default async function DispatchPage({ params }: PageProps) {
               communities={communities}
               templates={templates ?? []}
               openDate={survey.open_date}
+              sampleCount={sampleCount ?? 0}
             />
           )}
         </div>
