@@ -20,6 +20,7 @@ interface Props {
   communities: Community[]  // instaladas nesta survey
   templates:   DispatchTemplate[]
   openDate:    string | null
+  sampleCount: number        // emails resolvidos em survey_sample_lists
 }
 
 interface DispatchTemplate {
@@ -53,9 +54,9 @@ function genKey() { return Math.random().toString(36).slice(2, 9) }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function DispatchForm({ surveyId, communities, templates, openDate }: Props) {
+export default function DispatchForm({ surveyId, communities, templates, openDate, sampleCount }: Props) {
   // ── Targeting
-  const [scope,        setScope]        = useState<'all' | 'communities' | 'group'>('all')
+  const [scope,        setScope]        = useState<'all' | 'communities' | 'group' | 'sample'>('all')
   const [selectedComms, setSelectedComms] = useState<string[]>([])
   const [groupAlias,   setGroupAlias]   = useState('')
   const [groupComm,    setGroupComm]    = useState(communities[0]?.id ?? '')
@@ -131,7 +132,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
     setBody(tmpl.body)
     setChannels(tmpl.channels)
     setRoles(tmpl.target_roles)
-    setScope(tmpl.target_scope as 'all' | 'communities' | 'group')
+    setScope(tmpl.target_scope as 'all' | 'communities' | 'group' | 'sample')
     if (tmpl.push_title) { setPushTitle(tmpl.push_title); setCustomPerCh(true) }
     if (tmpl.push_body)  { setPushBody(tmpl.push_body) }
     if (tmpl.email_title) { setEmailTitle(tmpl.email_title) }
@@ -176,7 +177,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
       body,
       channels,
       target_scope:         scope,
-      target_community_ids: scope === 'all' ? null :
+      target_community_ids: scope === 'all' || scope === 'sample' ? null :
                             scope === 'group' ? [groupComm] : selectedComms,
       target_group_alias:   scope === 'group' ? groupAlias : null,
       target_roles:         roles,
@@ -299,18 +300,39 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
             ['all',         'Todas as comunidades'],
             ['communities', 'Comunidades específicas'],
             ['group',       'Uma turma'],
+            ['sample',      '📊 Amostra'],
           ] as const).map(([val, label]) => (
             <label key={val} className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
               <input
                 type="radio" name="scope" value={val}
                 checked={scope === val}
-                onChange={() => { setScope(val); setPreview(null) }}
+                onChange={() => {
+                  setScope(val)
+                  setPreview(null)
+                  // Amostra requer modo personalizado
+                  if (val === 'sample') setPersonalized(true)
+                }}
                 className="text-indigo-600"
               />
               {label}
             </label>
           ))}
         </div>
+
+        {/* Info de amostra */}
+        {scope === 'sample' && (
+          <div className="text-xs bg-indigo-50 border border-indigo-100 text-indigo-800 rounded-lg px-3 py-2">
+            {sampleCount > 0
+              ? `📋 ${sampleCount} email(s) resolvido(s) na amostra desta pesquisa.`
+              : <>
+                  ⚠️ Nenhum email resolvido na amostra.{' '}
+                  <a href={`/admin/surveys/${surveyId}/sample`} className="underline font-medium">
+                    Ir para Amostra →
+                  </a>
+                </>
+            }
+          </div>
+        )}
 
         {/* Comunidades específicas */}
         {scope === 'communities' && (

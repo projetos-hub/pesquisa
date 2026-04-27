@@ -9,7 +9,7 @@
 
 ---
 
-## Estado atual: Fase 6 concluída (Segmentação Amostral)
+## Estado atual: Fase 7 concluída (Deploy Vercel) → Fase 8 em planejamento
 
 ---
 
@@ -313,15 +313,37 @@ WHERE community_id = 'qi-freguesia';
 
 ## Próximos passos
 
-### 1. Fase 7 — Deploy na Vercel ⏳
-- Conectar repositório GitHub à Vercel apontando para `survey-platform/` como root
-- Configurar variáveis de ambiente (SUPABASE_*, LAYERS_API_TOKEN, CRON_SECRET, etc.)
-- Rodar migrations no Supabase (003, 005, 006, 007, 008, 009 já aplicadas em produção)
+### Fase 7 — Deploy na Vercel ✅ (commit dab4774 - 2026-04-16)
 
-### 3. Testes (Playwright + QAT)
-- Configurar estrutura de testes e2e + smoke tests
-- Criar cenários QAT após deploy
+**Completado:**
+- ✅ Repositório GitHub conectado à Vercel (`survey-platform/` como root)
+- ✅ Variáveis de ambiente configuradas (SUPABASE_*, LAYERS_API_TOKEN, CRON_SECRET)
+- ✅ Todas as migrations rodadas em produção (001-010)
+- ✅ App ao vivo em: https://pesquisa-nu-sand.vercel.app
 
-### 4. Integração LayersPortal.js — Refinamento
-- Testes com LayersPortal real (userId, communityId) passando pelo iFrame
-- Captura de email + layers_meta já implementada; validar com dados reais
+**Bugs corrigidos durante deploy:**
+- ✅ Next.js 16 async params issue em `sample/route.ts`
+- ✅ Admin redirect loop (logout → login)
+- ✅ Dispatch tab visibility (sidebar)
+
+---
+
+### Fase 8 — Cron Supabase + Rastreamento + Targeting Amostral (em planejamento)
+
+**Bloqueador crítico:** Vercel Hobby plan limita crons a 1x/dia (bloqueia `*/5 * * * *`)
+- Disparos em massa (1000 notificações) precisam de cron a cada 5 minutos (~170 minutos total)
+- Solução: Migrar cron para Supabase pg_cron (free, native, sem limite)
+
+**Tarefas (8 tasks):**
+1. 🚨 **Crítico**: Migration 011 — pg_cron + HTTP trigger para /api/cron/process-dispatches
+2. Tabela `notification_audit_logs` (rastreamento por email)
+3. Estender `target_scope` com `'sample'` para amostra
+4. Update Zod schema + POST handler de disparos
+5. Update `executeDispatch()` para reconhecer sample scope
+6. Update `executePersonalizedJobSample()` para inserir logs por email
+7. UI: Radio button "Amostra" em DispatchForm
+8. API endpoint GET /dispatch-audit (ler logs por email)
+
+**Timeline:** ~2-3 horas  
+**Plan:** Salvo em `/plans/mas-o-uuid-hazy-trinket.md`  
+**Supabase Project:** qnpvlhfjknnvfiyxrhhl (Mini-App Layers Pesquisa)
