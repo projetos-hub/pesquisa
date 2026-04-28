@@ -1,5 +1,10 @@
 -- 011_phase8_dispatch_audit.sql
--- Phase 8: notification_audit_logs + sample scope + pg_cron trigger
+-- Phase 8: notification_audit_logs + sample scope
+--
+-- NOTA: A função pg_cron (trigger_dispatch_processor) e o agendamento
+-- NÃO estão nesta migration porque requerem o CRON_SECRET que não pode
+-- ficar em arquivos versionados. Rode o snippet em docs/snippets/011_pgcron.sql
+-- manualmente no Supabase SQL Editor após aplicar esta migration.
 
 -- ─── 1. Extend target_scope to include 'sample' ───────────────────────────────
 
@@ -38,35 +43,3 @@ CREATE POLICY "admin_read_audit_logs"
       SELECT 1 FROM admin_profiles WHERE id = auth.uid()
     )
   );
-
--- ─── 3. pg_cron trigger para /api/cron/process-dispatches ────────────────────
---
--- PRÉ-REQUISITO (rodar UMA VEZ no SQL Editor antes desta migration):
---   ALTER DATABASE postgres SET "app.cron_secret" = 'SEU_CRON_SECRET_AQUI';
---   SELECT pg_reload_conf();
---
--- pg_net e pg_cron já vêm habilitados em todo projeto Supabase.
-
-CREATE OR REPLACE FUNCTION trigger_dispatch_processor()
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-  PERFORM net.http_post(
-    url     := 'https://pesquisa-nu-sand.vercel.app/api/cron/process-dispatches',
-    body    := '{}'::jsonb,
-    headers := jsonb_build_object(
-      'Authorization', 'Bearer ' || current_setting('app.cron_secret'),
-      'Content-Type',  'application/json'
-    )
-  );
-END;
-$$;
-
--- Agenda cron a cada 5 minutos (substitui Vercel Hobby que só roda 1x/dia)
-SELECT cron.schedule(
-  'dispatch-processor',
-  '*/5 * * * *',
-  'SELECT trigger_dispatch_processor()'
-);
