@@ -328,22 +328,38 @@ WHERE community_id = 'qi-freguesia';
 
 ---
 
-### Fase 8 — Cron Supabase + Rastreamento + Targeting Amostral (em planejamento)
+### Fase 8 — Cron Supabase + Audit Logs + Sample Scope ✅ (commits e18106b..2d3e3b0)
 
-**Bloqueador crítico:** Vercel Hobby plan limita crons a 1x/dia (bloqueia `*/5 * * * *`)
-- Disparos em massa (1000 notificações) precisam de cron a cada 5 minutos (~170 minutos total)
-- Solução: Migrar cron para Supabase pg_cron (free, native, sem limite)
+**PR #8:** https://github.com/projetos-hub/pesquisa/pull/8  
+**Branch:** `feat/phase-8-cron-audit-sample`
 
-**Tarefas (8 tasks):**
-1. 🚨 **Crítico**: Migration 011 — pg_cron + HTTP trigger para /api/cron/process-dispatches
-2. Tabela `notification_audit_logs` (rastreamento por email)
-3. Estender `target_scope` com `'sample'` para amostra
-4. Update Zod schema + POST handler de disparos
-5. Update `executeDispatch()` para reconhecer sample scope
-6. Update `executePersonalizedJobSample()` para inserir logs por email
-7. UI: Radio button "Amostra" em DispatchForm
-8. API endpoint GET /dispatch-audit (ler logs por email)
+**Implementado:**
+- ✅ Migration 011 — pg_cron `*/5 * * * *` via `trigger_dispatch_processor` + pg_net
+- ✅ `notification_audit_logs` — rastreia sent/failed por email
+- ✅ `target_scope = 'sample'` — constraint estendido, valida personalized=true
+- ✅ `executePersonalizedJobSample()` — audit log + fix offset (não loopa em falhas)
+- ✅ DispatchForm — radio "📊 Amostra" + info box
+- ✅ GET /dispatch-audit — endpoint de audit logs
+- ✅ ManualDispatch — disparo rápido por email (max 50)
+- ✅ **Fix segurança**: POST /submit agora re-valida amostra (bypasse bloqueado)
 
-**Timeline:** ~2-3 horas  
-**Plan:** Salvo em `/plans/mas-o-uuid-hazy-trinket.md`  
-**Supabase Project:** qnpvlhfjknnvfiyxrhhl (Mini-App Layers Pesquisa)
+**Bateria de testes (Sprint 8 + 9):**
+- Unit: `submit-sample-gate.test.ts` (5), `audit-log.test.ts` (5), `sample-dispatch.test.ts` (7)
+- E2E: `sample-gate.spec.ts` (7), `admin-sample.spec.ts` (7), `dispatch-execution.spec.ts` (6)
+
+**🔴 BLOQUEADOR — fazer ANTES de mergear o PR:**
+
+1. Abrir [Supabase SQL Editor](https://supabase.com/dashboard/project/qnpvlhfjknnvfiyxrhhl/sql/new)
+2. Rodar primeiro (valor do CRON_SECRET está em `.env.local`):
+   ```sql
+   ALTER DATABASE postgres SET "app.cron_secret" = '<valor de CRON_SECRET do .env.local>';
+   SELECT pg_reload_conf();
+   ```
+3. Depois rodar o restante de `supabase/migrations/011_phase8_dispatch_audit.sql`
+4. Verificar: `SELECT * FROM cron.job WHERE jobname = 'dispatch-processor';`
+5. Mergear PR #8 → deploy automático
+
+**Após merge:**
+- Verificar [Vercel dashboard](https://vercel.com) que deploy passou
+- Testar: acessar survey com email fora da amostra → deve bloquear (403)
+- Testar: criar dispatch scope=sample → audit logs em /dispatch-audit

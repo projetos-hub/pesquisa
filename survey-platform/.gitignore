@@ -43,3 +43,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# snippets com segredos (rodar manualmente no Supabase SQL Editor)
+/docs/snippets/

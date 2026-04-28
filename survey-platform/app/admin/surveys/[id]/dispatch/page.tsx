@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient }        from '@/lib/supabase-service'
 import DispatchForm    from './DispatchForm'
 import DispatchHistory from './DispatchHistory'
+import ManualDispatch  from './ManualDispatch'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -120,6 +121,11 @@ export default async function DispatchPage({ params }: PageProps) {
             />
           )}
         </div>
+
+        {/* Disparo rápido */}
+        {communities.length > 0 && (
+          <ManualDispatch surveyId={surveyId} communities={communities} />
+        )}
 
         {/* Histórico */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
