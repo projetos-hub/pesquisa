@@ -98,6 +98,40 @@ export async function POST(req: Request, { params }: RouteContext) {
     nomeEscola = (comm?.theme as { nomeEscola?: string })?.nomeEscola ?? ''
   }
 
+  // ── 1c. Valida email na amostra (se survey possui segmentação amostral) ──────
+  if (communityId) {
+    const { data: sampleEntries } = await supabase
+      .from('survey_sample_lists')
+      .select('id')
+      .eq('survey_id', survey.id)
+      .eq('community_id', communityId)
+      .limit(1)
+
+    if (sampleEntries && sampleEntries.length > 0) {
+      if (!email) {
+        return NextResponse.json(
+          { error: 'not_in_sample', message: 'Email não fornecido para pesquisa segmentada' },
+          { status: 403 }
+        )
+      }
+
+      const { data: userInSample } = await supabase
+        .from('survey_sample_lists')
+        .select('id')
+        .eq('survey_id', survey.id)
+        .eq('community_id', communityId)
+        .eq('email', email.toLowerCase())
+        .limit(1)
+
+      if (!userInSample || userInSample.length === 0) {
+        return NextResponse.json(
+          { error: 'not_in_sample', message: 'Você não está na amostra desta pesquisa' },
+          { status: 403 }
+        )
+      }
+    }
+  }
+
   // ── 2. Insere response_session (idempotente) ───────────────────────────────
   //
   // upsert com ignoreDuplicates: true envia ON CONFLICT DO NOTHING.

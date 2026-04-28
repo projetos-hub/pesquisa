@@ -159,11 +159,6 @@ describe('Sample Dispatch', () => {
   })
 
   it('should only dispatch to entries with resolved layers_user_id', async () => {
-    // This test verifies that executePersonalizedJobSample only sends to users with layers_user_id
-    // In our sample, we have 3 entries but only 2 have layers_user_id
-    // So maximum 2 notifications should be sent
-
-    // Count entries in sample with layers_user_id
     const supabase = createClient(supabaseUrl, supabaseKey)
     const { count } = await supabase
       .from('survey_sample_lists')
@@ -172,7 +167,158 @@ describe('Sample Dispatch', () => {
       .eq('community_id', testCommunityId)
       .not('layers_user_id', 'is', null)
 
-    // We should have exactly 2 entries with resolved IDs
+    // Only 2 of 3 entries have resolved IDs
     expect(count).toBe(2)
+  })
+
+  it('should reject sample dispatch when no entries are resolved', async () => {
+    // Create a survey with sample entries that have NO resolved layers_user_id
+    const supabase = createClient(supabaseUrl, supabaseKey)
+    const ts = Date.now()
+    const { data: survey } = await supabase
+      .from('surveys')
+      .insert({ title: 'Unresolved Sample', slug: `test-unresolved-${ts}`, survey_type: 'quantitativa', status: 'ativa' })
+      .select('id').single()
+    if (!survey) return
+
+    await supabase.from('survey_communities').insert({
+      survey_id: survey.id, community_id: testCommunityId, active: true, status: 'ativa',
+    })
+    // Entries with NULL layers_user_id only
+    await supabase.from('survey_sample_lists').insert({
+      survey_id: survey.id, community_id: testCommunityId,
+      email: 'unresolved@example.com', layers_user_id: null,
+    })
+
+    const res = await fetch(`/api/admin/surveys/${survey.id}/dispatch`, {
+      method: 'POST',
+      body: JSON.stringify({
+        title: 'Test', body: 'Msg',
+        channels: ['pushNotification'],
+        target_scope: 'sample',
+        target_roles: ['guardian'],
+        personalized: true,
+      }),
+      headers: { 'Authorization': `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+    })
+
+    expect(res.status).toBe(422)
+
+    // Cleanup
+    await supabase.from('survey_sample_lists').delete().eq('survey_id', survey.id)
+    await supabase.from('survey_communities').delete().eq('survey_id', survey.id)
+    await supabase.from('surveys').delete().eq('id', survey.id)
+  })
+
+  it('should reject sample dispatch when sample list is empty', async () => {
+    // Survey with NO sample entries at all
+    const supabase = createClient(supabaseUrl, supabaseKey)
+    const ts = Date.now()
+    const { data: survey } = await supabase
+      .from('surveys')
+      .insert({ title: 'Empty Sample', slug: `test-empty-sample-${ts}`, survey_type: 'quantitativa', status: 'ativa' })
+      .select('id').single()
+    if (!survey) return
+
+    await supabase.from('survey_communities').insert({
+      survey_id: survey.id, community_id: testCommunityId, active: true, status: 'ativa',
+    })
+    // No sample entries
+
+    const res = await fetch(`/api/admin/surveys/${survey.id}/dispatch`, {
+      method: 'POST',
+      body: JSON.stringify({
+        title: 'Test', body: 'Msg',
+        channels: ['pushNotification'],
+        target_scope: 'sample',
+        target_roles: ['guardian'],
+        personalized: true,
+      }),
+      headers: { 'Authorization': `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+    })
+
+    expect(res.status).toBe(422)
+
+    // Cleanup
+    await supabase.from('survey_communities').delete().eq('survey_id', survey.id)
+    await supabase.from('surveys').delete().eq('id', survey.id)
+  })
+
+  it('should accept scope=all dispatch for survey without sample', async () => {
+    // A regular survey (no sample) should accept scope=all with communities
+    const supabase = createClient(supabaseUrl, supabaseKey)
+    const ts = Date.now()
+    const { data: survey } = await supabase
+      .from('surveys')
+      .insert({ title: 'Open Dispatch Survey', slug: `test-open-dispatch-${ts}`, survey_type: 'quantitativa', status: 'ativa' })
+      .select('id').single()
+    if (!survey) return
+
+    await supabase.from('survey_communities').insert({
+      survey_id: survey.id, community_id: testCommunityId, active: true, status: 'ativa',
+    })
+
+    const res = await fetch(`/api/admin/surveys/${survey.id}/dispatch`, {
+      method: 'POST',
+      body: JSON.stringify({
+        title: 'Open Dispatch', body: 'Mensagem para todos',
+        channels: ['pushNotification'],
+        target_scope: 'all',
+        target_roles: ['guardian'],
+        personalized: false,
+        scheduled_at: new Date(Date.now() + 3_600_000).toISOString(),
+      }),
+      headers: { 'Authorization': `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+    })
+
+    expect(res.status).toBe(200)
+    const body = await res.json() as { ok: boolean }
+    expect(body.ok).toBe(true)
+
+    // Cleanup dispatches
+    const { data: dispatches } = await supabase
+      .from('survey_dispatches').select('id').eq('survey_id', survey.id)
+    if (dispatches?.length) {
+      await supabase.from('survey_dispatch_jobs')
+        .delete().in('dispatch_id', dispatches.map((d: { id: string }) => d.id))
+      await supabase.from('survey_dispatches').delete().eq('survey_id', survey.id)
+    }
+    await supabase.from('survey_communities').delete().eq('survey_id', survey.id)
+    await supabase.from('surveys').delete().eq('id', survey.id)
+  })
+
+  it('should create dispatch with status=scheduled when scheduled_at is in the future', async () => {
+    const supabase = createClient(supabaseUrl, supabaseKey)
+    const futureDate = new Date(Date.now() + 3_600_000).toISOString()
+
+    const res = await fetch(`/api/admin/surveys/${testSurveyId}/dispatch`, {
+      method: 'POST',
+      body: JSON.stringify({
+        title: 'Scheduled Dispatch', body: 'Agendado',
+        channels: ['pushNotification'],
+        target_scope: 'communities',
+        target_community_ids: [testCommunityId],
+        target_roles: ['guardian'],
+        personalized: false,
+        scheduled_at: futureDate,
+      }),
+      headers: { 'Authorization': `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+    })
+
+    expect(res.status).toBe(200)
+    const body = await res.json() as { ok: boolean; scheduled: boolean }
+    expect(body.ok).toBe(true)
+    expect(body.scheduled).toBe(true)
+
+    // Verify status in DB
+    const { data: dispatches } = await supabase
+      .from('survey_dispatches')
+      .select('status')
+      .eq('survey_id', testSurveyId)
+      .eq('status', 'scheduled')
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    expect(dispatches?.[0]?.status).toBe('scheduled')
   })
 })

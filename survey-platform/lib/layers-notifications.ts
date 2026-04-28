@@ -378,7 +378,10 @@ export async function executePersonalizedJobSample(
     .eq('id', jobId)
     .single()
 
-  const offset = job?.processed_users ?? 0
+  const processedUsers = job?.processed_users ?? 0
+  const failedUsers    = job?.failed_users    ?? 0
+  // Avança o offset além de falhas — evita reprocessar entries que já falharam
+  const offset         = processedUsers + failedUsers
 
   // Contar total de entries na amostra com layers_user_id resolvido (primeira execução)
   if (offset === 0) {
@@ -474,8 +477,8 @@ export async function executePersonalizedJobSample(
       failed++
     }
 
-    // Inserir audit log (fire-and-forget; falha não bloqueia o envio)
-    void supabase.from('notification_audit_logs').insert({
+    // Inserir audit log
+    const { error: auditError } = await supabase.from('notification_audit_logs').insert({
       dispatch_id: dispatch.id,
       job_id:      jobId,
       email:       entry.email,
@@ -484,12 +487,15 @@ export async function executePersonalizedJobSample(
       error:       sendResult?.error ?? null,
       sent_at:     sendResult?.success ? new Date().toISOString() : null,
     })
+    if (auditError) console.error('[audit] Failed to insert audit log for', entry.email, ':', auditError)
 
     // Delay entre chamadas para respeitar rate limit
     await new Promise(r => setTimeout(r, PERSONALIZED_DELAY_MS))
   }
 
-  const newProcessed = offset + processed
+  // Avança o cursor além de tudo que foi tocado (sucesso + falha) para não re-processar
+  const handledInBatch = sampleEntries?.length || 0
+  const newOffset = offset + handledInBatch
   const { count: totalCount } = await supabase
     .from('survey_sample_lists')
     .select('*', { count: 'exact', head: true })
@@ -498,15 +504,15 @@ export async function executePersonalizedJobSample(
     .not('layers_user_id', 'is', null)
 
   const total = totalCount || 0
-  const hasMore = newProcessed < total
+  const hasMore = newOffset < total
 
   // Atualiza progresso no job
   await supabase
     .from('survey_dispatch_jobs')
     .update({
-      processed_users: newProcessed,
-      failed_users:    (job?.failed_users ?? 0) + failed,
-      status:          hasMore ? 'sending' : (failed === (sampleEntries?.length || 0) && (sampleEntries?.length || 0) > 0 ? 'failed' : 'sent'),
+      processed_users: processedUsers + processed,
+      failed_users:    failedUsers + failed,
+      status:          hasMore ? 'sending' : ((processedUsers + processed) === 0 ? 'failed' : 'sent'),
       sent_at:         hasMore ? null : new Date().toISOString(),
     })
     .eq('id', jobId)
@@ -535,7 +541,9 @@ export async function executePersonalizedJob(
     .eq('id', jobId)
     .single()
 
-  const offset = job?.processed_users ?? 0
+  const processedUsers = job?.processed_users ?? 0
+  const failedUsers    = job?.failed_users    ?? 0
+  const offset         = processedUsers + failedUsers  // avança além de falhas
 
   // Busca lote de usuários
   const { users, total } = await fetchCommunityUsers(
@@ -567,16 +575,16 @@ export async function executePersonalizedJob(
     await new Promise(r => setTimeout(r, PERSONALIZED_DELAY_MS))
   }
 
-  const newProcessed = offset + processed
-  const hasMore      = newProcessed < (total || 0)
+  const newOffset = offset + users.length  // avança além de tudo que foi tocado
+  const hasMore   = newOffset < (total || 0)
 
   // Atualiza progresso no job
   await supabase
     .from('survey_dispatch_jobs')
     .update({
-      processed_users: newProcessed,
-      failed_users:    (job?.failed_users ?? 0) + failed,
-      status:          hasMore ? 'sending' : (failed === users.length && users.length > 0 ? 'failed' : 'sent'),
+      processed_users: processedUsers + processed,
+      failed_users:    failedUsers + failed,
+      status:          hasMore ? 'sending' : ((processedUsers + processed) === 0 ? 'failed' : 'sent'),
       sent_at:         hasMore ? null : new Date().toISOString(),
     })
     .eq('id', jobId)
