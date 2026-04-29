@@ -5,6 +5,7 @@
 // Docs: docs/layers-notifications.md
 
 import { createServiceClient } from './supabase-service'
+import { fetchLayersUser }    from './layers-hub'
 
 // Delay entre chamadas no modo personalizado (ms) — evita rate limit
 const PERSONALIZED_DELAY_MS = 150
@@ -371,6 +372,15 @@ export async function executePersonalizedJobSample(
 ): Promise<{ processed: number; failed: number; hasMore: boolean }> {
   const supabase = createServiceClient()
 
+  // Busca nomeEscola do tema da community para o placeholder {{nomeEscola}}
+  const { data: commRow } = await supabase
+    .from('survey_communities')
+    .select('theme')
+    .eq('survey_id', dispatch.survey_id)
+    .eq('community_id', communityId)
+    .single()
+  const communityNomeEscola = (commRow?.theme as { nomeEscola?: string } | null)?.nomeEscola ?? ''
+
   // Busca progresso atual do job
   const { data: job } = await supabase
     .from('survey_dispatch_jobs')
@@ -435,12 +445,27 @@ export async function executePersonalizedJobSample(
         },
       }
 
+      // Enriquecer com dados do perfil Layers se disponível
+      let nomeAluno  = ''
+      let serie      = ''
+      if (entry.layers_user_id && entry.layers_user_id !== 'NOT_FOUND') {
+        try {
+          const hub = await fetchLayersUser(entry.layers_user_id, communityId)
+          if (hub) {
+            nomeAluno = hub.nomeAluno || ''
+            serie     = hub.serie    || ''
+            // Usar nome do hub se entry.nome ainda estiver vazio
+            if (!entry.nome && hub.nome) entry.nome = hub.nome
+          }
+        } catch { /* silencioso — nome já vem do resolve */ }
+      }
+
       // Interpolar placeholders com dados da amostra
       const vars: PersonalizedVars = {
         nome:       entry.nome?.split(' ')[0] ?? '',
-        nomeAluno:  '',
-        nomeEscola: '',
-        serie:      '',
+        nomeAluno,
+        nomeEscola: communityNomeEscola,
+        serie,
       }
 
       const title = interpolatePlaceholders(dispatch.push_title ?? dispatch.title, vars)
