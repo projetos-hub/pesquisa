@@ -222,3 +222,46 @@ export async function moveQuestion(
   revalidatePath(`/admin/surveys/${surveyId}`)
   return {}
 }
+
+// ── Deleta pesquisa (e todos os dados relacionados) ───────────────────────────
+export async function deleteSurvey(surveyId: string): Promise<{ error?: string }> {
+  try { await requireAuth() } catch { return { error: 'Não autorizado' } }
+
+  const supabase = createServiceClient()
+
+  // Deleta na ordem correta para evitar FK violations
+  // 1. Audit logs → dispatch jobs → dispatches
+  const { data: dispatches } = await supabase
+    .from('survey_dispatches').select('id').eq('survey_id', surveyId)
+  for (const d of dispatches ?? []) {
+    await supabase.from('notification_audit_logs').delete().eq('dispatch_id', d.id)
+    await supabase.from('survey_dispatch_jobs').delete().eq('dispatch_id', d.id)
+  }
+  await supabase.from('survey_dispatches').delete().eq('survey_id', surveyId)
+
+  // 2. Respostas → sessões
+  const { data: sessions } = await supabase
+    .from('response_sessions').select('id').eq('survey_id', surveyId)
+  for (const s of sessions ?? []) {
+    await supabase.from('responses').delete().eq('session_id', s.id)
+  }
+  await supabase.from('response_sessions').delete().eq('survey_id', surveyId)
+
+  // 3. Amostra, comunidades, perguntas
+  await supabase.from('survey_sample_lists').delete().eq('survey_id', surveyId)
+  await supabase.from('survey_communities').delete().eq('survey_id', surveyId)
+
+  const { data: questions } = await supabase
+    .from('questions').select('id').eq('survey_id', surveyId)
+  for (const q of questions ?? []) {
+    await supabase.from('question_options').delete().eq('question_id', q.id)
+  }
+  await supabase.from('questions').delete().eq('survey_id', surveyId)
+
+  // 4. Survey
+  const { error } = await supabase.from('surveys').delete().eq('id', surveyId)
+  if (error) return { error: error.message }
+
+  revalidatePath('/admin/surveys')
+  return {}
+}
