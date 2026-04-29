@@ -24,8 +24,18 @@ interface SurveyRunnerProps {
   surveySlug: string
 }
 
+const STORAGE_BASE = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/school-assets`
+  : null
+
 export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const searchParams = useSearchParams()
+
+  // communityId disponível imediatamente via URL params — usado no loading
+  const initialCommunityId = searchParams.get('communityId') ?? ''
+  const loadingLogoUrl = STORAGE_BASE && initialCommunityId
+    ? `${STORAGE_BASE}/${initialCommunityId}/logo.png`
+    : null
   const [currentKey, setCurrentKey] = useState('welcome')
   const [answers, setAnswers] = useState<Answers>({})
   const [loading, setLoading] = useState(false)
@@ -163,14 +173,22 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     }
   }, [survey])
 
-  // ── Spinner: aguarda contexto E config da pesquisa ───────────────────────────
+  // ── Loading personalizado por comunidade ─────────────────────────────────────
   if (!ctx || (!survey && !surveyNotFound)) {
     return (
-      <div className="card">
-        <div className="header"><h1>Pesquisa de Satisfação</h1></div>
-        <div className="loading-screen">
-          <div className="spinner" />
-          <p>Carregando...</p>
+      <div className="card loading-card">
+        {loadingLogoUrl && (
+          <img
+            src={loadingLogoUrl}
+            alt=""
+            className="loading-logo-pulse"
+            onError={e => { e.currentTarget.style.display = 'none' }}
+          />
+        )}
+        <div className="loading-dots">
+          <span className="loading-dot" />
+          <span className="loading-dot" />
+          <span className="loading-dot" />
         </div>
       </div>
     )
