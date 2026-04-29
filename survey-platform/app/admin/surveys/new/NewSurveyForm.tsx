@@ -63,10 +63,6 @@ export default function NewSurveyForm() {
         >
           <option value="quantitativa">Quantitativa (escala + NPS)</option>
           <option value="qualitativa">Qualitativa (perguntas abertas)</option>
-          <option value="evento">Evento (avaliação pós-evento)</option>
-          <option value="clima">Clima organizacional</option>
-          <option value="engajamento">Engajamento</option>
-          <option value="diagnostico">Diagnóstico</option>
           <option value="misto">Misto (aberta + fechada)</option>
         </select>
       </div>
