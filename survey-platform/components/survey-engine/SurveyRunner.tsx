@@ -79,13 +79,17 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
             const profile = await res.json() as {
               nome: string; perfil: Perfil; nomeAluno: string; serie: string
               email: string; meta: Record<string, unknown>
+            } | null
+            if (profile) {
+              hubNome      = profile.nome      || ''
+              hubPerfil    = profile.perfil    || 'responsavel'
+              hubNomeAluno = profile.nomeAluno || ''
+              hubSerie     = profile.serie     || ''
+              hubEmail     = profile.email     || ''
+              hubMeta      = profile.meta      || {}
             }
-            hubNome      = profile.nome      || ''
-            hubPerfil    = profile.perfil    || 'responsavel'
-            hubNomeAluno = profile.nomeAluno || ''
-            hubSerie     = profile.serie     || ''
-            hubEmail     = profile.email     || ''
-            hubMeta      = profile.meta      || {}
+            // profile null = sem role familiar (admin puro, teacher, etc.)
+            // hubPerfil fica 'responsavel' (default), survey.publico bloqueia no render
           }
         } catch {
           // Hub API indisponível — continua com URL params

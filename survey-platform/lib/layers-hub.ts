@@ -23,9 +23,21 @@ export interface LayersUserProfile {
   }
 }
 
-function mapRole(roles: string[]): 'responsavel' | 'aluno' {
+// Roles da Layers que correspondem a responsáveis familiares (confirmado via API)
+const RESPONSAVEL_ROLES = new Set([
+  'guardian',
+  'father',
+  'mother',
+  'financial_responsible',
+  'academic_responsible',
+])
+
+// Retorna null para roles sem vínculo familiar (admin puro, teacher, coordinator, etc.)
+// Lógica: student → aluno; qualquer role de responsável (mesmo junto com admin) → responsavel; resto → null
+function mapRole(roles: string[]): 'responsavel' | 'aluno' | null {
   if (roles.includes('student')) return 'aluno'
-  return 'responsavel'
+  if (roles.some(r => RESPONSAVEL_ROLES.has(r))) return 'responsavel'
+  return null
 }
 
 async function fetchSerie(
@@ -91,6 +103,8 @@ async function _fetchLayersUserUncached(
     }
 
     const perfil = mapRole(user.roles ?? [])
+    if (perfil === null) return null  // sem role familiar — não é respondente válido
+
     let nomeAluno = ''
     let serie     = ''
 
