@@ -73,7 +73,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
       const effectiveId = userId || accountId
       if (effectiveId && communityId) {
         try {
-          const qs = new URLSearchParams({ userId: effectiveId, communityId })
+          const qs = new URLSearchParams({ userId: effectiveId, communityId, surveySlug })
           const res = await fetch(`/api/user-context?${qs}`)
           if (res.ok) {
             const profile = await res.json() as {
@@ -213,7 +213,8 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     : undefined
 
   // ── Perfil sem acesso ────────────────────────────────────────────────────────
-  if (survey.publico && !survey.publico.includes(perfil)) {
+  const allowAllRoles = (survey.settings as { allow_all_roles?: boolean } | undefined)?.allow_all_roles
+  if (!allowAllRoles && survey.publico && !survey.publico.includes(perfil)) {
     return (
       <div className="card">
         <div className="header"><h1>{survey.titulo}</h1></div>

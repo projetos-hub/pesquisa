@@ -9,7 +9,7 @@ const BASE_URL = 'https://api.layers.digital'
 
 export interface LayersUserProfile {
   nome:      string
-  perfil:    'responsavel' | 'aluno'
+  perfil:    'responsavel' | 'aluno' | 'colaborador'
   nomeAluno: string
   serie:     string
   email:     string
@@ -145,6 +145,93 @@ export async function fetchLayersUser(
   communityId: string,
 ): Promise<LayersUserProfile | null> {
   return _fetchLayersUserCached(userId, communityId)
+}
+
+// Variante que aceita qualquer role da Layers (admin, teacher, etc.)
+// Usada em surveys com settings.allow_all_roles = true
+async function _fetchLayersUserAnyRoleUncached(
+  userId: string,
+  communityId: string,
+): Promise<LayersUserProfile | null> {
+  const token = process.env.LAYERS_API_TOKEN
+  if (!token || !userId || !communityId) return null
+
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'community-id':  communityId,
+  }
+
+  try {
+    const userRes = await fetch(`${BASE_URL}/v1/users/${userId}`, {
+      headers,
+      signal: AbortSignal.timeout(5_000),
+    })
+    if (!userRes.ok) return null
+
+    const user = await userRes.json() as {
+      name?:       string
+      email?:      string
+      roles?:      string[]
+      lastSeenAt?: string | null
+      groupsIds?:  string[]
+      membersId?:  string[]
+      address?:    Record<string, string | null>
+      fields?:     Record<string, unknown>
+    }
+
+    const mappedPerfil = mapRole(user.roles ?? [])
+    const perfil: LayersUserProfile['perfil'] = mappedPerfil ?? 'colaborador'
+
+    let nomeAluno = ''
+    let serie     = ''
+
+    if (perfil === 'responsavel') {
+      const relRes = await fetch(`${BASE_URL}/v1/users/${userId}/related`, {
+        headers,
+        signal: AbortSignal.timeout(5_000),
+      })
+      if (relRes.ok) {
+        const rel = await relRes.json() as { members?: { _id?: string; name?: string }[] }
+        const student = rel.members?.[0]
+        nomeAluno = student?.name ?? ''
+        if (student?._id) serie = await fetchSerie(student._id, headers)
+      }
+    } else if (perfil === 'aluno') {
+      serie = await fetchSerie(userId, headers)
+    }
+    // colaborador: sem lookup extra
+
+    return {
+      nome:      user.name  ?? '',
+      email:     user.email ?? '',
+      perfil,
+      nomeAluno,
+      serie,
+      meta: {
+        roles:      user.roles      ?? [],
+        lastSeenAt: user.lastSeenAt ?? null,
+        groupsIds:  user.groupsIds  ?? [],
+        membersId:  user.membersId  ?? [],
+        address:    user.address    ?? {},
+        fields:     user.fields     ?? {},
+      },
+    }
+  } catch {
+    return null
+  }
+}
+
+const _fetchLayersUserAnyRoleCached = unstable_cache(
+  _fetchLayersUserAnyRoleUncached,
+  ['layers-user-any-role'],
+  { revalidate: 1800 }
+)
+
+export async function fetchLayersUserAnyRole(
+  userId: string,
+  communityId: string,
+): Promise<LayersUserProfile | null> {
+  return _fetchLayersUserAnyRoleCached(userId, communityId)
 }
 
 export async function fetchLayersUserByEmail(
