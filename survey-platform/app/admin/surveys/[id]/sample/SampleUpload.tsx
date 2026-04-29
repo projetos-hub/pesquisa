@@ -1,10 +1,14 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import QuickSample from './QuickSample'
+
+interface Community { id: string; nome: string }
 
 interface Props {
-  surveyId: string
-  surveySlug: string
+  surveyId:    string
+  surveySlug:  string
+  communities: Community[]
 }
 
 interface PreviewRow {
@@ -30,7 +34,7 @@ interface SampleState {
   has_more: boolean
 }
 
-export default function SampleUpload({ surveyId }: Props) {
+export default function SampleUpload({ surveyId, communities }: Props) {
   const [file,     setFile]     = useState<File | null>(null)
   const [preview,  setPreview]  = useState<PreviewRow[]>([])
   const [loading,  setLoading]  = useState(false)
@@ -175,6 +179,15 @@ export default function SampleUpload({ surveyId }: Props) {
 
   return (
     <div className="space-y-6">
+
+      {/* ── Amostra rápida ───────────────────────────────────────────────── */}
+      {communities.length > 0 && (
+        <QuickSample
+          surveyId={surveyId}
+          communities={communities}
+          onAdded={() => { setPage(0); void loadSampleState(0, activeTab) }}
+        />
+      )}
 
       {/* ── Upload ───────────────────────────────────────────────────────── */}
       <div>
