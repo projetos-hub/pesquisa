@@ -1,26 +1,23 @@
 import { Suspense } from 'react'
 import SurveyRunner from '@/components/survey-engine/SurveyRunner'
+import SurveyLoadingFallback from './SurveyLoadingFallback'
 
-// Next.js 15+: params é uma Promise
 interface PageProps {
-  params: Promise<{ surveySlug: string }>
+  params:       Promise<{ surveySlug: string }>
+  searchParams: Promise<{ communityId?: string }>
 }
 
-export default async function SurveyPage({ params }: PageProps) {
-  const { surveySlug } = await params
+export default async function SurveyPage({ params, searchParams }: PageProps) {
+  const { surveySlug }       = await params
+  const { communityId = '' } = await searchParams
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+  const logoUrl = communityId && supabaseUrl
+    ? `${supabaseUrl}/storage/v1/object/public/school-assets/${communityId}/logo.png`
+    : null
 
   return (
-    <Suspense
-      fallback={
-        <div className="card">
-          <div className="header"><h1>Pesquisa de Satisfação</h1></div>
-          <div className="loading-screen">
-            <div className="spinner" />
-            <p>Carregando...</p>
-          </div>
-        </div>
-      }
-    >
+    <Suspense fallback={<SurveyLoadingFallback logoUrl={logoUrl} />}>
       <SurveyRunner surveySlug={surveySlug} />
     </Suspense>
   )
