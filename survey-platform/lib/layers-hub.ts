@@ -165,6 +165,16 @@ export async function fetchLayersUserByEmail(
   communityId: string,
   email: string,
 ): Promise<string | null> {
+  const profile = await fetchLayersUserProfileByEmail(communityId, email)
+  return profile?.id ?? null
+}
+
+// Retorna id + dados completos do usuário pela mesma chamada — zero custo extra.
+// Usado pelo resolve de amostra para salvar nome/nomeAluno/serie junto com layers_user_id.
+export async function fetchLayersUserProfileByEmail(
+  communityId: string,
+  email: string,
+): Promise<{ id: string; name: string } | null> {
   const token = process.env.LAYERS_API_TOKEN
 
   if (!token || !communityId || !email) return null
@@ -185,20 +195,26 @@ export async function fetchLayersUserByEmail(
     if (!res.ok) return null
 
     const data = await res.json() as
-      | { _id?: string; hits?: { _id?: string }[] }
-      | { _id?: string }[]
+      | { _id?: string; name?: string; hits?: { _id?: string; name?: string }[] }
+      | { _id?: string; name?: string }[]
 
     // Trata 3 formatos possíveis da Layers Hub API:
-    // 1. Array direto: [{ _id, ... }]
-    // 2. Objeto paginado: { hits: [{ _id }] }
-    // 3. Objeto único: { _id }
+    // 1. Array direto: [{ _id, name, ... }]
+    // 2. Objeto paginado: { hits: [{ _id, name }] }
+    // 3. Objeto único: { _id, name }
     let userId: string | undefined
+    let name: string = ''
+
     if (Array.isArray(data)) {
       userId = data[0]?._id
+      name   = data[0]?.name ?? ''
     } else {
-      userId = data._id || data.hits?.[0]?._id
+      const hit = data.hits?.[0]
+      userId = hit?._id || data._id
+      name   = hit?.name ?? (data as { name?: string }).name ?? ''
     }
-    return userId || null
+
+    return userId ? { id: userId, name } : null
   } catch {
     return null
   }

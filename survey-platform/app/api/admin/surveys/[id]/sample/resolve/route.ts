@@ -4,7 +4,7 @@
 
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient }        from '@/lib/supabase-service'
-import { fetchLayersUserByEmail }     from '@/lib/layers-hub'
+import { fetchLayersUserProfileByEmail } from '@/lib/layers-hub'
 
 async function requireAuth() {
   const supabase = await createServerSupabaseClient()
@@ -45,11 +45,14 @@ export async function POST(
     for (let i = 0; i < pending.length; i += CONCURRENCY) {
       const window = pending.slice(i, i + CONCURRENCY)
       await Promise.all(window.map(async (entry) => {
-        const userId = await fetchLayersUserByEmail(entry.community_id, entry.email).catch(() => null)
-        if (userId) {
+        const profile = await fetchLayersUserProfileByEmail(entry.community_id, entry.email).catch(() => null)
+        if (profile) {
           await supabase
             .from('survey_sample_lists')
-            .update({ layers_user_id: userId })
+            .update({
+              layers_user_id: profile.id,
+              ...(profile.name ? { nome: profile.name } : {}),
+            })
             .eq('id', entry.id)
           resolved++
         } else {
