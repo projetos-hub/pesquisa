@@ -290,6 +290,17 @@ async function fetchCommunityUsers(
   }
 }
 
+// ─── formatFirstName ─────────────────────────────────────────────────────────
+//
+// Extrai o primeiro nome e formata como "Xyz" (1ª letra maiúscula, resto minúsculo).
+// Ex: "LUCAS MESQUITA" → "Lucas" | "carol da layers" → "Carol"
+
+function formatFirstName(fullName: string): string {
+  const first = fullName.trim().split(/\s+/)[0] ?? ''
+  if (!first) return ''
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase()
+}
+
 // ─── interpolatePlaceholders ──────────────────────────────────────────────────
 //
 // Substitui {{variavel}} no texto pelos dados do usuário.
@@ -314,7 +325,7 @@ function buildPersonalizedPayload(
   nomeEscola:  string,
 ): LayersPayload {
   const vars: PersonalizedVars = {
-    nome:       user.name?.split(' ')[0] ?? '',
+    nome:       formatFirstName(user.name ?? ''),
     nomeAluno:  '',   // preenchido se for guardian
     nomeEscola,
     serie:      '',
@@ -455,14 +466,14 @@ export async function executePersonalizedJobSample(
             nomeAluno = hub.nomeAluno || ''
             serie     = hub.serie    || ''
             // Usar nome do hub se entry.nome ainda estiver vazio
-            if (!entry.nome && hub.nome) entry.nome = hub.nome
+            if (!entry.nome && hub.nome) entry.nome = hub.nome  // formatFirstName aplicado abaixo
           }
         } catch { /* silencioso — nome já vem do resolve */ }
       }
 
       // Interpolar placeholders com dados da amostra
       const vars: PersonalizedVars = {
-        nome:       entry.nome?.split(' ')[0] ?? '',
+        nome:       formatFirstName(entry.nome ?? ''),
         nomeAluno,
         nomeEscola: communityNomeEscola,
         serie,
