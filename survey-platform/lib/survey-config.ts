@@ -84,6 +84,8 @@ export function rowsToConfig(
           return {
             type: 'nps',
             key: q.key,
+            ...(q.title       ? { titulo: q.title }       : {}),
+            ...(q.description ? { desc:   q.description } : {}),
             perguntaBilingue: (q.settings?.perguntaBilingue as boolean) ?? false,
             ...base,
           }
