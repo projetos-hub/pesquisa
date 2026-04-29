@@ -25,8 +25,8 @@ export default function StepNPS({ step, tipo, onNext, onBack }: StepNPSProps) {
 
   return (
     <div>
-      <p className="step-title">Recomendação</p>
-      <p className="step-desc">Qual a probabilidade de recomendar a {tipo} a um amigo ou colega?</p>
+      <p className="step-title">{step.desc ?? 'Recomendação'}</p>
+      <p className="step-desc">{step.titulo ?? `Qual a probabilidade de recomendar a ${tipo} a um amigo ou colega?`}</p>
       <div className="nps-hint"><span>Muito improvável</span><span>Muito provável</span></div>
       <div className="nps-row">
         {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (

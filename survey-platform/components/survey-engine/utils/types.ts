@@ -37,6 +37,8 @@ export interface NPSStepDef extends BaseStep {
   type: 'nps'
   key: string
   perguntaBilingue?: boolean
+  titulo?: string
+  desc?: string
 }
 
 export interface ScaleStepDef extends BaseStep {
