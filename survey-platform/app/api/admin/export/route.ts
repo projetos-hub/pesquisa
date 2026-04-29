@@ -26,6 +26,77 @@ interface SessionRow {
   responses: ResponseRow[]
 }
 
+interface QuestionRow {
+  id: string
+  key: string
+  type: string
+  title: string
+  order_index: number
+}
+
+interface OptionRow {
+  question_id: string
+  order_index: number
+  label: string
+}
+
+type ColDef = {
+  header: string
+  getValue: (ans: Record<string, unknown>) => unknown
+}
+
+function buildColumnSchema(questions: QuestionRow[], options: OptionRow[]): ColDef[] {
+  const cols: ColDef[] = []
+
+  const optsByQuestion: Record<string, OptionRow[]> = options.reduce(
+    (acc, o) => {
+      if (!acc[o.question_id]) acc[o.question_id] = []
+      acc[o.question_id].push(o)
+      return acc
+    },
+    {} as Record<string, OptionRow[]>
+  )
+
+  for (const q of questions) {
+    if (q.type === 'welcome' || q.type === 'thankyou') continue
+
+    if (q.type === 'nps') {
+      cols.push({
+        header: q.title,
+        getValue: ans => (ans[q.key] as { nps?: number } | undefined)?.nps ?? '',
+      })
+    } else if (q.type === 'scale') {
+      for (const opt of optsByQuestion[q.id] ?? []) {
+        cols.push({
+          header: opt.label,
+          getValue: ans =>
+            (ans[q.key] as Record<string, number> | undefined)?.[opt.label] ?? '',
+        })
+      }
+    } else if (q.type === 'scale_sections') {
+      // Incluir como JSON raw — tratamento completo em versão futura
+      cols.push({
+        header: q.title,
+        getValue: ans => {
+          const val = ans[q.key]
+          return val ? JSON.stringify(val) : ''
+        },
+      })
+    } else if (q.type === 'text' || q.type === 'radio' || q.type === 'checkbox') {
+      cols.push({
+        header: q.title,
+        getValue: ans => {
+          const val = ans[q.key]
+          if (Array.isArray(val)) return val.join(', ')
+          return typeof val === 'string' ? val : val != null ? String(val) : ''
+        },
+      })
+    }
+  }
+
+  return cols
+}
+
 export async function GET(request: Request) {
   try {
     // Auth check
@@ -48,13 +119,12 @@ export async function GET(request: Request) {
       })
     }
 
-    // Use service client to bypass RLS
     const serviceSupabase = createServiceClient()
 
-    // Fetch survey metadata (to get slug)
+    // Survey metadata
     const { data: survey, error: surveyError } = await serviceSupabase
       .from('surveys')
-      .select('id, slug')
+      .select('id, slug, title')
       .eq('id', surveyId)
       .single()
 
@@ -65,7 +135,27 @@ export async function GET(request: Request) {
       })
     }
 
-    // Fetch all sessions + responses for this survey
+    // Questions ordered by order_index
+    const { data: questionsRaw } = await serviceSupabase
+      .from('questions')
+      .select('id, key, type, title, order_index')
+      .eq('survey_id', surveyId)
+      .order('order_index', { ascending: true })
+
+    const questions = (questionsRaw ?? []) as QuestionRow[]
+
+    // Options for all questions
+    const { data: optionsRaw } = questions.length > 0
+      ? await serviceSupabase
+          .from('question_options')
+          .select('question_id, order_index, label')
+          .in('question_id', questions.map(q => q.id))
+          .order('order_index', { ascending: true })
+      : { data: [] }
+
+    const options = (optionsRaw ?? []) as OptionRow[]
+
+    // All sessions + responses
     const { data: sessions, error: sessionsError } = await serviceSupabase
       .from('response_sessions')
       .select('id, survey_id, community_id, user_id, submitted_at, perfil, nome_responsavel, nome_aluno, serie, email, school, onda, responses(id, question_key, value)')
@@ -79,95 +169,66 @@ export async function GET(request: Request) {
       })
     }
 
-    // Discover all dynamic column names
-    const allDynamicKeys = new Set<string>()
-    sessions.forEach(session => {
-      session.responses.forEach(resp => {
-        const value = resp.value as Record<string, unknown> | unknown
-        if (value && typeof value === 'object' && !Array.isArray(value)) {
-          Object.keys(value as object).forEach(subkey => {
-            allDynamicKeys.add(`${resp.question_key}_${subkey}`)
-          })
-        } else {
-          allDynamicKeys.add(resp.question_key)
-        }
-      })
-    })
+    // Build column schema from questions
+    const columnSchema = buildColumnSchema(questions, options)
 
-    // Create workbook with ExcelJS (UTF-8 encoding nativo)
+    // Metadata columns (matching Metabase format)
+    const surveyTitle = survey.title
+    const META_HEADERS = ['postId', 'title', 'community', 'userId', 'userName', 'userEmail', 'tipoRespondente', 'answeredAt']
+    const getMetaValues = (s: SessionRow): unknown[] => [
+      s.id,
+      surveyTitle,
+      s.community_id,
+      s.user_id,
+      s.perfil === 'aluno' ? (s.nome_aluno || '') : (s.nome_responsavel || ''),
+      s.email || '',
+      s.perfil === 'aluno' ? 'estudante' : 'responsavel',
+      s.submitted_at,
+    ]
+
+    // Build answer lookup
+    const answersBySession = new Map<string, Record<string, unknown>>()
+    for (const session of sessions) {
+      const ans: Record<string, unknown> = {}
+      for (const r of session.responses) {
+        ans[r.question_key] = r.value
+      }
+      answersBySession.set(session.id, ans)
+    }
+
+    // Create workbook
     const workbook = new ExcelJS.Workbook()
     const worksheet = workbook.addWorksheet('Respostas')
 
-    // Define header columns
-    const headers = [
-      'Data',
-      'Perfil',
-      'Nome Responsável',
-      'Nome Aluno',
-      'Série',
-      'E-mail',
-      'Escola',
-      'Comunidade',
-      'Onda',
-      ...Array.from(allDynamicKeys).sort(),
-    ]
-    worksheet.addRow(headers)
+    // Header row
+    worksheet.addRow([
+      ...META_HEADERS,
+      ...columnSchema.map(c => c.header),
+    ])
 
-    // Style header row
     const headerRow = worksheet.getRow(1)
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
     headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } }
     headerRow.alignment = { horizontal: 'center', vertical: 'middle' }
 
-    // Add data rows
-    sessions.forEach(session => {
-      const row: unknown[] = [
-        session.submitted_at ? new Date(session.submitted_at).toLocaleString('pt-BR') : '',
-        session.perfil,
-        session.nome_responsavel,
-        session.nome_aluno,
-        session.serie,
-        session.email,
-        session.school,
-        session.community_id,
-        session.onda,
-      ]
+    // Data rows
+    for (const session of sessions) {
+      const ans = answersBySession.get(session.id) ?? {}
+      worksheet.addRow([
+        ...getMetaValues(session),
+        ...columnSchema.map(c => c.getValue(ans)),
+      ])
+    }
 
-      // Build answer map
-      const answerMap: Record<string, unknown> = {}
-      session.responses.forEach(resp => {
-        const value = resp.value as Record<string, unknown> | unknown
-        if (value && typeof value === 'object' && !Array.isArray(value)) {
-          Object.entries(value as Record<string, unknown>).forEach(([subkey, val]) => {
-            const colName = `${resp.question_key}_${subkey}`
-            answerMap[colName] = val
-          })
-        } else {
-          answerMap[resp.question_key] = value
-        }
-      })
-
-      // Add answers in same order as headers
-      Array.from(allDynamicKeys)
-        .sort()
-        .forEach(key => {
-          row.push(answerMap[key] ?? '')
-        })
-
-      worksheet.addRow(row)
+    // Column widths
+    worksheet.columns.forEach((col, i) => {
+      col.width = i < META_HEADERS.length ? 24 : 32
     })
 
-    // Auto-fit columns
-    worksheet.columns.forEach(col => {
-      col.width = 18
-    })
-
-    // Generate filename
     const now = new Date()
     const dateStr = now.toISOString().split('T')[0]
     const filename = `respostas-${survey.slug}-${dateStr}.xlsx`
 
-    // Write to buffer with UTF-8 encoding
     const buffer = await workbook.xlsx.writeBuffer()
 
     return new Response(buffer, {
