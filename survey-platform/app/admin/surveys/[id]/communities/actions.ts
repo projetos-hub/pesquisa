@@ -68,3 +68,48 @@ export async function saveCommunityTheme(
     return { error: msg }
   }
 }
+
+export async function inheritThemesFromPreviousSurvey(surveyId: string) {
+  try {
+    await requireAuth()
+    if (!surveyId) return { error: 'Parâmetros inválidos' }
+
+    const supabase = createServiceClient()
+
+    const { data: communities } = await supabase
+      .from('survey_communities')
+      .select('community_id')
+      .eq('survey_id', surveyId)
+
+    if (!communities?.length) return { error: 'Nenhuma comunidade nesta pesquisa' }
+
+    let updated = 0
+    for (const { community_id } of communities) {
+      const { data: recent } = await supabase
+        .from('survey_communities')
+        .select('theme')
+        .eq('community_id', community_id)
+        .neq('survey_id', surveyId)
+        .not('theme', 'is', null)
+        .order('id', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (recent?.theme && Object.keys(recent.theme as object).length > 0) {
+        await supabase
+          .from('survey_communities')
+          .update({ theme: recent.theme })
+          .eq('survey_id', surveyId)
+          .eq('community_id', community_id)
+        updated++
+      }
+    }
+
+    revalidatePath(`/admin/surveys/${surveyId}/communities`)
+    return { updated }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Erro desconhecido'
+    console.error('[inheritThemesFromPreviousSurvey]', msg)
+    return { error: msg }
+  }
+}

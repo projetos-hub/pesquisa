@@ -99,12 +99,13 @@ export async function POST(req: Request, { params }: RouteContext) {
   }
 
   // ── 1c. Valida email na amostra (se survey possui segmentação amostral) ──────
-  if (communityId) {
+  // Checa no nível da survey (sem filtrar por community_id) para impedir
+  // bypass via communityId diferente ou ausente.
+  {
     const { data: sampleEntries } = await supabase
       .from('survey_sample_lists')
       .select('id')
       .eq('survey_id', survey.id)
-      .eq('community_id', communityId)
       .limit(1)
 
     if (sampleEntries && sampleEntries.length > 0) {
@@ -119,7 +120,6 @@ export async function POST(req: Request, { params }: RouteContext) {
         .from('survey_sample_lists')
         .select('id')
         .eq('survey_id', survey.id)
-        .eq('community_id', communityId)
         .eq('email', email.toLowerCase())
         .limit(1)
 

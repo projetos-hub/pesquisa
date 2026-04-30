@@ -98,7 +98,9 @@ export async function GET(req: Request, { params }: RouteContext) {
   }
 
   // CHECAGEM 3: Validar email na amostra se survey possui segmentação
-  if (result.data?.id && communityId) {
+  // Verifica amostra no nível da survey (sem filtrar por community_id) para
+  // impedir bypass via communityId diferente ou ausente.
+  if (result.data?.id) {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
@@ -109,11 +111,10 @@ export async function GET(req: Request, { params }: RouteContext) {
       .from('survey_sample_lists')
       .select('id')
       .eq('survey_id', result.data.id)
-      .eq('community_id', communityId)
       .limit(1)
 
     if (sampleEntries && sampleEntries.length > 0) {
-      // Survey possui amostra — validar email
+      // Survey possui amostra — validar email independente da comunidade
       if (!email) {
         return NextResponse.json(
           {
@@ -128,7 +129,6 @@ export async function GET(req: Request, { params }: RouteContext) {
         .from('survey_sample_lists')
         .select('id')
         .eq('survey_id', result.data.id)
-        .eq('community_id', communityId)
         .eq('email', email.toLowerCase())
         .limit(1)
 
