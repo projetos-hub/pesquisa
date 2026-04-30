@@ -59,6 +59,19 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
   const [scope,        setScope]        = useState<'all' | 'communities' | 'group' | 'sample'>('all')
   const [selectedComms, setSelectedComms] = useState<string[]>([])
   const [groupAlias,   setGroupAlias]   = useState('')
+
+  // Comunidades disponíveis na amostra (para segmentação por comunidade)
+  interface SampleCommunity { community_id: string; nome: string; total: number; resolved: number }
+  const [sampleComms,         setSampleComms]         = useState<SampleCommunity[]>([])
+  const [selectedSampleComms, setSelectedSampleComms] = useState<string[]>([])
+
+  useEffect(() => {
+    if (scope !== 'sample') return
+    fetch(`/api/admin/surveys/${surveyId}/sample/communities`)
+      .then(r => r.json())
+      .then((data: { communities?: SampleCommunity[] }) => setSampleComms(data.communities ?? []))
+      .catch(() => setSampleComms([]))
+  }, [scope, surveyId])
   const [groupComm,    setGroupComm]    = useState(communities[0]?.id ?? '')
 
   // Grupos de amostra
@@ -190,7 +203,8 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
       body,
       channels,
       target_scope:         scope,
-      target_community_ids: scope === 'all' || scope === 'sample' ? null :
+      target_community_ids: scope === 'all' ? null :
+                            scope === 'sample' ? (selectedSampleComms.length > 0 ? selectedSampleComms : null) :
                             scope === 'group' ? [groupComm] : selectedComms,
       // Para sample scope, target_group_alias carrega o UUID do grupo selecionado
       target_group_alias:   scope === 'group' ? groupAlias :
@@ -334,7 +348,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
           ))}
         </div>
 
-        {/* Info de amostra + seletor de grupo */}
+        {/* Info de amostra + checklist de comunidades + seletor de grupo */}
         {scope === 'sample' && (
           <div className="space-y-2">
             <div className="text-xs bg-indigo-50 border border-indigo-100 text-indigo-800 rounded-lg px-3 py-2">
@@ -348,6 +362,49 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
                   </>
               }
             </div>
+
+            {/* Checklist de comunidades da amostra */}
+            {sampleComms.length > 1 && (
+              <div className="border border-gray-200 rounded-lg p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-gray-700">Filtrar por comunidade</p>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSampleComms([])}
+                    className="text-xs text-gray-400 hover:text-gray-600"
+                  >
+                    {selectedSampleComms.length > 0 ? 'Limpar' : 'Todas'}
+                  </button>
+                </div>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {sampleComms.map(c => (
+                    <label key={c.community_id} className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedSampleComms.length === 0 || selectedSampleComms.includes(c.community_id)}
+                        onChange={() => {
+                          setSelectedSampleComms(prev => {
+                            const all = prev.length === 0
+                            if (all) return sampleComms.map(x => x.community_id).filter(x => x !== c.community_id)
+                            return prev.includes(c.community_id)
+                              ? prev.filter(x => x !== c.community_id)
+                              : [...prev, c.community_id]
+                          })
+                        }}
+                        className="text-indigo-600"
+                      />
+                      <span className="flex-1">{c.nome}</span>
+                      <span className="text-gray-400">{c.resolved} resolvidos</span>
+                    </label>
+                  ))}
+                </div>
+                {selectedSampleComms.length > 0 && selectedSampleComms.length < sampleComms.length && (
+                  <p className="text-xs text-amber-600">
+                    Enviando para {selectedSampleComms.length} de {sampleComms.length} comunidade(s)
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Seletor de grupo */}
             {sampleGroups.length > 0 && (
