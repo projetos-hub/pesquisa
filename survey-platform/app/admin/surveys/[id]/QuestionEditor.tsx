@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition, useRef } from 'react'
-import { createQuestion, saveQuestionOptions, deleteQuestion, moveQuestion } from '../actions'
+import { createQuestion, saveQuestionOptions, deleteQuestion, moveQuestion, toggleWelcomeStep } from '../actions'
 
 interface QuestionRow {
   id: string
@@ -205,12 +205,42 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
 
   const sorted = [...questions].sort((a, b) => a.order_index - b.order_index)
   const canAdd = true
+  const hasWelcome = questions.some(q => q.type === 'welcome')
+
+  async function handleToggleWelcome() {
+    startTransition(async () => {
+      const res = await toggleWelcomeStep(surveyId, !hasWelcome)
+      if (res.error) { notify(res.error, true); return }
+      if (!hasWelcome) {
+        const newQ: QuestionRow = { id: Math.random().toString(), order_index: 0, type: 'welcome', key: 'welcome', title: 'Boas-vindas', description: null, required: false, settings: {}, options: [] }
+        setQuestions(prev => [newQ, ...prev.map(q => ({ ...q, order_index: q.order_index + 1 }))])
+        notify('Tela de boas-vindas adicionada.')
+      } else {
+        setQuestions(prev => prev.filter(q => q.type !== 'welcome'))
+        notify('Tela de boas-vindas removida.')
+      }
+    })
+  }
 
   return (
     <div>
       {/* Notificações */}
       {error   && <div style={{ background: '#fff5f5', border: '1px solid #fed7d7', color: '#c53030', borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: '.875rem' }}>⚠️ {error}</div>}
       {success && <div style={{ background: '#f0fff4', border: '1px solid #c6f6d5', color: '#276749', borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: '.875rem' }}>✓ {success}</div>}
+
+      {/* Toggle: tela de boas-vindas */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 8, background: hasWelcome ? '#f0fff4' : '#f7fafc', border: `1px solid ${hasWelcome ? '#c6f6d5' : '#e2e8f0'}`, marginBottom: 12 }}>
+        <span style={{ fontSize: '1.1rem' }}>👋</span>
+        <span style={{ fontSize: '.875rem', color: '#2d3748', flex: 1 }}>
+          Tela de boas-vindas {hasWelcome ? <strong style={{ color: '#276749' }}>ativa</strong> : <span style={{ color: '#a0aec0' }}>desativada</span>}
+        </span>
+        <button onClick={handleToggleWelcome} disabled={isPending}
+          style={{ fontSize: '.8rem', padding: '5px 14px', borderRadius: 6, border: '1px solid', cursor: 'pointer',
+            background: hasWelcome ? '#fff5f5' : '#667eea', color: hasWelcome ? '#c53030' : '#fff',
+            borderColor: hasWelcome ? '#fed7d7' : '#667eea' }}>
+          {hasWelcome ? 'Remover' : 'Adicionar'}
+        </button>
+      </div>
 
       {/* Lista de perguntas */}
       {sorted.length === 0 && !showAdd && (
