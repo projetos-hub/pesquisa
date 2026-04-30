@@ -4,8 +4,9 @@
 
 import { z }                              from 'zod'
 import { createServerSupabaseClient }     from '@/lib/supabase-server'
-import { sendToOneCommunity }             from '@/lib/layers-notifications'
-import { fetchLayersUserByEmail }         from '@/lib/layers-hub'
+import { createServiceClient }            from '@/lib/supabase-service'
+import { sendToOneCommunity, interpolatePlaceholders } from '@/lib/layers-notifications'
+import { fetchLayersUserProfileByEmail }              from '@/lib/layers-hub'
 
 const PORTAL_ALIAS = '@raizeducacao:pesquisa'
 
@@ -42,6 +43,16 @@ export async function POST(
     const { community_id, emails, title, body, channels, roles,
             push_title, push_body, email_title, email_body, email_action_label } = parsed.data
 
+    // Busca nomeEscola do tema da community para {{nomeEscola}}
+    const serviceSupabase = createServiceClient()
+    const { data: commRow } = await serviceSupabase
+      .from('survey_communities')
+      .select('theme')
+      .eq('survey_id', surveyId)
+      .eq('community_id', community_id)
+      .single()
+    const nomeEscola = (commRow?.theme as { nomeEscola?: string } | null)?.nomeEscola ?? ''
+
     // Processa cada email em paralelo (com limite de 10 simultâneos)
     const results: { email: string; status: 'sent' | 'not_found' | 'failed'; error?: string }[] = []
 
@@ -49,30 +60,42 @@ export async function POST(
     for (let i = 0; i < emails.length; i += CONCURRENCY) {
       const batch = emails.slice(i, i + CONCURRENCY)
       const batchResults = await Promise.all(batch.map(async (email) => {
-        // 1. Resolve layers_user_id
-        const userId = await fetchLayersUserByEmail(community_id, email).catch(() => null)
-        if (!userId) {
+        // 1. Resolve userId + nome do usuário
+        const profile = await fetchLayersUserProfileByEmail(community_id, email).catch(() => null)
+        if (!profile) {
           return { email, status: 'not_found' as const }
         }
 
-        // 2. Monta payload direcionado ao usuário
+        // 2. Interpola placeholders com dados do usuário
+        const firstName = profile.name
+          ? profile.name.trim().split(/\s+/)[0]!.charAt(0).toUpperCase() +
+            profile.name.trim().split(/\s+/)[0]!.slice(1).toLowerCase()
+          : ''
+        const vars = { nome: firstName, nomeAluno: '', nomeEscola, serie: '' }
+
+        const resolvedTitle     = interpolatePlaceholders(push_title  ?? title,       vars)
+        const resolvedBody      = interpolatePlaceholders(push_body   ?? body,        vars)
+        const resolvedEmailTitle = interpolatePlaceholders(email_title ?? title,       vars)
+        const resolvedEmailBody  = interpolatePlaceholders(email_body  ?? body,        vars)
+
+        // 3. Monta payload direcionado ao usuário
         const payload = {
           targets: {
-            topics: [{ kind: 'user' as const, id: userId }],
+            topics: [{ kind: 'user' as const, id: profile.id }],
             roles,
           },
-          title:  push_title ?? title,
-          body:   push_body  ?? body,
+          title:  resolvedTitle,
+          body:   resolvedBody,
           action: { type: 'portal' as const, portalAlias: PORTAL_ALIAS, path: '/' },
           ...(channels.length > 0 ? {
             channels: {
               ...(channels.includes('pushNotification') ? {
-                pushNotification: { title: push_title ?? title, body: push_body ?? body },
+                pushNotification: { title: resolvedTitle, body: resolvedBody },
               } : {}),
               ...(channels.includes('email') ? {
                 email: {
-                  title:       email_title ?? title,
-                  body:        email_body  ?? body,
+                  title:       resolvedEmailTitle,
+                  body:        resolvedEmailBody,
                   actionLabel: email_action_label ?? 'Responder Pesquisa',
                 },
               } : {}),
@@ -80,7 +103,7 @@ export async function POST(
           } : {}),
         }
 
-        // 3. Envia
+        // 4. Envia
         const result = await sendToOneCommunity(community_id, payload)
         if (result.success) return { email, status: 'sent' as const }
         return { email, status: 'failed' as const, error: result.error }
