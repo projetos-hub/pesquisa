@@ -20,7 +20,9 @@ export default function ThankYou({ nps, perfil, nomeAluno, school, tipo, theme, 
   const isPromotor = score >= 9
   const isNeutro   = score >= 7 && score <= 8
   const isDetrator = score <= 6
-  const linkIndicacao = indicacaoLinks?.[school] ?? null
+  const linkIndicacao = (theme as { indicacaoLink?: string } | undefined)?.indicacaoLink
+    ?? indicacaoLinks?.[school]
+    ?? null
 
   // Mensagem personalizada via admin (suporta {{nomeAluno}}, {{nomeEscola}}, etc.)
   if (theme?.thankyouMessage) {
