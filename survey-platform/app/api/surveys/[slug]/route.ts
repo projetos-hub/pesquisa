@@ -47,6 +47,23 @@ const getCachedSurveyConfig = unstable_cache(
       }
 
       installation = inst as InstallationRow
+
+      // Fallback: se tema vazio, busca o tema mais recente desta comunidade em outra pesquisa
+      if (!installation.theme || Object.keys(installation.theme).length === 0) {
+        const { data: globalTheme } = await supabase
+          .from('survey_communities')
+          .select('theme')
+          .eq('community_id', communityId)
+          .neq('survey_id', survey.id)
+          .not('theme', 'is', null)
+          .order('id', { ascending: false })
+          .limit(1)
+          .single()
+
+        if (globalTheme?.theme && Object.keys(globalTheme.theme as object).length > 0) {
+          installation = { ...installation, theme: globalTheme.theme as Record<string, unknown> }
+        }
+      }
     }
 
     // 3. Busca questions ordenadas
