@@ -115,47 +115,49 @@ export async function GET(req: Request, { params }: RouteContext) {
   }
 
   // CHECAGEM 3: Validar email na amostra se survey possui segmentação
-  // Usa result.surveyId (UUID real) — result.data.id é o slug, não o UUID.
-  if (result.surveyId) {
+  // Lookup direto pelo slug — independente do cache (evita surveyId ausente em entradas antigas)
+  {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
       { auth: { persistSession: false } }
     )
 
-    const { data: sampleEntries } = await supabase
-      .from('survey_sample_lists')
+    const { data: surveyRow } = await supabase
+      .from('surveys')
       .select('id')
-      .eq('survey_id', result.surveyId)
-      .limit(1)
+      .eq('slug', slug)
+      .eq('status', 'ativa')
+      .single()
 
-    if (sampleEntries && sampleEntries.length > 0) {
-      // Survey possui amostra — validar email independente da comunidade
-      if (!email) {
-        return NextResponse.json(
-          {
-            error: 'not_in_sample',
-            message: 'Email não fornecido para pesquisa segmentada',
-          },
-          { status: 403 }
-        )
-      }
-
-      const { data: userInSample } = await supabase
+    if (surveyRow?.id) {
+      const { data: sampleEntries } = await supabase
         .from('survey_sample_lists')
         .select('id')
-        .eq('survey_id', result.surveyId)
-        .eq('email', email.toLowerCase())
+        .eq('survey_id', surveyRow.id)
         .limit(1)
 
-      if (!userInSample || userInSample.length === 0) {
-        return NextResponse.json(
-          {
-            error: 'not_in_sample',
-            message: 'Você não está na amostra desta pesquisa',
-          },
-          { status: 403 }
-        )
+      if (sampleEntries && sampleEntries.length > 0) {
+        if (!email) {
+          return NextResponse.json(
+            { error: 'not_in_sample', message: 'Email não fornecido para pesquisa segmentada' },
+            { status: 403 }
+          )
+        }
+
+        const { data: userInSample } = await supabase
+          .from('survey_sample_lists')
+          .select('id')
+          .eq('survey_id', surveyRow.id)
+          .eq('email', email.toLowerCase())
+          .limit(1)
+
+        if (!userInSample || userInSample.length === 0) {
+          return NextResponse.json(
+            { error: 'not_in_sample', message: 'Você não está na amostra desta pesquisa' },
+            { status: 403 }
+          )
+        }
       }
     }
   }

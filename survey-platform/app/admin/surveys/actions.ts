@@ -223,6 +223,46 @@ export async function moveQuestion(
   return {}
 }
 
+// ── Adiciona/remove tela de boas-vindas ───────────────────────────────────────
+export async function toggleWelcomeStep(
+  surveyId: string,
+  add: boolean
+): Promise<{ error?: string }> {
+  try { await requireAuth() } catch { return { error: 'Não autorizado' } }
+
+  const supabase = createServiceClient()
+
+  if (!add) {
+    await supabase.from('questions').delete().eq('survey_id', surveyId).eq('type', 'welcome')
+    revalidatePath(`/admin/surveys/${surveyId}`)
+    return {}
+  }
+
+  // Desloca todas as perguntas existentes +1 para abrir o índice 0
+  const { data: existing } = await supabase
+    .from('questions')
+    .select('id, order_index')
+    .eq('survey_id', surveyId)
+    .order('order_index', { ascending: false })
+
+  for (const q of (existing ?? [])) {
+    await supabase.from('questions').update({ order_index: q.order_index + 1 }).eq('id', q.id)
+  }
+
+  await supabase.from('questions').insert({
+    survey_id:   surveyId,
+    order_index: 0,
+    type:        'welcome',
+    key:         'welcome',
+    title:       'Boas-vindas',
+    required:    false,
+    settings:    {},
+  })
+
+  revalidatePath(`/admin/surveys/${surveyId}`)
+  return {}
+}
+
 // ── Deleta pesquisa (e todos os dados relacionados) ───────────────────────────
 export async function deleteSurvey(surveyId: string): Promise<{ error?: string }> {
   try { await requireAuth() } catch { return { error: 'Não autorizado' } }
