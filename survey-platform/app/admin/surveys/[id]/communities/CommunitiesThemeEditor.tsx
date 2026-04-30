@@ -159,6 +159,7 @@ function ThemeEditForm({ surveyId, community, onClose }: FormProps) {
         primaryColor: formData.get('primaryColor') as string || undefined,
         secondaryColor: formData.get('secondaryColor') as string || undefined,
         logo: formData.get('logo') as string || undefined,
+        indicacaoLink: (formData.get('indicacaoLink') as string) ?? undefined,
       }
     )
 
@@ -246,6 +247,19 @@ function ThemeEditForm({ surveyId, community, onClose }: FormProps) {
               <p className="text-xs text-gray-500 mt-1">
                 Default: {community.logoUrl}
               </p>
+            </div>
+
+            {/* Link de indicação (quem confia) */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">Link de indicação</label>
+              <input
+                type="url"
+                name="indicacaoLink"
+                defaultValue={(community.theme as { indicacaoLink?: string } | undefined)?.indicacaoLink || ''}
+                placeholder="https://quemconfia.com.br/escola"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-xs"
+              />
+              <p className="text-xs text-gray-500 mt-1">Exibido no ThankYou para promotores (NPS 9-10)</p>
             </div>
 
             {/* Error */}

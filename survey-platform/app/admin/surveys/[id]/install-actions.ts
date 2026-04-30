@@ -20,11 +20,25 @@ export async function installCommunity(surveyId: string, formData: FormData) {
     if (!communityId) return { error: 'ID da comunidade é obrigatório' }
 
     const supabase = createServiceClient()
+
+    // Herdar tema existente da mesma comunidade em outra survey (tema não muda entre surveys)
+    const { data: existingInstall } = await supabase
+      .from('survey_communities')
+      .select('theme')
+      .eq('community_id', communityId)
+      .neq('survey_id', surveyId)
+      .not('theme', 'eq', '{}')
+      .not('theme', 'is', null)
+      .limit(1)
+      .maybeSingle()
+
+    const inheritedTheme = existingInstall?.theme ?? {}
+
     const { error } = await supabase
       .from('survey_communities')
       .upsert(
-        { survey_id: surveyId, community_id: communityId, status, active: true },
-        { onConflict: 'survey_id,community_id' }
+        { survey_id: surveyId, community_id: communityId, status, active: true, theme: inheritedTheme },
+        { onConflict: 'survey_id,community_id', ignoreDuplicates: false }
       )
 
     if (error) return { error: 'Erro ao instalar: ' + error.message }

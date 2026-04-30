@@ -115,6 +115,7 @@ export interface SurveyTheme {
   nomeEscola?: string
   welcomeMessage?: string
   thankyouMessage?: string
+  indicacaoLink?: string
 }
 
 // ─── Config de pesquisa ───────────────────────────────────────────────────────
