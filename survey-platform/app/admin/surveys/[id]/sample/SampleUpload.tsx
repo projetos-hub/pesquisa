@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import QuickSample from './QuickSample'
+import QuickSample    from './QuickSample'
+import SampleGroups   from './SampleGroups'
 
 interface Community { id: string; nome: string }
 
@@ -344,6 +345,13 @@ export default function SampleUpload({ surveyId, communities }: Props) {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Grupos de segmentação ─────────────────────────────────────────── */}
+      {communities.length > 0 && (
+        <div className="border-t pt-4">
+          <SampleGroups surveyId={surveyId} communities={communities} />
         </div>
       )}
     </div>

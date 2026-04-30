@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -60,6 +60,19 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
   const [selectedComms, setSelectedComms] = useState<string[]>([])
   const [groupAlias,   setGroupAlias]   = useState('')
   const [groupComm,    setGroupComm]    = useState(communities[0]?.id ?? '')
+
+  // Grupos de amostra
+  interface SampleGroupOption { id: string; name: string; color: string; member_count: number }
+  const [sampleGroups,        setSampleGroups]        = useState<SampleGroupOption[]>([])
+  const [selectedSampleGroup, setSelectedSampleGroup] = useState<string>('')
+
+  useEffect(() => {
+    if (scope !== 'sample') return
+    fetch(`/api/admin/surveys/${surveyId}/sample/groups`)
+      .then(r => r.json())
+      .then((d: { groups?: SampleGroupOption[] }) => setSampleGroups(d.groups ?? []))
+      .catch(() => setSampleGroups([]))
+  }, [scope, surveyId])
   const [roles,        setRoles]        = useState<string[]>(['guardian'])
 
   // ── Channels
@@ -179,7 +192,9 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
       target_scope:         scope,
       target_community_ids: scope === 'all' || scope === 'sample' ? null :
                             scope === 'group' ? [groupComm] : selectedComms,
-      target_group_alias:   scope === 'group' ? groupAlias : null,
+      // Para sample scope, target_group_alias carrega o UUID do grupo selecionado
+      target_group_alias:   scope === 'group' ? groupAlias :
+                            scope === 'sample' && selectedSampleGroup ? selectedSampleGroup : null,
       target_roles:         roles,
       personalized,
       push_title:           customPerCh ? pushTitle : null,
@@ -319,18 +334,58 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
           ))}
         </div>
 
-        {/* Info de amostra */}
+        {/* Info de amostra + seletor de grupo */}
         {scope === 'sample' && (
-          <div className="text-xs bg-indigo-50 border border-indigo-100 text-indigo-800 rounded-lg px-3 py-2">
-            {sampleCount > 0
-              ? `📋 ${sampleCount} email(s) resolvido(s) na amostra desta pesquisa.`
-              : <>
-                  ⚠️ Nenhum email resolvido na amostra.{' '}
-                  <a href={`/admin/surveys/${surveyId}/sample`} className="underline font-medium">
-                    Ir para Amostra →
-                  </a>
-                </>
-            }
+          <div className="space-y-2">
+            <div className="text-xs bg-indigo-50 border border-indigo-100 text-indigo-800 rounded-lg px-3 py-2">
+              {sampleCount > 0
+                ? `📋 ${sampleCount} email(s) resolvido(s) na amostra desta pesquisa.`
+                : <>
+                    ⚠️ Nenhum email resolvido na amostra.{' '}
+                    <a href={`/admin/surveys/${surveyId}/sample`} className="underline font-medium">
+                      Ir para Amostra →
+                    </a>
+                  </>
+              }
+            </div>
+
+            {/* Seletor de grupo */}
+            {sampleGroups.length > 0 && (
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Grupo de destinatários <span className="text-gray-400">(opcional — vazio = toda a amostra)</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSampleGroup('')}
+                    className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                      selectedSampleGroup === ''
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400'
+                    }`}
+                  >
+                    Toda a amostra ({sampleCount})
+                  </button>
+                  {sampleGroups.map(g => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => setSelectedSampleGroup(g.id === selectedSampleGroup ? '' : g.id)}
+                      className={`text-xs px-3 py-1 rounded-full border transition-colors flex items-center gap-1.5 ${
+                        selectedSampleGroup === g.id
+                          ? 'text-white border-transparent'
+                          : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                      }`}
+                      style={selectedSampleGroup === g.id ? { background: g.color, borderColor: g.color } : {}}
+                    >
+                      <span className="w-2 h-2 rounded-full" style={{ background: g.color }} />
+                      {g.name} ({g.member_count})
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

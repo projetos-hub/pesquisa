@@ -411,8 +411,26 @@ export async function executePersonalizedJobSample(
     }
   }
 
+  // Se target_group_alias contém um UUID de grupo de amostra, filtrar por membros do grupo
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const sampleGroupId = dispatch.target_group_alias && UUID_RE.test(dispatch.target_group_alias)
+    ? dispatch.target_group_alias
+    : null
+
+  let groupMemberIds: string[] | null = null
+  if (sampleGroupId) {
+    const { data: members } = await supabase
+      .from('survey_sample_group_members')
+      .select('sample_id')
+      .eq('group_id', sampleGroupId)
+    groupMemberIds = (members ?? []).map(m => m.sample_id)
+    if (groupMemberIds.length === 0) {
+      return { processed: 0, failed: 0, hasMore: false }
+    }
+  }
+
   // Busca lote de entries na amostra
-  const { data: sampleEntries } = await supabase
+  let sampleQuery = supabase
     .from('survey_sample_lists')
     .select('id, email, nome, layers_user_id')
     .eq('survey_id', dispatch.survey_id)
@@ -421,6 +439,12 @@ export async function executePersonalizedJobSample(
     .neq('layers_user_id', 'NOT_FOUND')
     .order('created_at')
     .range(offset, offset + PERSONALIZED_BATCH_SIZE - 1)
+
+  if (groupMemberIds) {
+    sampleQuery = sampleQuery.in('id', groupMemberIds)
+  }
+
+  const { data: sampleEntries } = await sampleQuery
 
   let processed = 0
   let failed    = 0
