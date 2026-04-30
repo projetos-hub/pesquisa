@@ -290,6 +290,15 @@ async function fetchCommunityUsers(
   }
 }
 
+// ─── formatFirstName ─────────────────────────────────────────────────────────
+// "LUCAS MESQUITA" → "Lucas" | "carol da layers" → "Carol"
+
+function formatFirstName(fullName: string): string {
+  const first = fullName.trim().split(/\s+/)[0] ?? ''
+  if (!first) return ''
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase()
+}
+
 // ─── interpolatePlaceholders ──────────────────────────────────────────────────
 //
 // Substitui {{variavel}} no texto pelos dados do usuário.
@@ -314,7 +323,7 @@ function buildPersonalizedPayload(
   nomeEscola:  string,
 ): LayersPayload {
   const vars: PersonalizedVars = {
-    nome:       user.name?.split(' ')[0] ?? '',
+    nome:       formatFirstName(user.name ?? ''),
     nomeAluno:  '',   // preenchido se for guardian
     nomeEscola,
     serie:      '',
@@ -411,8 +420,26 @@ export async function executePersonalizedJobSample(
     }
   }
 
+  // Se target_group_alias contém um UUID de grupo de amostra, filtrar por membros do grupo
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const sampleGroupId = dispatch.target_group_alias && UUID_RE.test(dispatch.target_group_alias)
+    ? dispatch.target_group_alias
+    : null
+
+  let groupMemberIds: string[] | null = null
+  if (sampleGroupId) {
+    const { data: members } = await supabase
+      .from('survey_sample_group_members')
+      .select('sample_id')
+      .eq('group_id', sampleGroupId)
+    groupMemberIds = (members ?? []).map(m => m.sample_id)
+    if (groupMemberIds.length === 0) {
+      return { processed: 0, failed: 0, hasMore: false }
+    }
+  }
+
   // Busca lote de entries na amostra
-  const { data: sampleEntries } = await supabase
+  let sampleQuery = supabase
     .from('survey_sample_lists')
     .select('id, email, nome, layers_user_id')
     .eq('survey_id', dispatch.survey_id)
@@ -421,6 +448,12 @@ export async function executePersonalizedJobSample(
     .neq('layers_user_id', 'NOT_FOUND')
     .order('created_at')
     .range(offset, offset + PERSONALIZED_BATCH_SIZE - 1)
+
+  if (groupMemberIds) {
+    sampleQuery = sampleQuery.in('id', groupMemberIds)
+  }
+
+  const { data: sampleEntries } = await sampleQuery
 
   let processed = 0
   let failed    = 0
@@ -462,7 +495,7 @@ export async function executePersonalizedJobSample(
 
       // Interpolar placeholders com dados da amostra
       const vars: PersonalizedVars = {
-        nome:       entry.nome?.split(' ')[0] ?? '',
+        nome:       formatFirstName(entry.nome ?? ''),
         nomeAluno,
         nomeEscola: communityNomeEscola,
         serie,

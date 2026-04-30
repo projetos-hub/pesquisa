@@ -51,7 +51,8 @@ export async function POST(
             .from('survey_sample_lists')
             .update({
               layers_user_id: profile.id,
-              ...(profile.name ? { nome: profile.name } : {}),
+              ...(profile.name   ? { nome:   profile.name }   : {}),
+              ...(profile.perfil ? { perfil: profile.perfil } : {}),
             })
             .eq('id', entry.id)
           resolved++
