@@ -79,7 +79,7 @@ const getCachedSurveyConfig = unstable_cache(
       installation
     )
 
-    return { error: null, status: 200, data: config }
+    return { error: null, status: 200, data: config, surveyId: survey.id }
   },
   ['survey-config'], // Identificador do cache
   { revalidate: 300 } // 5 minutos = 300 segundos
@@ -98,9 +98,8 @@ export async function GET(req: Request, { params }: RouteContext) {
   }
 
   // CHECAGEM 3: Validar email na amostra se survey possui segmentação
-  // Verifica amostra no nível da survey (sem filtrar por community_id) para
-  // impedir bypass via communityId diferente ou ausente.
-  if (result.data?.id) {
+  // Usa result.surveyId (UUID real) — result.data.id é o slug, não o UUID.
+  if (result.surveyId) {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
@@ -110,7 +109,7 @@ export async function GET(req: Request, { params }: RouteContext) {
     const { data: sampleEntries } = await supabase
       .from('survey_sample_lists')
       .select('id')
-      .eq('survey_id', result.data.id)
+      .eq('survey_id', result.surveyId)
       .limit(1)
 
     if (sampleEntries && sampleEntries.length > 0) {
@@ -128,7 +127,7 @@ export async function GET(req: Request, { params }: RouteContext) {
       const { data: userInSample } = await supabase
         .from('survey_sample_lists')
         .select('id')
-        .eq('survey_id', result.data.id)
+        .eq('survey_id', result.surveyId)
         .eq('email', email.toLowerCase())
         .limit(1)
 
