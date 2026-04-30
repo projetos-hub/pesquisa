@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { saveCommunityTheme, inheritThemesFromPreviousSurvey } from './actions'
+import { saveCommunityTheme } from './actions'
 
 interface Community {
   id: string
@@ -22,37 +22,8 @@ interface Props {
 
 export default function CommunitiesThemeEditor({ surveyId, communities }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [inheriting, setInheriting] = useState(false)
-  const [inheritMsg, setInheritMsg] = useState<string | null>(null)
-
-  const handleInherit = async () => {
-    setInheriting(true)
-    setInheritMsg(null)
-    const result = await inheritThemesFromPreviousSurvey(surveyId)
-    setInheriting(false)
-    if (result.error) {
-      setInheritMsg(`Erro: ${result.error}`)
-    } else {
-      setInheritMsg(`${result.updated} comunidade(s) atualizadas. Recarregue a página.`)
-    }
-  }
 
   return (
-    <div className="space-y-3">
-      {/* Botão herdar temas */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={handleInherit}
-          disabled={inheriting}
-          className="px-3 py-1.5 text-sm bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {inheriting ? 'Herdando...' : 'Herdar temas da pesquisa anterior'}
-        </button>
-        {inheritMsg && (
-          <span className="text-xs text-gray-600">{inheritMsg}</span>
-        )}
-      </div>
-
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       <table className="w-full">
         <thead>
@@ -158,7 +129,6 @@ export default function CommunitiesThemeEditor({ surveyId, communities }: Props)
           )}
         </tbody>
       </table>
-    </div>
     </div>
   )
 }

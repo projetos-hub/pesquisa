@@ -27,15 +27,40 @@ export default async function CommunitiesPage({ params }: PageProps) {
     .eq('survey_id', id)
     .order('community_id', { ascending: true })
 
-  // Auto-gera logoUrl para cada comunidade
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const communityIds = (communities ?? []).map(c => c.community_id)
+
+  // Busca temas globais (de qualquer pesquisa) para comunidades sem tema nesta pesquisa
+  // Tema é configurado globalmente — nova pesquisa exibe o tema já cadastrado automaticamente
+  const { data: globalThemeRows } = communityIds.length > 0
+    ? await supabase
+        .from('survey_communities')
+        .select('community_id, theme')
+        .in('community_id', communityIds)
+        .neq('survey_id', id)
+        .not('theme', 'is', null)
+        .order('id', { ascending: false })
+    : { data: [] }
+
+  // Mapeia community_id → tema global (primeiro encontrado = mais recente)
+  const globalThemeMap = new Map<string, Record<string, unknown>>()
+  for (const row of (globalThemeRows ?? [])) {
+    if (!globalThemeMap.has(row.community_id) && row.theme && Object.keys(row.theme as object).length > 0) {
+      globalThemeMap.set(row.community_id, row.theme as Record<string, unknown>)
+    }
+  }
+
+  // Mescla: tema da pesquisa atual tem prioridade; usa global se vazio
   const communitiesWithLogoUrl = (communities ?? []).map(c => ({
     ...c,
+    theme: (c.theme && Object.keys(c.theme as object).length > 0)
+      ? c.theme
+      : (globalThemeMap.get(c.community_id) ?? c.theme),
     logoUrl: `${supabaseUrl}/storage/v1/object/public/school-assets/${c.community_id}/logo.png`,
   }))
 
   // Conta comunidades com tema configurado
-  const configuredCount = communitiesWithLogoUrl.filter(c => c.theme && Object.keys(c.theme).length > 0).length
+  const configuredCount = communitiesWithLogoUrl.filter(c => c.theme && Object.keys(c.theme as object).length > 0).length
   const totalCount = communitiesWithLogoUrl.length
 
   return (
