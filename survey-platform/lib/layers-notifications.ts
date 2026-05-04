@@ -48,7 +48,7 @@ interface LayersUserListItem {
   membersId?: string[]
 }
 
-interface PersonalizedVars {
+export interface PersonalizedVars {
   nome:       string
   nomeAluno:  string
   nomeEscola: string
@@ -304,7 +304,7 @@ function formatFirstName(fullName: string): string {
 // Substitui {{variavel}} no texto pelos dados do usuário.
 // Fallbacks garantem que a mensagem sempre faz sentido mesmo sem o dado.
 
-function interpolatePlaceholders(text: string, vars: PersonalizedVars): string {
+export function interpolatePlaceholders(text: string, vars: PersonalizedVars): string {
   return text
     .replace(/\{\{nome\}\}/g,       vars.nome       || 'você')
     .replace(/\{\{nomeAluno\}\}/g,  vars.nomeAluno  || 'seu filho(a)')
