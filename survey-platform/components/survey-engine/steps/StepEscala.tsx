@@ -97,7 +97,7 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
   return (
     <div>
       <p className="step-title">{step.titulo}</p>
-      <p className="step-desc">{step.desc || 'Avalie de 1 a 5 os seguintes aspectos:'}</p>
+      <p className="step-desc">{step.desc || 'Avalie de 1 a 6 os seguintes aspectos:'}</p>
       {perguntas.map((l, i) => (
         <ScaleRow
           key={i}

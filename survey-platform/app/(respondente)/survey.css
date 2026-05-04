@@ -53,8 +53,8 @@
 
 .scale-group { margin-bottom: 24px; }
 .scale-label { font-size: .9rem; color: #444; margin-bottom: 10px; line-height: 1.4; }
-.scale-btns { display: flex; gap: 8px; flex-wrap: wrap; }
-.scale-btn { width: 48px; height: 48px; border-radius: 10px; border: 2px solid #e5e7eb; background: white; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all .15s; color: #555; }
+.scale-btns { display: flex; gap: 6px; flex-wrap: nowrap; }
+.scale-btn { flex: 1; min-width: 0; height: 44px; border-radius: 10px; border: 2px solid #e5e7eb; background: white; font-size: .9rem; font-weight: 600; cursor: pointer; transition: all .15s; color: #555; padding: 0; }
 .scale-btn:hover { border-color: var(--color-primary, #667eea); color: var(--color-primary, #667eea); }
 .scale-btn.sel { background: linear-gradient(135deg, var(--color-primary, #667eea), var(--color-secondary, #764ba2)); border-color: transparent; color: white; }
 .scale-hint { display: flex; justify-content: space-between; font-size: .75rem; color: #aaa; margin-top: 4px; }

@@ -127,20 +127,20 @@ export default function SurveyEditForm({ survey }: { survey: Survey }) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Data e hora de abertura</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Data de abertura</label>
           <input
-            type="datetime-local"
+            type="date"
             name="open_date"
-            defaultValue={survey.open_date ? survey.open_date.slice(0, 16) : ''}
+            defaultValue={survey.open_date ? survey.open_date.slice(0, 10) : ''}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Data e hora de encerramento</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Data de encerramento</label>
           <input
-            type="datetime-local"
+            type="date"
             name="close_date"
-            defaultValue={survey.close_date ? survey.close_date.slice(0, 16) : ''}
+            defaultValue={survey.close_date ? survey.close_date.slice(0, 10) : ''}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>

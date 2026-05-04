@@ -143,4 +143,3 @@ export async function GET(req: Request, { params }: RouteContext) {
 
   return NextResponse.json(result.data)
 }
-
