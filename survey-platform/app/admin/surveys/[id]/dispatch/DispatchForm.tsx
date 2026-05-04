@@ -43,6 +43,7 @@ interface DispatchTemplate {
   email_body:          string | null
   email_action_label:  string | null
   email_background_url: string | null
+  sequence_steps:      SequenceStep[] | null
 }
 
 const PLACEHOLDERS = ['{{nome}}', '{{nomeAluno}}', '{{nomeEscola}}', '{{serie}}']
@@ -171,6 +172,10 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
     if (tmpl.email_body)  { setEmailBody(tmpl.email_body) }
     if (tmpl.email_action_label) setEmailLabel(tmpl.email_action_label)
     if (tmpl.email_background_url) setEmailBgUrl(tmpl.email_background_url)
+    if (tmpl.sequence_steps && tmpl.sequence_steps.length > 0) {
+      setSteps(tmpl.sequence_steps.map(s => ({ ...s, key: genKey() } as SequenceStep)))
+      setSeqMode(true)
+    }
   }
 
   const updateStep = useCallback((key: string, field: keyof SequenceStep, value: string | number | boolean) => {
@@ -274,8 +279,9 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
               scheduled_at:  stepDate.toISOString(),
               sequence_id:   sequenceId,
               sequence_step: i,
-              save_as_template: saveTemplate,
-              template_name:    saveTemplate ? (templateName ? `${templateName} — passo ${i + 1}` : null) : null,
+              save_as_template: saveTemplate && i === 0,
+              template_name:    saveTemplate && i === 0 ? (templateName || null) : null,
+              sequence_steps:   saveTemplate && i === 0 ? steps : null,
             }),
           })
           const data = await res.json() as { ok?: boolean }

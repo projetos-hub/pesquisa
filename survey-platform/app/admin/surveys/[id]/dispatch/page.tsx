@@ -48,7 +48,7 @@ export default async function DispatchPage({ params }: PageProps) {
     .from('survey_dispatches')
     .select(
       'id, template_name, title, body, channels, target_scope, target_roles,' +
-      'push_title, push_body, email_title, email_body, email_action_label, email_background_url'
+      'push_title, push_body, email_title, email_body, email_action_label, email_background_url, sequence_steps'
     )
     .eq('survey_id', surveyId)
     .eq('is_template', true)
@@ -60,6 +60,7 @@ export default async function DispatchPage({ params }: PageProps) {
     push_title: string | null; push_body: string | null;
     email_title: string | null; email_body: string | null;
     email_action_label: string | null; email_background_url: string | null;
+    sequence_steps: unknown[] | null;
   }[]
 
   // Stats da amostra

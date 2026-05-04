@@ -51,8 +51,9 @@ const DispatchSchema = z.object({
   scheduled_at: z.string().datetime({ offset: true }).optional().nullable(),
 
   // Template
-  save_as_template: z.boolean().optional(),
-  template_name:    z.string().optional().nullable(),
+  save_as_template:  z.boolean().optional(),
+  template_name:     z.string().optional().nullable(),
+  sequence_steps:    z.array(z.record(z.unknown())).optional().nullable(),
 })
 
 type DispatchBody = z.infer<typeof DispatchSchema>
@@ -153,6 +154,7 @@ export async function POST(
         total_jobs:           targetCommunities.length,
         is_template:          body.save_as_template ?? false,
         template_name:        body.template_name ?? null,
+        sequence_steps:       body.sequence_steps ?? null,
         created_by:           user.id,
       })
       .select('*')
