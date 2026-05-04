@@ -42,7 +42,7 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
     return (
       <div>
         <p className="step-title">{step.titulo}</p>
-        <p className="step-desc">{step.desc || 'Avalie os aspectos abaixo.'}</p>
+        {step.desc && <p className="step-desc">{step.desc}</p>}
         {step.secoes.map(sec => (
           <div key={sec.key}>
             <p className="section-div">{sec.titulo}</p>
@@ -97,7 +97,7 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
   return (
     <div>
       <p className="step-title">{step.titulo}</p>
-      <p className="step-desc">{step.desc || 'Avalie de 1 a 6 os seguintes aspectos:'}</p>
+      {step.desc && <p className="step-desc">{step.desc}</p>}
       {perguntas.map((l, i) => (
         <ScaleRow
           key={i}
