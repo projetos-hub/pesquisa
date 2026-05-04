@@ -156,6 +156,20 @@ export async function createQuestion(
     return { error: error.message }
   }
 
+  // Auto-criar question_options para scale/radio/checkbox a partir do textarea
+  if (['scale', 'radio', 'checkbox'].includes(type) && accept) {
+    const labels = accept.split('\n').map(l => l.trim()).filter(l => l.length > 0)
+    if (labels.length > 0) {
+      const rows = labels.map((label, i) => ({
+        question_id: created.id,
+        order_index: i,
+        label,
+        value: `opt_${i}`,
+      }))
+      await supabase.from('question_options').insert(rows)
+    }
+  }
+
   revalidatePath(`/admin/surveys/${surveyId}`)
   return { id: created.id }
 }
