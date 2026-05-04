@@ -363,3 +363,20 @@ WHERE community_id = 'qi-freguesia';
 - Verificar [Vercel dashboard](https://vercel.com) que deploy passou
 - Testar: acessar survey com email fora da amostra → deve bloquear (403)
 - Testar: criar dispatch scope=sample → audit logs em /dispatch-audit
+
+---
+
+### Ajustes visuais e dados — 2026-05-04 (commits 2edd60f, 1ff5045)
+
+**Código — `survey-platform/`:**
+- `StepNPS.tsx` — `titulo` exibido como pergunta principal (`step-title`), `desc` como subtítulo
+- `StepNPS.tsx` — labels "Nada provável" (ao lado do 0) e "Extremamente provável" (ao lado do 10) embutidos na linha dos botões; removido `nps-hint` separado
+- `ScaleRow.tsx` — labels "1 - Muito Insatisfeito" e "6 - Muito Satisfeito" ao lado dos botões 1 e 6
+- `survey.css` — `.scale-btns` com `flex-wrap: nowrap` e `.scale-btn` com `flex: 1` para 6 botões caberem em uma linha
+- `StepEscala.tsx` — texto fallback atualizado de "1 a 5" para "1 a 6"
+- `SurveyEditForm.tsx` — campos de data voltaram para `type="date"` (sem horário), labels atualizados
+
+**Banco de dados (Supabase — pesquisa CSAT):**
+- `surveys.open_date` → `2026-05-04`
+- `surveys.close_date` → `2026-05-17`
+- `questions.description` das 3 escalas (pedagógico, administrativo, infraestrutura) → "Avalie de 1 a 6 os seguintes aspectos:"
