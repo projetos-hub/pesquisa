@@ -11,50 +11,30 @@ async function requireAuth() {
   return user
 }
 
-interface ThemeData {
-  nomeEscola?: string
-  primaryColor?: string
-  secondaryColor?: string
-  logo?: string
-}
-
-export async function saveCommunityTheme(communityId: string, theme: ThemeData) {
+export async function saveCommunityTheme(
+  communityId: string,
+  theme: { nomeEscola?: string; primaryColor?: string; secondaryColor?: string; logo?: string }
+) {
   try {
-    // Valida autenticação de admin
-    const user = await requireAuth()
-    if (!user) {
-      return { error: 'Não autorizado' }
-    }
-
+    await requireAuth()
     const supabase = createServiceClient()
 
-    // Valida que a comunidade existe em ao menos uma pesquisa
-    const { data: existing, error: checkError } = await supabase
-      .from('survey_communities')
-      .select('id', { count: 'exact' })
-      .eq('community_id', communityId)
-      .limit(1)
+    const { error } = await supabase
+      .from('communities')
+      .upsert({
+        community_id:    communityId,
+        nome_escola:     theme.nomeEscola     ?? '',
+        primary_color:   theme.primaryColor   ?? '#667eea',
+        secondary_color: theme.secondaryColor ?? '#764ba2',
+        logo:            theme.logo           ?? '',
+        updated_at:      new Date().toISOString(),
+      }, { onConflict: 'community_id' })
 
-    if (checkError || !existing || existing.length === 0) {
-      return { error: 'Comunidade não encontrada' }
-    }
-
-    // Atualiza o theme em TODAS as pesquisas desta comunidade
-    // (porque o tema é da escola, não da pesquisa)
-    const { error: updateError } = await supabase
-      .from('survey_communities')
-      .update({ theme })
-      .eq('community_id', communityId)
-
-    if (updateError) {
-      console.error('[saveCommunityTheme] update error:', updateError)
-      return { error: 'Erro ao salvar tema' }
-    }
+    if (error) return { error: 'Erro ao salvar tema: ' + error.message }
 
     revalidatePath('/admin/communities')
     return { error: null }
-  } catch (error) {
-    console.error('[saveCommunityTheme] error:', error)
-    return { error: 'Erro interno do servidor' }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Erro interno' }
   }
 }

@@ -49,20 +49,24 @@ const getCachedSurveyConfig = unstable_cache(
 
       installation = inst as InstallationRow
 
-      // Fallback: se tema vazio, busca o tema mais recente desta comunidade em outra pesquisa
+      // Fallback: se tema vazio, busca na tabela communities (fonte única de verdade)
       if (!installation.theme || Object.keys(installation.theme).length === 0) {
-        const { data: globalTheme } = await supabase
-          .from('survey_communities')
-          .select('theme')
+        const { data: community } = await supabase
+          .from('communities')
+          .select('nome_escola, primary_color, secondary_color, logo')
           .eq('community_id', communityId)
-          .neq('survey_id', survey.id)
-          .not('theme', 'is', null)
-          .order('id', { ascending: false })
-          .limit(1)
-          .single()
+          .maybeSingle()
 
-        if (globalTheme?.theme && Object.keys(globalTheme.theme as object).length > 0) {
-          installation = { ...installation, theme: globalTheme.theme as Record<string, unknown> }
+        if (community) {
+          installation = {
+            ...installation,
+            theme: {
+              nomeEscola:     community.nome_escola,
+              primaryColor:   community.primary_color,
+              secondaryColor: community.secondary_color,
+              logo:           community.logo,
+            }
+          }
         }
       }
     }

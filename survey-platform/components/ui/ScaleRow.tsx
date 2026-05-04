@@ -12,7 +12,6 @@ export default function ScaleRow({ label, value, onChange, highlight }: ScaleRow
     <div className="scale-group" style={highlight ? { borderLeft: '3px solid #e53e3e', paddingLeft: 8, borderRadius: 4 } : undefined}>
       <p className="scale-label">{label}</p>
       <div className="scale-btns">
-        <span style={{ fontSize: '.68rem', color: '#718096', whiteSpace: 'nowrap', marginRight: 4, alignSelf: 'center' }}>1 - Muito Insatisfeito</span>
         {[1, 2, 3, 4, 5, 6].map(n => (
           <button
             key={n}
@@ -22,7 +21,10 @@ export default function ScaleRow({ label, value, onChange, highlight }: ScaleRow
             {n}
           </button>
         ))}
-        <span style={{ fontSize: '.68rem', color: '#718096', whiteSpace: 'nowrap', marginLeft: 4, alignSelf: 'center' }}>6 - Muito Satisfeito</span>
+      </div>
+      <div className="scale-hint">
+        <span>1 - Muito Insatisfeito</span>
+        <span>6 - Muito Satisfeito</span>
       </div>
     </div>
   )
