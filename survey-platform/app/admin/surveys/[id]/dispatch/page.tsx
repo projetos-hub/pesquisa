@@ -5,6 +5,7 @@ import { createServiceClient }        from '@/lib/supabase-service'
 import DispatchForm    from './DispatchForm'
 import DispatchHistory from './DispatchHistory'
 import ManualDispatch  from './ManualDispatch'
+import SamplePanel     from './SamplePanel'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -61,12 +62,19 @@ export default async function DispatchPage({ params }: PageProps) {
     email_action_label: string | null; email_background_url: string | null;
   }[]
 
-  // Contagem de emails resolvidos na amostra
-  const { count: sampleCount } = await service
-    .from('survey_sample_lists')
-    .select('*', { count: 'exact', head: true })
-    .eq('survey_id', surveyId)
-    .not('layers_user_id', 'is', null)
+  // Stats da amostra
+  const [
+    { count: sampleTotal },
+    { count: sampleResolved },
+    { count: sampleNotFound },
+    { count: samplePending },
+  ] = await Promise.all([
+    service.from('survey_sample_lists').select('*', { count: 'exact', head: true }).eq('survey_id', surveyId),
+    service.from('survey_sample_lists').select('*', { count: 'exact', head: true }).eq('survey_id', surveyId).not('layers_user_id', 'is', null).neq('layers_user_id', 'NOT_FOUND'),
+    service.from('survey_sample_lists').select('*', { count: 'exact', head: true }).eq('survey_id', surveyId).eq('layers_user_id', 'NOT_FOUND'),
+    service.from('survey_sample_lists').select('*', { count: 'exact', head: true }).eq('survey_id', surveyId).is('layers_user_id', null),
+  ])
+  const sampleCount = sampleResolved ?? 0
 
   // Histórico de disparos (não templates)
   const { data: dispatches } = await service
@@ -121,6 +129,17 @@ export default async function DispatchPage({ params }: PageProps) {
             />
           )}
         </div>
+
+        {/* Amostra de disparo */}
+        <SamplePanel
+          surveyId={surveyId}
+          initial={{
+            total:     sampleTotal     ?? 0,
+            resolved:  sampleResolved  ?? 0,
+            not_found: sampleNotFound  ?? 0,
+            pending:   samplePending   ?? 0,
+          }}
+        />
 
         {/* Disparo rápido */}
         {communities.length > 0 && (

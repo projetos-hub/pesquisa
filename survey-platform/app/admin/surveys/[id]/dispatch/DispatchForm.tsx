@@ -7,11 +7,17 @@ import { useState, useCallback, useEffect } from 'react'
 interface Community { id: string; nome: string }
 
 interface SequenceStep {
-  key:           string
-  offsetDays:    number
-  label:         string
-  overrideTitle: string
-  overrideBody:  string
+  key:            string
+  offsetDays:     number
+  label:          string
+  overrideTitle:  string
+  overrideBody:   string
+  customPerCh:    boolean
+  pushTitle:      string
+  pushBody:       string
+  emailTitle:     string
+  emailBody:      string
+  emailLabel:     string
 }
 
 interface Props {
@@ -110,9 +116,9 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
   // ── Sequence (régua)
   const [seqMode,      setSeqMode]      = useState(false)
   const [steps,        setSteps]        = useState<SequenceStep[]>([
-    { key: genKey(), offsetDays: 0,  label: 'Convite inicial', overrideTitle: '', overrideBody: '' },
-    { key: genKey(), offsetDays: 7,  label: 'Lembrete',        overrideTitle: '', overrideBody: '' },
-    { key: genKey(), offsetDays: 14, label: 'Aviso final',     overrideTitle: '', overrideBody: '' },
+    { key: genKey(), offsetDays: 0,  label: 'Convite inicial', overrideTitle: '', overrideBody: '', customPerCh: false, pushTitle: '', pushBody: '', emailTitle: '', emailBody: '', emailLabel: '' },
+    { key: genKey(), offsetDays: 7,  label: 'Lembrete',        overrideTitle: '', overrideBody: '', customPerCh: false, pushTitle: '', pushBody: '', emailTitle: '', emailBody: '', emailLabel: '' },
+    { key: genKey(), offsetDays: 14, label: 'Aviso final',     overrideTitle: '', overrideBody: '', customPerCh: false, pushTitle: '', pushBody: '', emailTitle: '', emailBody: '', emailLabel: '' },
   ])
 
   // ── Schedule
@@ -167,13 +173,14 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
     if (tmpl.email_background_url) setEmailBgUrl(tmpl.email_background_url)
   }
 
-  const updateStep = useCallback((key: string, field: keyof SequenceStep, value: string | number) => {
+  const updateStep = useCallback((key: string, field: keyof SequenceStep, value: string | number | boolean) => {
     setSteps(s => s.map(st => st.key === key ? { ...st, [field]: value } : st))
   }, [])
 
   const addStep = () => setSteps(s => [...s, {
     key: genKey(), offsetDays: (s.at(-1)?.offsetDays ?? 0) + 7, label: 'Novo passo',
-    overrideTitle: '', overrideBody: '',
+    overrideTitle: '', overrideBody: '', customPerCh: false,
+    pushTitle: '', pushBody: '', emailTitle: '', emailBody: '', emailLabel: '',
   }])
 
   const removeStep = (key: string) => setSteps(s => s.filter(st => st.key !== key))
@@ -257,10 +264,18 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
               ...basePayload,
               title:        step.overrideTitle || title,
               body:         step.overrideBody  || body,
-              scheduled_at: stepDate.toISOString(),
-              sequence_id:  sequenceId,
+              // Per-step channel overrides — se o passo tem customPerCh, usa os seus próprios;
+              // senão herda os valores globais do basePayload
+              push_title:         step.customPerCh ? (step.pushTitle  || null) : basePayload.push_title,
+              push_body:          step.customPerCh ? (step.pushBody   || null) : basePayload.push_body,
+              email_title:        step.customPerCh ? (step.emailTitle || null) : basePayload.email_title,
+              email_body:         step.customPerCh ? (step.emailBody  || null) : basePayload.email_body,
+              email_action_label: step.customPerCh ? (step.emailLabel || emailLabel || null) : basePayload.email_action_label,
+              scheduled_at:  stepDate.toISOString(),
+              sequence_id:   sequenceId,
               sequence_step: i,
-              save_as_template: i === 0 ? saveTemplate : false,
+              save_as_template: saveTemplate,
+              template_name:    saveTemplate ? (templateName ? `${templateName} — passo ${i + 1}` : null) : null,
             }),
           })
           const data = await res.json() as { ok?: boolean }
@@ -750,6 +765,64 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
                       placeholder="Mensagem específica (usa mensagem geral se vazio)"
                       className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
                     />
+
+                    {/* Personalização por canal neste passo */}
+                    <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none pt-1">
+                      <input
+                        type="checkbox"
+                        checked={step.customPerCh}
+                        onChange={e => updateStep(step.key, 'customPerCh', e.target.checked)}
+                        className="rounded border-gray-300 text-indigo-600"
+                      />
+                      Personalizar push/email neste passo
+                    </label>
+
+                    {step.customPerCh && (
+                      <div className="space-y-2 pl-3 border-l-2 border-indigo-100 mt-1">
+                        {channels.includes('pushNotification') && (
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Push</p>
+                            <input
+                              value={step.pushTitle}
+                              onChange={e => updateStep(step.key, 'pushTitle', e.target.value)}
+                              placeholder="Título push (usa título do passo se vazio)"
+                              className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                            <textarea
+                              value={step.pushBody}
+                              onChange={e => updateStep(step.key, 'pushBody', e.target.value)}
+                              rows={2}
+                              placeholder="Corpo push"
+                              className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </div>
+                        )}
+                        {channels.includes('email') && (
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Email</p>
+                            <input
+                              value={step.emailTitle}
+                              onChange={e => updateStep(step.key, 'emailTitle', e.target.value)}
+                              placeholder="Título email"
+                              className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                            <textarea
+                              value={step.emailBody}
+                              onChange={e => updateStep(step.key, 'emailBody', e.target.value)}
+                              rows={2}
+                              placeholder="Corpo email"
+                              className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                            <input
+                              value={step.emailLabel}
+                              onChange={e => updateStep(step.key, 'emailLabel', e.target.value)}
+                              placeholder="Texto do botão CTA"
+                              className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

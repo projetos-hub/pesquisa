@@ -51,8 +51,8 @@
 .option-btn.sel .radio { border-color: var(--color-primary, #667eea); background: var(--color-primary, #667eea); position: relative; }
 .option-btn.sel .radio::after { content: ''; position: absolute; width: 7px; height: 7px; border-radius: 50%; background: white; }
 
-.scale-group { margin-bottom: 24px; }
-.scale-label { font-size: .9rem; color: #444; margin-bottom: 10px; line-height: 1.4; }
+.scale-group { margin-bottom: 12px; background: #fff; border: 1.5px solid #e8eaed; border-radius: 14px; padding: 16px 18px 12px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+.scale-label { font-size: .95rem; font-weight: 600; color: #222; margin-bottom: 12px; line-height: 1.4; }
 .scale-btns { display: flex; gap: 6px; flex-wrap: nowrap; }
 .scale-btn { flex: 1; min-width: 0; height: 44px; border-radius: 10px; border: 2px solid #e5e7eb; background: white; font-size: .9rem; font-weight: 600; cursor: pointer; transition: all .15s; color: #555; padding: 0; }
 .scale-btn:hover { border-color: var(--color-primary, #667eea); color: var(--color-primary, #667eea); }
