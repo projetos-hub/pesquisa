@@ -765,6 +765,19 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
                       placeholder="Mensagem específica (usa mensagem geral se vazio)"
                       className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
                     />
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs text-gray-400">Placeholders:</span>
+                      {PLACEHOLDERS.map(p => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => updateStep(step.key, 'overrideBody', (step.overrideBody || '') + p)}
+                          className="text-xs bg-gray-100 hover:bg-indigo-100 hover:text-indigo-700 text-gray-500 rounded px-1.5 py-0.5 font-mono transition-colors"
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
 
                     {/* Personalização por canal neste passo */}
                     <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none pt-1">
