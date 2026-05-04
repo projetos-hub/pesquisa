@@ -49,24 +49,25 @@ const getCachedSurveyConfig = unstable_cache(
 
       installation = inst as InstallationRow
 
-      // Fallback: se tema vazio, busca na tabela communities (fonte única de verdade)
-      if (!installation.theme || Object.keys(installation.theme).length === 0) {
-        const { data: community } = await supabase
-          .from('communities')
-          .select('nome_escola, primary_color, secondary_color, logo')
-          .eq('community_id', communityId)
-          .maybeSingle()
+      // Tema: communities é fonte de verdade para logo/cores; survey_communities só
+      // tem overrides per-survey (ex: indicacaoLink). Sempre mesclar nessa ordem.
+      const { data: community } = await supabase
+        .from('communities')
+        .select('nome_escola, primary_color, secondary_color, logo')
+        .eq('community_id', communityId)
+        .maybeSingle()
 
-        if (community) {
-          installation = {
-            ...installation,
-            theme: {
-              nomeEscola:     community.nome_escola,
-              primaryColor:   community.primary_color,
-              secondaryColor: community.secondary_color,
-              logo:           community.logo,
-            }
-          }
+      if (community) {
+        const baseTheme = {
+          nomeEscola:     community.nome_escola,
+          primaryColor:   community.primary_color,
+          secondaryColor: community.secondary_color,
+          logo:           community.logo,
+        }
+        // Override com campos per-survey (indicacaoLink, etc.) se existirem
+        installation = {
+          ...installation,
+          theme: { ...baseTheme, ...(installation.theme ?? {}) }
         }
       }
     }
