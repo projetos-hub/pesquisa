@@ -44,6 +44,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const [survey, setSurvey] = useState<SurveyConfig | null>(null)
   const [surveyNotFound, setSurveyNotFound] = useState(false)
   const [accessDenied, setAccessDenied] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
 
   // ── Contexto de sessão (LayersPortal + Layers Hub API) ──────────────────────
   useEffect(() => {
@@ -271,12 +272,14 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const activeSteps = buildActiveSteps(survey, perfil, answers)
   const currentIdx  = activeSteps.findIndex(s => stepId(s) === currentKey)
   const currentStep = activeSteps[currentIdx] || activeSteps[0]
-  // isLastData = step imediatamente antes do thankyou (idêntico ao original)
-  const isLastData  = currentIdx === activeSteps.length - 2
 
   // Steps de dados (exclui welcome e thankyou) para a progress bar
   const dataSteps = activeSteps.filter(s => s.type !== 'welcome' && s.type !== 'thankyou')
   const dataIdx   = dataSteps.findIndex(s => stepId(s) === currentKey)
+
+  // isLastData = o passo atual é o último que contém perguntas (não é welcome nem thankyou)
+  const lastDataStep = dataSteps[dataSteps.length - 1]
+  const isLastData   = lastDataStep && stepId(lastDataStep) === currentKey
 
   // ── Navegação ────────────────────────────────────────────────────────────────
   function next(key: string, data: unknown) {
@@ -288,7 +291,8 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     } else {
       // Recalcula com newAnswers para capturar mudanças condicionais (bilíngue)
       const newActive = buildActiveSteps(survey!, perfil, newAnswers)
-      const nextStep  = newActive[currentIdx + 1]
+      const currentIndexInNewActive = newActive.findIndex(s => stepId(s) === currentKey)
+      const nextStep  = newActive[currentIndexInNewActive + 1]
       if (nextStep) setCurrentKey(stepId(nextStep))
     }
   }
@@ -329,8 +333,14 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
         throw new Error((err as { error?: string }).error ?? `HTTP ${res.status}`)
       }
 
-      // { ok: true } ou { duplicate: true } — ambos navegam para ThankYou
-      setCurrentKey('thankyou')
+      // Se existir um step de agradecimento no config, vai para ele.
+      // Caso contrário, fica no estado de enviado (podemos mostrar algo ou apenas travar).
+      const hasThankYouStep = activeSteps.some(s => s.type === 'thankyou')
+      if (hasThankYouStep) {
+        setCurrentKey('thankyou')
+      } else {
+        setSubmitted(true)
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Erro desconhecido'
       setSubmitError(`Erro ao enviar. ${msg}. Verifique sua conexão e tente novamente.`)
@@ -339,8 +349,8 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     }
   }
 
-  const isWelcome  = currentStep?.type === 'welcome'
-  const isThankyou = currentStep?.type === 'thankyou' || currentKey === 'thankyou'
+  const isWelcome  = currentStep?.type === 'welcome' && !submitted
+  const isThankyou = currentStep?.type === 'thankyou' || (submitted && !submitError)
   const npsAnswer  = answers.nps as NPSAnswer | undefined
 
   // ── Render ───────────────────────────────────────────────────────────────────

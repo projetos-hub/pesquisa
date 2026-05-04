@@ -323,6 +323,45 @@ export async function toggleWelcomeStep(
   return {}
 }
 
+// ── Adiciona/remove tela de agradecimento ────────────────────────────────────
+export async function toggleThankYouStep(
+  surveyId: string,
+  add: boolean
+): Promise<{ error?: string }> {
+  try { await requireAuth() } catch { return { error: 'Não autorizado' } }
+
+  const supabase = createServiceClient()
+
+  if (!add) {
+    await supabase.from('questions').delete().eq('survey_id', surveyId).eq('type', 'thankyou')
+    revalidatePath(`/admin/surveys/${surveyId}`)
+    return {}
+  }
+
+  // Busca o último order_index para colocar no final
+  const { data: existing } = await supabase
+    .from('questions')
+    .select('order_index')
+    .eq('survey_id', surveyId)
+    .order('order_index', { ascending: false })
+    .limit(1)
+
+  const nextOrder = (existing?.[0]?.order_index ?? -1) + 1
+
+  await supabase.from('questions').insert({
+    survey_id:   surveyId,
+    order_index: nextOrder,
+    type:        'thankyou',
+    key:         'thankyou',
+    title:       'Agradecimento',
+    required:    false,
+    settings:    {},
+  })
+
+  revalidatePath(`/admin/surveys/${surveyId}`)
+  return {}
+}
+
 // ── Deleta pesquisa (e todos os dados relacionados) ───────────────────────────
 export async function deleteSurvey(surveyId: string): Promise<{ error?: string }> {
   try { await requireAuth() } catch { return { error: 'Não autorizado' } }
