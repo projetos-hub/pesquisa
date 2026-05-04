@@ -27,8 +27,7 @@ export default function StepNPS({ step, tipo, onNext, onBack }: StepNPSProps) {
     <div>
       <p className="step-title">{step.titulo ?? `Qual a probabilidade de recomendar a ${tipo} a um amigo ou colega?`}</p>
       {step.desc && <p className="step-desc">{step.desc}</p>}
-      <div className="nps-row" style={{ alignItems: 'center' }}>
-        <span style={{ fontSize: '.72rem', color: '#718096', whiteSpace: 'nowrap', marginRight: 4 }}>Extremamente provável</span>
+      <div className="nps-row">
         {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0].map(n => (
           <button
             key={n}
@@ -38,7 +37,10 @@ export default function StepNPS({ step, tipo, onNext, onBack }: StepNPSProps) {
             {n}
           </button>
         ))}
-        <span style={{ fontSize: '.72rem', color: '#718096', whiteSpace: 'nowrap', marginLeft: 4 }}>Nada provável</span>
+      </div>
+      <div className="nps-hint">
+        <span>Extremamente provável</span>
+        <span>Nada provável</span>
       </div>
       {perguntaBilingue && (
         <div className="q-group" style={{ marginTop: 28 }}>
