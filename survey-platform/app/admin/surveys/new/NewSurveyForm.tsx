@@ -66,6 +66,27 @@ export default function NewSurveyForm() {
         </select>
       </div>
 
+      <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+        <label className="block text-sm font-bold text-indigo-900 mb-2">Controle de Acesso</label>
+        <div className="space-y-2">
+          {[
+            { value: 'aberta',   label: 'Aberta (qualquer um com o link)', defaultChecked: true },
+            { value: 'amostra',  label: 'Amostra Segmentada (apenas lista pré-definida)', defaultChecked: false },
+          ].map(({ value, label, defaultChecked }) => (
+            <label key={value} className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="access_control"
+                value={value}
+                defaultChecked={defaultChecked}
+                className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+              />
+              <span className="text-sm text-gray-700">{label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Público <span className="text-red-500">*</span>

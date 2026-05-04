@@ -16,7 +16,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
   // Busca survey
   const { data: survey } = await supabase
     .from('surveys')
-    .select('id, slug, title, status, survey_type, target_roles, open_date, close_date, description')
+    .select('id, slug, title, status, survey_type, target_roles, open_date, close_date, description, access_control')
     .eq('id', id)
     .single()
 

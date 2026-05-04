@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { unstable_cache } from 'next/cache'
 import { createClient } from '@supabase/supabase-js'
+import { createServiceClient } from '@/lib/supabase-service'
 import { rowsToConfig } from '@/lib/survey-config'
 import type { QuestionRow, OptionRow, InstallationRow } from '@/lib/survey-config'
 
@@ -22,7 +23,7 @@ const getCachedSurveyConfig = unstable_cache(
     // 1. Busca o template da pesquisa pelo slug (status 'ativa' garantido pelo RLS)
     const { data: survey, error: surveyError } = await supabase
       .from('surveys')
-      .select('id, slug, title, survey_type, target_roles, status, settings')
+      .select('id, slug, title, survey_type, target_roles, status, settings, access_control')
       .eq('slug', slug)
       .eq('status', 'ativa')
       .single()
@@ -96,7 +97,7 @@ const getCachedSurveyConfig = unstable_cache(
       installation
     )
 
-    return { error: null, status: 200, data: config, surveyId: survey.id }
+    return { error: null, status: 200, data: config, surveyId: survey.id, accessControl: survey.access_control }
   },
   ['survey-config'], // Identificador do cache
   { revalidate: 300 } // 5 minutos = 300 segundos
@@ -114,53 +115,32 @@ export async function GET(req: Request, { params }: RouteContext) {
     return NextResponse.json({ error: result.error }, { status: result.status })
   }
 
-  // CHECAGEM 3: Validar email na amostra se survey possui segmentação
-  // Lookup direto pelo slug — independente do cache (evita surveyId ausente em entradas antigas)
-  {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-      { auth: { persistSession: false } }
-    )
+  // CHECAGEM 3: Validar email na amostra se survey possui segmentação (access_control = 'amostra')
+  if (result.accessControl === 'amostra') {
+    const supabase = createServiceClient()
 
-    const { data: surveyRow } = await supabase
-      .from('surveys')
+    if (!email) {
+      return NextResponse.json(
+        { error: 'not_in_sample', message: 'Email não fornecido para pesquisa segmentada' },
+        { status: 403 }
+      )
+    }
+
+    const { data: userInSample } = await supabase
+      .from('survey_sample_lists')
       .select('id')
-      .eq('slug', slug)
-      .eq('status', 'ativa')
-      .single()
+      .eq('survey_id', result.surveyId!)
+      .eq('email', email.toLowerCase())
+      .limit(1)
 
-    if (surveyRow?.id) {
-      const { data: sampleEntries } = await supabase
-        .from('survey_sample_lists')
-        .select('id')
-        .eq('survey_id', surveyRow.id)
-        .limit(1)
-
-      if (sampleEntries && sampleEntries.length > 0) {
-        if (!email) {
-          return NextResponse.json(
-            { error: 'not_in_sample', message: 'Email não fornecido para pesquisa segmentada' },
-            { status: 403 }
-          )
-        }
-
-        const { data: userInSample } = await supabase
-          .from('survey_sample_lists')
-          .select('id')
-          .eq('survey_id', surveyRow.id)
-          .eq('email', email.toLowerCase())
-          .limit(1)
-
-        if (!userInSample || userInSample.length === 0) {
-          return NextResponse.json(
-            { error: 'not_in_sample', message: 'Você não está na amostra desta pesquisa' },
-            { status: 403 }
-          )
-        }
-      }
+    if (!userInSample || userInSample.length === 0) {
+      return NextResponse.json(
+        { error: 'not_in_sample', message: 'Você não está na amostra desta pesquisa' },
+        { status: 403 }
+      )
     }
   }
 
   return NextResponse.json(result.data)
 }
+
