@@ -77,7 +77,7 @@ export async function POST(req: Request, { params }: RouteContext) {
   // ── 1. Busca survey ativa ──────────────────────────────────────────────────
   const { data: survey } = await supabase
     .from('surveys')
-    .select('id')
+    .select('id, access_control')
     .eq('slug', slug)
     .eq('status', 'ativa')
     .single()
@@ -99,36 +99,27 @@ export async function POST(req: Request, { params }: RouteContext) {
   }
 
   // ── 1c. Valida email na amostra (se survey possui segmentação amostral) ──────
-  // Checa no nível da survey (sem filtrar por community_id) para impedir
-  // bypass via communityId diferente ou ausente.
-  {
-    const { data: sampleEntries } = await supabase
+  // Agora respeita o campo access_control
+  if (survey.access_control === 'amostra') {
+    if (!email) {
+      return NextResponse.json(
+        { error: 'not_in_sample', message: 'Email não fornecido para pesquisa segmentada' },
+        { status: 403 }
+      )
+    }
+
+    const { data: userInSample } = await supabase
       .from('survey_sample_lists')
       .select('id')
       .eq('survey_id', survey.id)
+      .eq('email', email.toLowerCase())
       .limit(1)
 
-    if (sampleEntries && sampleEntries.length > 0) {
-      if (!email) {
-        return NextResponse.json(
-          { error: 'not_in_sample', message: 'Email não fornecido para pesquisa segmentada' },
-          { status: 403 }
-        )
-      }
-
-      const { data: userInSample } = await supabase
-        .from('survey_sample_lists')
-        .select('id')
-        .eq('survey_id', survey.id)
-        .eq('email', email.toLowerCase())
-        .limit(1)
-
-      if (!userInSample || userInSample.length === 0) {
-        return NextResponse.json(
-          { error: 'not_in_sample', message: 'Você não está na amostra desta pesquisa' },
-          { status: 403 }
-        )
-      }
+    if (!userInSample || userInSample.length === 0) {
+      return NextResponse.json(
+        { error: 'not_in_sample', message: 'Você não está na amostra desta pesquisa' },
+        { status: 403 }
+      )
     }
   }
 
