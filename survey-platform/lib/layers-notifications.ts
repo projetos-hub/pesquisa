@@ -118,14 +118,20 @@ export async function resolveTargetCommunities(
 
   const supabase = createServiceClient()
 
-  // scope === 'sample' — retorna comunidades que têm entradas na amostra
+  // scope === 'sample' — retorna comunidades que têm entradas resolvidas na amostra
+  // Se communityIds fornecido, restringe às comunidades selecionadas
   if (scope === 'sample') {
-    const { data } = await supabase
+    let query = supabase
       .from('survey_sample_lists')
       .select('community_id')
       .eq('survey_id', surveyId)
       .not('layers_user_id', 'is', null)
 
+    if (communityIds && communityIds.length > 0) {
+      query = query.in('community_id', communityIds)
+    }
+
+    const { data } = await query
     if (!data) return []
     const unique = [...new Set(data.map((r: { community_id: string }) => r.community_id))]
     return unique
