@@ -10,6 +10,7 @@ interface Survey {
   survey_type: string
   open_date: string | null
   close_date: string | null
+  access_control?: string
 }
 
 const SURVEY_TYPES = [
@@ -20,6 +21,11 @@ const SURVEY_TYPES = [
   { value: 'engajamento',   label: 'Engajamento' },
   { value: 'diagnostico',   label: 'Diagnóstico' },
   { value: 'misto',         label: 'Misto (aberta + fechada)' },
+]
+
+const ACCESS_CONTROL_OPTIONS = [
+  { value: 'aberta',   label: 'Aberta (qualquer um com o link)' },
+  { value: 'amostra',  label: 'Amostra Segmentada (apenas lista pré-definida)' },
 ]
 
 type State = { error?: string; ok?: boolean }
@@ -80,6 +86,27 @@ export default function SurveyEditForm({ survey }: { survey: Survey }) {
         </select>
       </div>
 
+      <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+        <label className="block text-sm font-bold text-indigo-900 mb-2">Controle de Acesso</label>
+        <div className="space-y-2">
+          {ACCESS_CONTROL_OPTIONS.map(({ value, label }) => (
+            <label key={value} className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="access_control"
+                value={value}
+                defaultChecked={survey.access_control === value || (!survey.access_control && value === 'aberta')}
+                className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+              />
+              <span className="text-sm text-gray-700">{label}</span>
+            </label>
+          ))}
+        </div>
+        <p className="text-xs text-indigo-500 mt-2">
+          Se selecionar &ldquo;Amostra Segmentada&rdquo;, o sistema bloqueará qualquer pessoa cujo email não esteja na lista de amostra.
+        </p>
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Status <span className="text-red-500">*</span>
@@ -100,20 +127,20 @@ export default function SurveyEditForm({ survey }: { survey: Survey }) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Data e hora de abertura</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Data de abertura</label>
           <input
-            type="datetime-local"
+            type="date"
             name="open_date"
-            defaultValue={survey.open_date ? survey.open_date.slice(0, 16) : ''}
+            defaultValue={survey.open_date ? survey.open_date.slice(0, 10) : ''}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Data e hora de encerramento</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Data de encerramento</label>
           <input
-            type="datetime-local"
+            type="date"
             name="close_date"
-            defaultValue={survey.close_date ? survey.close_date.slice(0, 16) : ''}
+            defaultValue={survey.close_date ? survey.close_date.slice(0, 10) : ''}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>

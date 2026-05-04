@@ -1,5 +1,5 @@
 // ─── Tipos de perfil e pesquisa ───────────────────────────────────────────────
-export type Perfil = 'responsavel' | 'aluno'
+export type Perfil = 'responsavel' | 'aluno' | 'colaborador'
 export type TipoPesquisa = 'quantitativa' | 'qualitativa'
 export type SurveyStatus = 'aberta' | 'nao_aberta' | 'encerrada'
 
@@ -37,6 +37,8 @@ export interface NPSStepDef extends BaseStep {
   type: 'nps'
   key: string
   perguntaBilingue?: boolean
+  titulo?: string
+  desc?: string
 }
 
 export interface ScaleStepDef extends BaseStep {
@@ -113,6 +115,7 @@ export interface SurveyTheme {
   nomeEscola?: string
   welcomeMessage?: string
   thankyouMessage?: string
+  indicacaoLink?: string
 }
 
 // ─── Config de pesquisa ───────────────────────────────────────────────────────

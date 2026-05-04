@@ -24,8 +24,18 @@ interface SurveyRunnerProps {
   surveySlug: string
 }
 
+const STORAGE_BASE = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/school-assets`
+  : null
+
 export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const searchParams = useSearchParams()
+
+  // communityId disponível imediatamente via URL params — usado no loading
+  const initialCommunityId = searchParams.get('communityId') ?? ''
+  const loadingLogoUrl = STORAGE_BASE && initialCommunityId
+    ? `${STORAGE_BASE}/${initialCommunityId}/logo.png`
+    : null
   const [currentKey, setCurrentKey] = useState('welcome')
   const [answers, setAnswers] = useState<Answers>({})
   const [loading, setLoading] = useState(false)
@@ -34,6 +44,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const [survey, setSurvey] = useState<SurveyConfig | null>(null)
   const [surveyNotFound, setSurveyNotFound] = useState(false)
   const [accessDenied, setAccessDenied] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
 
   // ── Contexto de sessão (LayersPortal + Layers Hub API) ──────────────────────
   useEffect(() => {
@@ -73,19 +84,23 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
       const effectiveId = userId || accountId
       if (effectiveId && communityId) {
         try {
-          const qs = new URLSearchParams({ userId: effectiveId, communityId })
+          const qs = new URLSearchParams({ userId: effectiveId, communityId, surveySlug })
           const res = await fetch(`/api/user-context?${qs}`)
           if (res.ok) {
             const profile = await res.json() as {
               nome: string; perfil: Perfil; nomeAluno: string; serie: string
               email: string; meta: Record<string, unknown>
+            } | null
+            if (profile) {
+              hubNome      = profile.nome      || ''
+              hubPerfil    = profile.perfil    || 'responsavel'
+              hubNomeAluno = profile.nomeAluno || ''
+              hubSerie     = profile.serie     || ''
+              hubEmail     = profile.email     || ''
+              hubMeta      = profile.meta      || {}
             }
-            hubNome      = profile.nome      || ''
-            hubPerfil    = profile.perfil    || 'responsavel'
-            hubNomeAluno = profile.nomeAluno || ''
-            hubSerie     = profile.serie     || ''
-            hubEmail     = profile.email     || ''
-            hubMeta      = profile.meta      || {}
+            // profile null = sem role familiar (admin puro, teacher, etc.)
+            // hubPerfil fica 'responsavel' (default), survey.publico bloqueia no render
           }
         } catch {
           // Hub API indisponível — continua com URL params
@@ -159,14 +174,22 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     }
   }, [survey])
 
-  // ── Spinner: aguarda contexto E config da pesquisa ───────────────────────────
+  // ── Loading personalizado por comunidade ─────────────────────────────────────
   if (!ctx || (!survey && !surveyNotFound)) {
     return (
-      <div className="card">
-        <div className="header"><h1>Pesquisa de Satisfação</h1></div>
-        <div className="loading-screen">
-          <div className="spinner" />
-          <p>Carregando...</p>
+      <div className="card loading-card">
+        {loadingLogoUrl && (
+          <img
+            src={loadingLogoUrl}
+            alt=""
+            className="loading-logo-pulse"
+            onError={e => { e.currentTarget.style.display = 'none' }}
+          />
+        )}
+        <div className="loading-dots">
+          <span className="loading-dot" />
+          <span className="loading-dot" />
+          <span className="loading-dot" />
         </div>
       </div>
     )
@@ -213,7 +236,8 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     : undefined
 
   // ── Perfil sem acesso ────────────────────────────────────────────────────────
-  if (survey.publico && !survey.publico.includes(perfil)) {
+  const allowAllRoles = (survey.settings as { allow_all_roles?: boolean } | undefined)?.allow_all_roles
+  if (!allowAllRoles && survey.publico && !survey.publico.includes(perfil)) {
     return (
       <div className="card">
         <div className="header"><h1>{survey.titulo}</h1></div>
@@ -249,12 +273,14 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const activeSteps = buildActiveSteps(survey, perfil, answers)
   const currentIdx  = activeSteps.findIndex(s => stepId(s) === currentKey)
   const currentStep = activeSteps[currentIdx] || activeSteps[0]
-  // isLastData = step imediatamente antes do thankyou (idêntico ao original)
-  const isLastData  = currentIdx === activeSteps.length - 2
 
   // Steps de dados (exclui welcome e thankyou) para a progress bar
   const dataSteps = activeSteps.filter(s => s.type !== 'welcome' && s.type !== 'thankyou')
   const dataIdx   = dataSteps.findIndex(s => stepId(s) === currentKey)
+
+  // isLastData = o passo atual é o último que contém perguntas (não é welcome nem thankyou)
+  const lastDataStep = dataSteps[dataSteps.length - 1]
+  const isLastData   = lastDataStep && stepId(lastDataStep) === currentKey
 
   // ── Navegação ────────────────────────────────────────────────────────────────
   function next(key: string, data: unknown) {
@@ -266,7 +292,8 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     } else {
       // Recalcula com newAnswers para capturar mudanças condicionais (bilíngue)
       const newActive = buildActiveSteps(survey!, perfil, newAnswers)
-      const nextStep  = newActive[currentIdx + 1]
+      const currentIndexInNewActive = newActive.findIndex(s => stepId(s) === currentKey)
+      const nextStep  = newActive[currentIndexInNewActive + 1]
       if (nextStep) setCurrentKey(stepId(nextStep))
     }
   }
@@ -307,8 +334,14 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
         throw new Error((err as { error?: string }).error ?? `HTTP ${res.status}`)
       }
 
-      // { ok: true } ou { duplicate: true } — ambos navegam para ThankYou
-      setCurrentKey('thankyou')
+      // Se existir um step de agradecimento no config, vai para ele.
+      // Caso contrário, fica no estado de enviado (podemos mostrar algo ou apenas travar).
+      const hasThankYouStep = activeSteps.some(s => s.type === 'thankyou')
+      if (hasThankYouStep) {
+        setCurrentKey('thankyou')
+      } else {
+        setSubmitted(true)
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Erro desconhecido'
       setSubmitError(`Erro ao enviar. ${msg}. Verifique sua conexão e tente novamente.`)
@@ -317,8 +350,8 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     }
   }
 
-  const isWelcome  = currentStep?.type === 'welcome'
-  const isThankyou = currentStep?.type === 'thankyou' || currentKey === 'thankyou'
+  const isWelcome  = currentStep?.type === 'welcome' && !submitted
+  const isThankyou = currentStep?.type === 'thankyou' || (submitted && !submitError)
   const npsAnswer  = answers.nps as NPSAnswer | undefined
 
   // ── Render ───────────────────────────────────────────────────────────────────

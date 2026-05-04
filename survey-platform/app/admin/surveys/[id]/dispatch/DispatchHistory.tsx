@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 
 interface Job {
   id:              string
@@ -66,6 +66,24 @@ function scopeLabel(scope: string, count: number): string {
   return `${count} comunidade(s)`
 }
 
+interface AuditLog {
+  id:         string
+  email:      string
+  nome:       string | null
+  status:     'sent' | 'failed'
+  error:      string | null
+  sent_at:    string | null
+  created_at: string
+}
+
+interface AuditData {
+  total:        number
+  total_sent:   number
+  total_failed: number
+  logs:         AuditLog[]
+  loading:      boolean
+}
+
 export default function DispatchHistory({
   dispatches: initial,
   surveyId,
@@ -76,6 +94,20 @@ export default function DispatchHistory({
   const [dispatches, setDispatches] = useState<Dispatch[]>(initial)
   const [expanded,   setExpanded]   = useState<string | null>(null)
   const [retrying,   setRetrying]   = useState<string | null>(null)
+  const [auditTab,   setAuditTab]   = useState<Record<string, 'jobs' | 'emails'>>({})
+  const [auditData,  setAuditData]  = useState<Record<string, AuditData>>({})
+
+  const loadAudit = useCallback(async (dispatchId: string) => {
+    if (auditData[dispatchId]?.logs.length > 0) return
+    setAuditData(prev => ({ ...prev, [dispatchId]: { total: 0, total_sent: 0, total_failed: 0, logs: [], loading: true } }))
+    try {
+      const res  = await fetch(`/api/admin/surveys/${surveyId}/dispatch-audit?dispatch_id=${dispatchId}&limit=200`)
+      const data = await res.json() as { total: number; total_sent: number; total_failed: number; logs: AuditLog[] }
+      setAuditData(prev => ({ ...prev, [dispatchId]: { ...data, loading: false } }))
+    } catch {
+      setAuditData(prev => ({ ...prev, [dispatchId]: { total: 0, total_sent: 0, total_failed: 0, logs: [], loading: false } }))
+    }
+  }, [surveyId, auditData])
 
   const handleRetry = async (dispatchId: string) => {
     setRetrying(dispatchId)
@@ -157,36 +189,107 @@ export default function DispatchHistory({
 
           {/* Detalhes expandidos */}
           {expanded === d.id && (
-            <div className="mt-2 pl-4 space-y-1">
+            <div className="mt-2 pl-4 space-y-2">
               {/* Sumário */}
-              <div className="flex gap-4 text-xs text-gray-500 mb-2">
+              <div className="flex gap-4 text-xs text-gray-500">
                 <span>✅ {d.completed_jobs} enviados</span>
                 {d.failed_jobs > 0 && <span>❌ {d.failed_jobs} falhos</span>}
                 {d.scheduled_at && <span>🕐 agendado: {formatDate(d.scheduled_at)}</span>}
                 {d.completed_at && <span>concluído: {formatDate(d.completed_at)}</span>}
               </div>
 
-              {/* Jobs por comunidade */}
-              {d.jobs.map(job => (
-                <div key={job.id} className="flex items-center gap-2 text-xs">
-                  <span className="w-4">{JOB_STATUS_LABELS[job.status] ?? '?'}</span>
-                  <span className="font-mono text-gray-600 flex-1">{job.community_id}</span>
-                  {job.total_users != null && (
-                    <span className="text-gray-400">
-                      {job.processed_users}/{job.total_users} usuários
-                    </span>
+              {/* Abas: Comunidades | Por email (só para personalizados) */}
+              {d.personalized && (
+                <div className="flex gap-1 border-b border-gray-100">
+                  {(['jobs', 'emails'] as const).map(tab => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => {
+                        setAuditTab(prev => ({ ...prev, [d.id]: tab }))
+                        if (tab === 'emails') void loadAudit(d.id)
+                      }}
+                      className={`text-xs px-3 py-1 rounded-t-md transition-colors ${
+                        (auditTab[d.id] ?? 'jobs') === tab
+                          ? 'bg-indigo-50 text-indigo-700 font-medium border border-b-white border-gray-200'
+                          : 'text-gray-400 hover:text-gray-600'
+                      }`}
+                    >
+                      {tab === 'jobs' ? 'Comunidades' : 'Por email'}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Aba Comunidades */}
+              {(!d.personalized || (auditTab[d.id] ?? 'jobs') === 'jobs') && (
+                <div className="space-y-1">
+                  {d.jobs.map(job => (
+                    <div key={job.id} className="flex items-center gap-2 text-xs">
+                      <span className="w-4">{JOB_STATUS_LABELS[job.status] ?? '?'}</span>
+                      <span className="font-mono text-gray-600 flex-1">{job.community_id}</span>
+                      {job.total_users != null && (
+                        <span className="text-gray-400">
+                          {job.processed_users}/{job.total_users} usuários
+                        </span>
+                      )}
+                      {job.sent_at && <span className="text-gray-400">{formatDate(job.sent_at)}</span>}
+                      {job.error && (
+                        <span className="text-red-500 truncate max-w-[180px]" title={job.error}>
+                          {job.error}
+                        </span>
+                      )}
+                      {job.retry_count > 0 && (
+                        <span className="text-gray-400">({job.retry_count} tentativas)</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Aba Por email */}
+              {d.personalized && auditTab[d.id] === 'emails' && (
+                <div className="space-y-1">
+                  {auditData[d.id]?.loading && (
+                    <p className="text-xs text-gray-400 py-2">Carregando logs…</p>
                   )}
-                  {job.sent_at && <span className="text-gray-400">{formatDate(job.sent_at)}</span>}
-                  {job.error && (
-                    <span className="text-red-500 truncate max-w-[180px]" title={job.error}>
-                      {job.error}
-                    </span>
+                  {!auditData[d.id]?.loading && auditData[d.id]?.logs.length === 0 && (
+                    <p className="text-xs text-gray-400 py-2">
+                      Nenhum log disponível. Os logs aparecem conforme o envio progride.
+                    </p>
                   )}
-                  {job.retry_count > 0 && (
-                    <span className="text-gray-400">({job.retry_count} tentativas)</span>
+                  {!auditData[d.id]?.loading && (auditData[d.id]?.logs.length ?? 0) > 0 && (
+                    <>
+                      <div className="flex gap-3 text-xs text-gray-500 pb-1">
+                        <span>✅ {auditData[d.id].total_sent} enviados</span>
+                        {auditData[d.id].total_failed > 0 && (
+                          <span>❌ {auditData[d.id].total_failed} falhos</span>
+                        )}
+                        <span className="text-gray-400">({auditData[d.id].total} total)</span>
+                      </div>
+                      <div className="max-h-48 overflow-y-auto space-y-0.5">
+                        {auditData[d.id].logs.map(log => (
+                          <div key={log.id} className="flex items-center gap-2 text-xs py-0.5">
+                            <span className="w-4 shrink-0">{log.status === 'sent' ? '✅' : '❌'}</span>
+                            <span className="text-gray-600 truncate flex-1 max-w-[180px]">{log.email}</span>
+                            {log.nome && (
+                              <span className="text-gray-400 truncate max-w-[100px]">{log.nome}</span>
+                            )}
+                            {log.sent_at && (
+                              <span className="text-gray-400 shrink-0">{formatDate(log.sent_at)}</span>
+                            )}
+                            {log.error && (
+                              <span className="text-red-500 truncate max-w-[140px]" title={log.error}>
+                                {log.error}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </>
                   )}
                 </div>
-              ))}
+              )}
             </div>
           )}
         </div>

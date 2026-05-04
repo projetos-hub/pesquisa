@@ -2,7 +2,6 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-service'
 import { read, utils } from 'xlsx'
 import { resolveCommunityId } from '@/lib/community-mapping'
-import { fetchLayersUserByEmail } from '@/lib/layers-hub'
 
 async function requireAuth() {
   const supabase = await createServerSupabaseClient()
@@ -46,42 +45,40 @@ export async function POST(
 
     const supabase = createServiceClient()
 
+    // Diagnóstico de descarte
+    const skipped = { sem_email: 0, sem_community: 0, community_map: {} as Record<string, number> }
+
     // Para cada linha, extrair 3 emails e resolver community_id
     for (const row of rows) {
-      const nome = row.NOME || ''
-      const nomefantasia = row.NOMEFANTASIA || ''
+      const nome = String(row.NOME || '').trim()
+      const nomefantasia = String(row.NOMEFANTASIA || '').trim()
       const emails = [
         row['EMAIL INSTITUCIONAL'],
         row['EMAIL RESP FIN'],
         row['EMAIL RESP ACAD'],
-      ].filter(Boolean) as string[]
+      ].filter(Boolean).map(String) as string[]
 
-      if (!nome || !nomefantasia || emails.length === 0) {
-        continue // Skip linhas incompletas
+      if (emails.length === 0) {
+        skipped.sem_email++
+        continue
       }
 
-      const communityId = resolveCommunityId(nomefantasia)
+      const communityId = nomefantasia ? resolveCommunityId(nomefantasia) : null
       if (!communityId) {
-        console.warn(`[sample-upload] Community não encontrado para: ${nomefantasia}`)
-        continue // Skip escolas não mapeadas
+        skipped.sem_community++
+        const key = nomefantasia || '(vazio)'
+        skipped.community_map[key] = (skipped.community_map[key] || 0) + 1
+        continue
       }
 
-      // Para cada email, resolver layers_user_id
+      // Salva imediatamente sem resolução Layers (feita em background depois)
       for (const email of emails) {
-        let layersUserId: string | null = null
-
-        try {
-          layersUserId = await fetchLayersUserByEmail(communityId, email)
-        } catch (err) {
-          console.warn(`[sample-upload] Erro ao buscar layers_user_id para ${email}:`, err)
-        }
-
         entries.push({
-          survey_id: id,
-          community_id: communityId,
-          email: email.toLowerCase(),
+          survey_id:      id,
+          community_id:   communityId,
+          email:          email.toLowerCase().trim(),
           nome,
-          layers_user_id: layersUserId,
+          layers_user_id: null,
         })
       }
     }
@@ -90,31 +87,59 @@ export async function POST(
       return Response.json({ error: 'No valid entries found' }, { status: 400 })
     }
 
-    // Limpar amostra antiga (DELETE all para essa survey)
-    await supabase
+    // Deduplica por (community_id, email) — mesmo email pode aparecer em colunas diferentes
+    const seen    = new Set<string>()
+    const unique  = entries.filter(e => {
+      const key = `${e.community_id}::${e.email}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+
+    console.log(`[sample-upload] ${entries.length} entradas → ${unique.length} únicas para survey ${id}`)
+
+    // Limpar amostra antiga
+    const { error: delErr } = await supabase
       .from('survey_sample_lists')
       .delete()
       .eq('survey_id', id)
 
-    // INSERT em batch com UPSERT
-    const { error } = await supabase
-      .from('survey_sample_lists')
-      .upsert(entries, {
-        onConflict: 'survey_id,community_id,email',
-        ignoreDuplicates: false,
-      })
-
-    if (error) {
-      console.error('[sample-upload] Insert error:', error)
-      return Response.json({ error: 'Failed to save sample' }, { status: 500 })
+    if (delErr) {
+      console.error('[sample-upload] Delete error:', delErr)
+      return Response.json({ error: `Erro ao limpar amostra anterior: ${delErr.message}` }, { status: 500 })
     }
 
-    const resolvedCount = entries.filter(e => e.layers_user_id).length
+    // INSERT em lotes de 100 para evitar limite de payload
+    const BATCH_SIZE = 100
+    for (let i = 0; i < unique.length; i += BATCH_SIZE) {
+      const batch = unique.slice(i, i + BATCH_SIZE)
+      const { error: insertErr } = await supabase
+        .from('survey_sample_lists')
+        .insert(batch)
+
+      if (insertErr) {
+        console.error(`[sample-upload] Insert error (lote ${i}):`, insertErr)
+        return Response.json({ error: `Erro ao salvar lote ${i}: ${insertErr.message}` }, { status: 500 })
+      }
+    }
+
+    const resolvedCount = unique.filter(e => e.layers_user_id).length
+
+    const topUnmapped = Object.entries(skipped.community_map)
+      .sort(([,a],[,b]) => b - a).slice(0, 10)
+      .map(([nome, count]) => `${nome} (${count} linhas)`)
 
     return Response.json({
-      total_entries: entries.length,
+      total_entries:       unique.length,
       resolved_layers_ids: resolvedCount,
-      message: `Amostra salva: ${entries.length} entradas, ${resolvedCount} IDs resolvidos`,
+      diagnostico: {
+        total_linhas_excel:          rows.length,
+        entradas_antes_dedup:        entries.length,
+        duplicatas_removidas:        entries.length - unique.length,
+        descartadas_sem_email:       skipped.sem_email,
+        descartadas_sem_community:   skipped.sem_community,
+        nomefantasia_nao_mapeados:   topUnmapped,
+      },
     })
   } catch (err) {
     console.error('[sample-upload] Error:', err)
@@ -132,40 +157,56 @@ export async function GET(
   try {
     await requireAuth()
     const { id } = await params
+    const url    = new URL(req.url)
+    const page   = Number(url.searchParams.get('page')   ?? 0)
+    const limit  = Math.min(Number(url.searchParams.get('limit') ?? 200), 500)
+    const filter = url.searchParams.get('filter') ?? 'all' // all | resolved | not_found | pending
 
     const supabase = createServiceClient()
 
-    const { data } = await supabase
+    // ── Contagens agregadas (sem limite de rows) ───────────────────────────
+    const [
+      { count: total    },
+      { count: resolved },
+      { count: notFound },
+      { count: pending  },
+    ] = await Promise.all([
+      supabase.from('survey_sample_lists').select('*', { count: 'exact', head: true }).eq('survey_id', id),
+      supabase.from('survey_sample_lists').select('*', { count: 'exact', head: true }).eq('survey_id', id).not('layers_user_id', 'is', null).neq('layers_user_id', 'NOT_FOUND'),
+      supabase.from('survey_sample_lists').select('*', { count: 'exact', head: true }).eq('survey_id', id).eq('layers_user_id', 'NOT_FOUND'),
+      supabase.from('survey_sample_lists').select('*', { count: 'exact', head: true }).eq('survey_id', id).is('layers_user_id', null),
+    ])
+
+    // ── Entradas paginadas para a tabela ──────────────────────────────────
+    let query = supabase
       .from('survey_sample_lists')
-      .select('*')
+      .select('id, community_id, email, nome, layers_user_id, created_at')
       .eq('survey_id', id)
       .order('community_id, email')
+      .range(page * limit, (page + 1) * limit - 1)
 
-    // Agrupar por community
-    const byCommunity: Record<string, any[]> = {}
-    data?.forEach(entry => {
-      if (!byCommunity[entry.community_id]) {
-        byCommunity[entry.community_id] = []
-      }
-      byCommunity[entry.community_id].push({
-        email: entry.email,
-        nome: entry.nome,
-        layers_user_id: entry.layers_user_id,
-        created_at: entry.created_at,
-      })
-    })
+    if (filter === 'resolved')  query = query.not('layers_user_id', 'is', null).neq('layers_user_id', 'NOT_FOUND')
+    if (filter === 'not_found') query = query.eq('layers_user_id', 'NOT_FOUND')
+    if (filter === 'pending')   query = query.is('layers_user_id', null)
 
-    const totalEntries = data?.length || 0
-    const schools = Object.keys(byCommunity).length
-    const resolved = data?.filter(e => e.layers_user_id).length || 0
+    const { data: entries } = await query
 
     return Response.json({
-      by_community: byCommunity,
       totals: {
-        total_entries: totalEntries,
-        schools,
-        resolved,
+        total:     total     ?? 0,
+        resolved:  resolved  ?? 0,
+        not_found: notFound  ?? 0,
+        pending:   pending   ?? 0,
       },
+      entries:   entries ?? [],
+      page,
+      limit,
+      has_more:  (page + 1) * limit < (
+        filter === 'resolved'  ? (resolved  ?? 0) :
+        filter === 'not_found' ? (notFound  ?? 0) :
+        filter === 'pending'   ? (pending   ?? 0) :
+        (total ?? 0)
+      ),
     })
   } catch (err) {
     console.error('[sample-get] Error:', err)

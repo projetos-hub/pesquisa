@@ -1,0 +1,1 @@
+-- migration aplicada diretamente no remote, stub local para sincronizar histórico

@@ -3,8 +3,9 @@
 // Processa: (1) dispatches agendados cujo horário chegou
 //           (2) jobs personalizados em andamento (status 'sending')
 
-import { createServiceClient } from '@/lib/supabase-service'
+import { createServiceClient }                                          from '@/lib/supabase-service'
 import { executeDispatch, executePersonalizedJob, type DispatchRecord } from '@/lib/layers-notifications'
+import { fetchLayersUserByEmail }                                        from '@/lib/layers-hub'
 
 function isAuthorized(req: Request): boolean {
   const auth   = req.headers.get('authorization') ?? ''
@@ -81,6 +82,30 @@ export async function GET(request: Request) {
     })
   )
 
+  // ── 3. Resolve layers_user_id de amostras pendentes (50 por ciclo) ──────────
+  // Resolve amostras pendentes — processa tudo com concorrência 20
+  // Timeout: função tem 300s, a ~50 resoluções/s = ~6000 entradas por ciclo
+  const { data: pendingSamples } = await supabase
+    .from('survey_sample_lists')
+    .select('id, community_id, email')
+    .is('layers_user_id', null)
+    .limit(5000) // processa até 5000 por ciclo
+
+  let resolvedSamples = 0
+  if (pendingSamples && pendingSamples.length > 0) {
+    const CONCURRENCY = 20
+    for (let i = 0; i < pendingSamples.length; i += CONCURRENCY) {
+      await Promise.all(pendingSamples.slice(i, i + CONCURRENCY).map(async (entry) => {
+        const userId = await fetchLayersUserByEmail(entry.community_id, entry.email).catch(() => null)
+        await supabase
+          .from('survey_sample_lists')
+          .update({ layers_user_id: userId ?? 'NOT_FOUND' })
+          .eq('id', entry.id)
+        if (userId) resolvedSamples++
+      }))
+    }
+  }
+
   const processedScheduled    = scheduledResults.filter(r => r.status === 'fulfilled').length
   const processedPersonalized = personalizedResults.filter(r => r.status === 'fulfilled').length
   const errors = [
@@ -94,9 +119,10 @@ export async function GET(request: Request) {
   )
 
   return Response.json({
-    ok:                   true,
-    processed_scheduled:  processedScheduled,
-    processed_personalized: processedPersonalized,
+    ok:                      true,
+    processed_scheduled:     processedScheduled,
+    processed_personalized:  processedPersonalized,
+    resolved_samples:        resolvedSamples,
     errors,
   })
 }

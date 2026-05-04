@@ -9,7 +9,7 @@ const BASE_URL = 'https://api.layers.digital'
 
 export interface LayersUserProfile {
   nome:      string
-  perfil:    'responsavel' | 'aluno'
+  perfil:    'responsavel' | 'aluno' | 'colaborador'
   nomeAluno: string
   serie:     string
   email:     string
@@ -23,9 +23,21 @@ export interface LayersUserProfile {
   }
 }
 
-function mapRole(roles: string[]): 'responsavel' | 'aluno' {
+// Roles da Layers que correspondem a responsáveis familiares (confirmado via API)
+const RESPONSAVEL_ROLES = new Set([
+  'guardian',
+  'father',
+  'mother',
+  'financial_responsible',
+  'academic_responsible',
+])
+
+// Retorna null para roles sem vínculo familiar (admin puro, teacher, coordinator, etc.)
+// Lógica: student → aluno; qualquer role de responsável (mesmo junto com admin) → responsavel; resto → null
+function mapRole(roles: string[]): 'responsavel' | 'aluno' | null {
   if (roles.includes('student')) return 'aluno'
-  return 'responsavel'
+  if (roles.some(r => RESPONSAVEL_ROLES.has(r))) return 'responsavel'
+  return null
 }
 
 async function fetchSerie(
@@ -91,6 +103,8 @@ async function _fetchLayersUserUncached(
     }
 
     const perfil = mapRole(user.roles ?? [])
+    if (perfil === null) return null  // sem role familiar — não é respondente válido
+
     let nomeAluno = ''
     let serie     = ''
 
@@ -147,10 +161,107 @@ export async function fetchLayersUser(
   return _fetchLayersUserCached(userId, communityId)
 }
 
+// Variante que aceita qualquer role da Layers (admin, teacher, etc.)
+// Usada em surveys com settings.allow_all_roles = true
+async function _fetchLayersUserAnyRoleUncached(
+  userId: string,
+  communityId: string,
+): Promise<LayersUserProfile | null> {
+  const token = process.env.LAYERS_API_TOKEN
+  if (!token || !userId || !communityId) return null
+
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'community-id':  communityId,
+  }
+
+  try {
+    const userRes = await fetch(`${BASE_URL}/v1/users/${userId}`, {
+      headers,
+      signal: AbortSignal.timeout(5_000),
+    })
+    if (!userRes.ok) return null
+
+    const user = await userRes.json() as {
+      name?:       string
+      email?:      string
+      roles?:      string[]
+      lastSeenAt?: string | null
+      groupsIds?:  string[]
+      membersId?:  string[]
+      address?:    Record<string, string | null>
+      fields?:     Record<string, unknown>
+    }
+
+    const mappedPerfil = mapRole(user.roles ?? [])
+    const perfil: LayersUserProfile['perfil'] = mappedPerfil ?? 'colaborador'
+
+    let nomeAluno = ''
+    let serie     = ''
+
+    if (perfil === 'responsavel') {
+      const relRes = await fetch(`${BASE_URL}/v1/users/${userId}/related`, {
+        headers,
+        signal: AbortSignal.timeout(5_000),
+      })
+      if (relRes.ok) {
+        const rel = await relRes.json() as { members?: { _id?: string; name?: string }[] }
+        const student = rel.members?.[0]
+        nomeAluno = student?.name ?? ''
+        if (student?._id) serie = await fetchSerie(student._id, headers)
+      }
+    } else if (perfil === 'aluno') {
+      serie = await fetchSerie(userId, headers)
+    }
+    // colaborador: sem lookup extra
+
+    return {
+      nome:      user.name  ?? '',
+      email:     user.email ?? '',
+      perfil,
+      nomeAluno,
+      serie,
+      meta: {
+        roles:      user.roles      ?? [],
+        lastSeenAt: user.lastSeenAt ?? null,
+        groupsIds:  user.groupsIds  ?? [],
+        membersId:  user.membersId  ?? [],
+        address:    user.address    ?? {},
+        fields:     user.fields     ?? {},
+      },
+    }
+  } catch {
+    return null
+  }
+}
+
+const _fetchLayersUserAnyRoleCached = unstable_cache(
+  _fetchLayersUserAnyRoleUncached,
+  ['layers-user-any-role'],
+  { revalidate: 1800 }
+)
+
+export async function fetchLayersUserAnyRole(
+  userId: string,
+  communityId: string,
+): Promise<LayersUserProfile | null> {
+  return _fetchLayersUserAnyRoleCached(userId, communityId)
+}
+
 export async function fetchLayersUserByEmail(
   communityId: string,
   email: string,
 ): Promise<string | null> {
+  const profile = await fetchLayersUserProfileByEmail(communityId, email)
+  return profile?.id ?? null
+}
+
+// Retorna id + dados completos do usuário pela mesma chamada — zero custo extra.
+// Usado pelo resolve de amostra para salvar nome/nomeAluno/serie junto com layers_user_id.
+export async function fetchLayersUserProfileByEmail(
+  communityId: string,
+  email: string,
+): Promise<{ id: string; name: string; perfil: 'responsavel' | 'aluno' | 'colaborador' } | null> {
   const token = process.env.LAYERS_API_TOKEN
 
   if (!token || !communityId || !email) return null
@@ -170,14 +281,31 @@ export async function fetchLayersUserByEmail(
     )
     if (!res.ok) return null
 
-    const data = await res.json() as {
-      _id?: string
-      hits?: { _id?: string }[]
+    const data = await res.json() as
+      | { _id?: string; name?: string; roles?: string[]; hits?: { _id?: string; name?: string; roles?: string[] }[] }
+      | { _id?: string; name?: string; roles?: string[] }[]
+
+    let userId: string | undefined
+    let name: string = ''
+    let roles: string[] = []
+
+    if (Array.isArray(data)) {
+      userId = data[0]?._id
+      name   = data[0]?.name  ?? ''
+      roles  = data[0]?.roles ?? []
+    } else {
+      const hit = data.hits?.[0]
+      userId = hit?._id || data._id
+      name   = hit?.name  ?? (data as { name?: string }).name   ?? ''
+      roles  = hit?.roles ?? (data as { roles?: string[] }).roles ?? []
     }
 
-    // Trata dois formatos de resposta: array direto ou objeto paginado
-    const userId = data._id || data.hits?.[0]?._id
-    return userId || null
+    if (!userId) return null
+
+    const mapped = mapRole(roles)
+    const perfil: 'responsavel' | 'aluno' | 'colaborador' = mapped ?? 'colaborador'
+
+    return { id: userId, name, perfil }
   } catch {
     return null
   }

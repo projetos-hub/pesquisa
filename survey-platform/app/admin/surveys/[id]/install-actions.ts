@@ -20,11 +20,40 @@ export async function installCommunity(surveyId: string, formData: FormData) {
     if (!communityId) return { error: 'ID da comunidade é obrigatório' }
 
     const supabase = createServiceClient()
+
+    // Buscar tema da tabela communities (fonte única de verdade)
+    const { data: community } = await supabase
+      .from('communities')
+      .select('nome_escola, primary_color, secondary_color, logo')
+      .eq('community_id', communityId)
+      .maybeSingle()
+
+    const inheritedTheme = community
+      ? {
+          nomeEscola:     community.nome_escola,
+          primaryColor:   community.primary_color,
+          secondaryColor: community.secondary_color,
+          logo:           community.logo,
+        }
+      : {}
+
+    // Preservar override existente (ex: indicacaoLink) se já instalada
+    const { data: existingRow } = await supabase
+      .from('survey_communities')
+      .select('theme')
+      .eq('survey_id', surveyId)
+      .eq('community_id', communityId)
+      .maybeSingle()
+
+    const themeToUse = (existingRow?.theme && Object.keys(existingRow.theme).length > 0)
+      ? { ...inheritedTheme, ...existingRow.theme }
+      : inheritedTheme
+
     const { error } = await supabase
       .from('survey_communities')
       .upsert(
-        { survey_id: surveyId, community_id: communityId, status, active: true },
-        { onConflict: 'survey_id,community_id' }
+        { survey_id: surveyId, community_id: communityId, status, active: true, theme: themeToUse },
+        { onConflict: 'survey_id,community_id', ignoreDuplicates: false }
       )
 
     if (error) return { error: 'Erro ao instalar: ' + error.message }

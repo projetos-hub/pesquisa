@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -20,6 +20,7 @@ interface Props {
   communities: Community[]  // instaladas nesta survey
   templates:   DispatchTemplate[]
   openDate:    string | null
+  sampleCount: number        // emails resolvidos em survey_sample_lists
 }
 
 interface DispatchTemplate {
@@ -53,12 +54,38 @@ function genKey() { return Math.random().toString(36).slice(2, 9) }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function DispatchForm({ surveyId, communities, templates, openDate }: Props) {
+export default function DispatchForm({ surveyId, communities, templates, openDate, sampleCount }: Props) {
   // ── Targeting
-  const [scope,        setScope]        = useState<'all' | 'communities' | 'group'>('all')
+  const [scope,        setScope]        = useState<'all' | 'communities' | 'group' | 'sample'>('all')
   const [selectedComms, setSelectedComms] = useState<string[]>([])
   const [groupAlias,   setGroupAlias]   = useState('')
+
+  // Comunidades disponíveis na amostra (para segmentação por comunidade)
+  interface SampleCommunity { community_id: string; nome: string; total: number; resolved: number }
+  const [sampleComms,         setSampleComms]         = useState<SampleCommunity[]>([])
+  const [selectedSampleComms, setSelectedSampleComms] = useState<string[]>([])
+
+  useEffect(() => {
+    if (scope !== 'sample') return
+    fetch(`/api/admin/surveys/${surveyId}/sample/communities`)
+      .then(r => r.json())
+      .then((data: { communities?: SampleCommunity[] }) => setSampleComms(data.communities ?? []))
+      .catch(() => setSampleComms([]))
+  }, [scope, surveyId])
   const [groupComm,    setGroupComm]    = useState(communities[0]?.id ?? '')
+
+  // Grupos de amostra
+  interface SampleGroupOption { id: string; name: string; color: string; member_count: number }
+  const [sampleGroups,        setSampleGroups]        = useState<SampleGroupOption[]>([])
+  const [selectedSampleGroup, setSelectedSampleGroup] = useState<string>('')
+
+  useEffect(() => {
+    if (scope !== 'sample') return
+    fetch(`/api/admin/surveys/${surveyId}/sample/groups`)
+      .then(r => r.json())
+      .then((d: { groups?: SampleGroupOption[] }) => setSampleGroups(d.groups ?? []))
+      .catch(() => setSampleGroups([]))
+  }, [scope, surveyId])
   const [roles,        setRoles]        = useState<string[]>(['guardian'])
 
   // ── Channels
@@ -131,7 +158,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
     setBody(tmpl.body)
     setChannels(tmpl.channels)
     setRoles(tmpl.target_roles)
-    setScope(tmpl.target_scope as 'all' | 'communities' | 'group')
+    setScope(tmpl.target_scope as 'all' | 'communities' | 'group' | 'sample')
     if (tmpl.push_title) { setPushTitle(tmpl.push_title); setCustomPerCh(true) }
     if (tmpl.push_body)  { setPushBody(tmpl.push_body) }
     if (tmpl.email_title) { setEmailTitle(tmpl.email_title) }
@@ -177,8 +204,11 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
       channels,
       target_scope:         scope,
       target_community_ids: scope === 'all' ? null :
+                            scope === 'sample' ? (selectedSampleComms.length > 0 ? selectedSampleComms : null) :
                             scope === 'group' ? [groupComm] : selectedComms,
-      target_group_alias:   scope === 'group' ? groupAlias : null,
+      // Para sample scope, target_group_alias carrega o UUID do grupo selecionado
+      target_group_alias:   scope === 'group' ? groupAlias :
+                            scope === 'sample' && selectedSampleGroup ? selectedSampleGroup : null,
       target_roles:         roles,
       personalized,
       push_title:           customPerCh ? pushTitle : null,
@@ -299,18 +329,122 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
             ['all',         'Todas as comunidades'],
             ['communities', 'Comunidades específicas'],
             ['group',       'Uma turma'],
+            ['sample',      '📊 Amostra'],
           ] as const).map(([val, label]) => (
             <label key={val} className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
               <input
                 type="radio" name="scope" value={val}
                 checked={scope === val}
-                onChange={() => { setScope(val); setPreview(null) }}
+                onChange={() => {
+                  setScope(val)
+                  setPreview(null)
+                  // Amostra requer modo personalizado
+                  if (val === 'sample') setPersonalized(true)
+                }}
                 className="text-indigo-600"
               />
               {label}
             </label>
           ))}
         </div>
+
+        {/* Info de amostra + checklist de comunidades + seletor de grupo */}
+        {scope === 'sample' && (
+          <div className="space-y-2">
+            <div className="text-xs bg-indigo-50 border border-indigo-100 text-indigo-800 rounded-lg px-3 py-2">
+              {sampleCount > 0
+                ? `📋 ${sampleCount} email(s) resolvido(s) na amostra desta pesquisa.`
+                : <>
+                    ⚠️ Nenhum email resolvido na amostra.{' '}
+                    <a href={`/admin/surveys/${surveyId}/sample`} className="underline font-medium">
+                      Ir para Amostra →
+                    </a>
+                  </>
+              }
+            </div>
+
+            {/* Checklist de comunidades da amostra */}
+            {sampleComms.length > 1 && (
+              <div className="border border-gray-200 rounded-lg p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-gray-700">Filtrar por comunidade</p>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSampleComms([])}
+                    className="text-xs text-gray-400 hover:text-gray-600"
+                  >
+                    {selectedSampleComms.length > 0 ? 'Limpar' : 'Todas'}
+                  </button>
+                </div>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {sampleComms.map(c => (
+                    <label key={c.community_id} className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedSampleComms.length === 0 || selectedSampleComms.includes(c.community_id)}
+                        onChange={() => {
+                          setSelectedSampleComms(prev => {
+                            const all = prev.length === 0
+                            if (all) return sampleComms.map(x => x.community_id).filter(x => x !== c.community_id)
+                            return prev.includes(c.community_id)
+                              ? prev.filter(x => x !== c.community_id)
+                              : [...prev, c.community_id]
+                          })
+                        }}
+                        className="text-indigo-600"
+                      />
+                      <span className="flex-1">{c.nome}</span>
+                      <span className="text-gray-400">{c.resolved} resolvidos</span>
+                    </label>
+                  ))}
+                </div>
+                {selectedSampleComms.length > 0 && selectedSampleComms.length < sampleComms.length && (
+                  <p className="text-xs text-amber-600">
+                    Enviando para {selectedSampleComms.length} de {sampleComms.length} comunidade(s)
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Seletor de grupo */}
+            {sampleGroups.length > 0 && (
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Grupo de destinatários <span className="text-gray-400">(opcional — vazio = toda a amostra)</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSampleGroup('')}
+                    className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                      selectedSampleGroup === ''
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400'
+                    }`}
+                  >
+                    Toda a amostra ({sampleCount})
+                  </button>
+                  {sampleGroups.map(g => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => setSelectedSampleGroup(g.id === selectedSampleGroup ? '' : g.id)}
+                      className={`text-xs px-3 py-1 rounded-full border transition-colors flex items-center gap-1.5 ${
+                        selectedSampleGroup === g.id
+                          ? 'text-white border-transparent'
+                          : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                      }`}
+                      style={selectedSampleGroup === g.id ? { background: g.color, borderColor: g.color } : {}}
+                    >
+                      <span className="w-2 h-2 rounded-full" style={{ background: g.color }} />
+                      {g.name} ({g.member_count})
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Comunidades específicas */}
         {scope === 'communities' && (

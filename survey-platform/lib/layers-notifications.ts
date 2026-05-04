@@ -5,6 +5,7 @@
 // Docs: docs/layers-notifications.md
 
 import { createServiceClient } from './supabase-service'
+import { fetchLayersUser }    from './layers-hub'
 
 // Delay entre chamadas no modo personalizado (ms) — evita rate limit
 const PERSONALIZED_DELAY_MS = 150
@@ -16,7 +17,7 @@ const PORTAL_ALIAS    = '@raizeducacao:pesquisa'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
-export type TargetScope = 'all' | 'communities' | 'group'
+export type TargetScope = 'all' | 'communities' | 'group' | 'sample'
 export type TargetRole  = 'guardian' | 'student' | 'admin'
 export type Channel     = 'pushNotification' | 'email'
 
@@ -47,7 +48,7 @@ interface LayersUserListItem {
   membersId?: string[]
 }
 
-interface PersonalizedVars {
+export interface PersonalizedVars {
   nome:       string
   nomeAluno:  string
   nomeEscola: string
@@ -115,8 +116,28 @@ export async function resolveTargetCommunities(
     return [communityIds[0]]
   }
 
-  // scope === 'all' — busca todas as instalações ativas da survey
   const supabase = createServiceClient()
+
+  // scope === 'sample' — retorna comunidades que têm entradas resolvidas na amostra
+  // Se communityIds fornecido, restringe às comunidades selecionadas
+  if (scope === 'sample') {
+    let query = supabase
+      .from('survey_sample_lists')
+      .select('community_id')
+      .eq('survey_id', surveyId)
+      .not('layers_user_id', 'is', null)
+
+    if (communityIds && communityIds.length > 0) {
+      query = query.in('community_id', communityIds)
+    }
+
+    const { data } = await query
+    if (!data) return []
+    const unique = [...new Set(data.map((r: { community_id: string }) => r.community_id))]
+    return unique
+  }
+
+  // scope === 'all' — busca todas as instalações ativas da survey
   const { data, error } = await supabase
     .from('survey_communities')
     .select('community_id')
@@ -275,12 +296,21 @@ async function fetchCommunityUsers(
   }
 }
 
+// ─── formatFirstName ─────────────────────────────────────────────────────────
+// "LUCAS MESQUITA" → "Lucas" | "carol da layers" → "Carol"
+
+function formatFirstName(fullName: string): string {
+  const first = fullName.trim().split(/\s+/)[0] ?? ''
+  if (!first) return ''
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase()
+}
+
 // ─── interpolatePlaceholders ──────────────────────────────────────────────────
 //
 // Substitui {{variavel}} no texto pelos dados do usuário.
 // Fallbacks garantem que a mensagem sempre faz sentido mesmo sem o dado.
 
-function interpolatePlaceholders(text: string, vars: PersonalizedVars): string {
+export function interpolatePlaceholders(text: string, vars: PersonalizedVars): string {
   return text
     .replace(/\{\{nome\}\}/g,       vars.nome       || 'você')
     .replace(/\{\{nomeAluno\}\}/g,  vars.nomeAluno  || 'seu filho(a)')
@@ -299,7 +329,7 @@ function buildPersonalizedPayload(
   nomeEscola:  string,
 ): LayersPayload {
   const vars: PersonalizedVars = {
-    nome:       user.name?.split(' ')[0] ?? '',
+    nome:       formatFirstName(user.name ?? ''),
     nomeAluno:  '',   // preenchido se for guardian
     nomeEscola,
     serie:      '',
@@ -357,6 +387,15 @@ export async function executePersonalizedJobSample(
 ): Promise<{ processed: number; failed: number; hasMore: boolean }> {
   const supabase = createServiceClient()
 
+  // Busca nomeEscola do tema da community para o placeholder {{nomeEscola}}
+  const { data: commRow } = await supabase
+    .from('survey_communities')
+    .select('theme')
+    .eq('survey_id', dispatch.survey_id)
+    .eq('community_id', communityId)
+    .single()
+  const communityNomeEscola = (commRow?.theme as { nomeEscola?: string } | null)?.nomeEscola ?? ''
+
   // Busca progresso atual do job
   const { data: job } = await supabase
     .from('survey_dispatch_jobs')
@@ -364,7 +403,10 @@ export async function executePersonalizedJobSample(
     .eq('id', jobId)
     .single()
 
-  const offset = job?.processed_users ?? 0
+  const processedUsers = job?.processed_users ?? 0
+  const failedUsers    = job?.failed_users    ?? 0
+  // Avança o offset além de falhas — evita reprocessar entries que já falharam
+  const offset         = processedUsers + failedUsers
 
   // Contar total de entries na amostra com layers_user_id resolvido (primeira execução)
   if (offset === 0) {
@@ -384,15 +426,40 @@ export async function executePersonalizedJobSample(
     }
   }
 
+  // Se target_group_alias contém um UUID de grupo de amostra, filtrar por membros do grupo
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const sampleGroupId = dispatch.target_group_alias && UUID_RE.test(dispatch.target_group_alias)
+    ? dispatch.target_group_alias
+    : null
+
+  let groupMemberIds: string[] | null = null
+  if (sampleGroupId) {
+    const { data: members } = await supabase
+      .from('survey_sample_group_members')
+      .select('sample_id')
+      .eq('group_id', sampleGroupId)
+    groupMemberIds = (members ?? []).map(m => m.sample_id)
+    if (groupMemberIds.length === 0) {
+      return { processed: 0, failed: 0, hasMore: false }
+    }
+  }
+
   // Busca lote de entries na amostra
-  const { data: sampleEntries } = await supabase
+  let sampleQuery = supabase
     .from('survey_sample_lists')
     .select('id, email, nome, layers_user_id')
     .eq('survey_id', dispatch.survey_id)
     .eq('community_id', communityId)
     .not('layers_user_id', 'is', null)
+    .neq('layers_user_id', 'NOT_FOUND')
     .order('created_at')
     .range(offset, offset + PERSONALIZED_BATCH_SIZE - 1)
+
+  if (groupMemberIds) {
+    sampleQuery = sampleQuery.in('id', groupMemberIds)
+  }
+
+  const { data: sampleEntries } = await sampleQuery
 
   let processed = 0
   let failed    = 0
@@ -400,6 +467,7 @@ export async function executePersonalizedJobSample(
   for (const entry of sampleEntries || []) {
     if (!entry.layers_user_id) continue
 
+    let sendResult: JobResult | null = null
     try {
       // Monta payload personalizado para entrada da amostra
       const payload: LayersPayload = {
@@ -416,12 +484,27 @@ export async function executePersonalizedJobSample(
         },
       }
 
+      // Enriquecer com dados do perfil Layers se disponível
+      let nomeAluno  = ''
+      let serie      = ''
+      if (entry.layers_user_id && entry.layers_user_id !== 'NOT_FOUND') {
+        try {
+          const hub = await fetchLayersUser(entry.layers_user_id, communityId)
+          if (hub) {
+            nomeAluno = hub.nomeAluno || ''
+            serie     = hub.serie    || ''
+            // Usar nome do hub se entry.nome ainda estiver vazio
+            if (!entry.nome && hub.nome) entry.nome = hub.nome
+          }
+        } catch { /* silencioso — nome já vem do resolve */ }
+      }
+
       // Interpolar placeholders com dados da amostra
       const vars: PersonalizedVars = {
-        nome:       entry.nome?.split(' ')[0] ?? '',
-        nomeAluno:  '',
-        nomeEscola: '',
-        serie:      '',
+        nome:       formatFirstName(entry.nome ?? ''),
+        nomeAluno,
+        nomeEscola: communityNomeEscola,
+        serie,
       }
 
       const title = interpolatePlaceholders(dispatch.push_title ?? dispatch.title, vars)
@@ -450,19 +533,33 @@ export async function executePersonalizedJobSample(
       if (Object.keys(channels).length > 0) payload.channels = channels
 
       // Enviar notificação
-      const result = await sendToOneCommunity(communityId, payload)
-      if (result.success) processed++
-      else                failed++
+      sendResult = await sendToOneCommunity(communityId, payload)
+      if (sendResult.success) processed++
+      else                    failed++
     } catch (err) {
       console.error(`[sample-dispatch] Erro ao disparar para ${entry.email}:`, err)
       failed++
     }
 
+    // Inserir audit log
+    const { error: auditError } = await supabase.from('notification_audit_logs').insert({
+      dispatch_id: dispatch.id,
+      job_id:      jobId,
+      email:       entry.email,
+      nome:        entry.nome ?? null,
+      status:      sendResult?.success ? 'sent' : 'failed',
+      error:       sendResult?.error ?? null,
+      sent_at:     sendResult?.success ? new Date().toISOString() : null,
+    })
+    if (auditError) console.error('[audit] Failed to insert audit log for', entry.email, ':', auditError)
+
     // Delay entre chamadas para respeitar rate limit
     await new Promise(r => setTimeout(r, PERSONALIZED_DELAY_MS))
   }
 
-  const newProcessed = offset + processed
+  // Avança o cursor além de tudo que foi tocado (sucesso + falha) para não re-processar
+  const handledInBatch = sampleEntries?.length || 0
+  const newOffset = offset + handledInBatch
   const { count: totalCount } = await supabase
     .from('survey_sample_lists')
     .select('*', { count: 'exact', head: true })
@@ -471,15 +568,15 @@ export async function executePersonalizedJobSample(
     .not('layers_user_id', 'is', null)
 
   const total = totalCount || 0
-  const hasMore = newProcessed < total
+  const hasMore = newOffset < total
 
   // Atualiza progresso no job
   await supabase
     .from('survey_dispatch_jobs')
     .update({
-      processed_users: newProcessed,
-      failed_users:    (job?.failed_users ?? 0) + failed,
-      status:          hasMore ? 'sending' : (failed === (sampleEntries?.length || 0) && (sampleEntries?.length || 0) > 0 ? 'failed' : 'sent'),
+      processed_users: processedUsers + processed,
+      failed_users:    failedUsers + failed,
+      status:          hasMore ? 'sending' : ((processedUsers + processed) === 0 ? 'failed' : 'sent'),
       sent_at:         hasMore ? null : new Date().toISOString(),
     })
     .eq('id', jobId)
@@ -508,7 +605,9 @@ export async function executePersonalizedJob(
     .eq('id', jobId)
     .single()
 
-  const offset = job?.processed_users ?? 0
+  const processedUsers = job?.processed_users ?? 0
+  const failedUsers    = job?.failed_users    ?? 0
+  const offset         = processedUsers + failedUsers  // avança além de falhas
 
   // Busca lote de usuários
   const { users, total } = await fetchCommunityUsers(
@@ -540,16 +639,16 @@ export async function executePersonalizedJob(
     await new Promise(r => setTimeout(r, PERSONALIZED_DELAY_MS))
   }
 
-  const newProcessed = offset + processed
-  const hasMore      = newProcessed < (total || 0)
+  const newOffset = offset + users.length  // avança além de tudo que foi tocado
+  const hasMore   = newOffset < (total || 0)
 
   // Atualiza progresso no job
   await supabase
     .from('survey_dispatch_jobs')
     .update({
-      processed_users: newProcessed,
-      failed_users:    (job?.failed_users ?? 0) + failed,
-      status:          hasMore ? 'sending' : (failed === users.length && users.length > 0 ? 'failed' : 'sent'),
+      processed_users: processedUsers + processed,
+      failed_users:    failedUsers + failed,
+      status:          hasMore ? 'sending' : ((processedUsers + processed) === 0 ? 'failed' : 'sent'),
       sent_at:         hasMore ? null : new Date().toISOString(),
     })
     .eq('id', jobId)
@@ -594,24 +693,11 @@ export async function executeDispatch(dispatchId: string): Promise<DispatchResul
 
   const dispatchRecord = dispatch as DispatchRecord & { personalized?: boolean }
 
-  // ── Detectar se é disparo amostral ─────────────────────────────────────────
-  const { data: hasSample } = await supabase
-    .from('survey_sample_lists')
-    .select('id')
-    .eq('survey_id', dispatchRecord.survey_id)
-    .limit(1)
-
-  const isAmostral = hasSample && hasSample.length > 0
-
-  // Se é amostral, requer modo personalizado
-  if (isAmostral && !dispatchRecord.personalized) {
-    // Marca dispatch como erro
+  // scope 'sample' requer modo personalizado
+  if (dispatchRecord.target_scope === 'sample' && !dispatchRecord.personalized) {
     await supabase
       .from('survey_dispatches')
-      .update({
-        status: 'failed',
-        error_message: 'Pesquisas amostrais só funcionam em modo Personalizado',
-      })
+      .update({ status: 'failed' })
       .eq('id', dispatchId)
 
     return { sent: 0, failed: jobs.length, jobs: jobs.map(j => ({
@@ -620,6 +706,8 @@ export async function executeDispatch(dispatchId: string): Promise<DispatchResul
       error: 'SAMPLE_REQUIRES_PERSONALIZED'
     })) }
   }
+
+  const isSampleScope = dispatchRecord.target_scope === 'sample'
 
   // ── Modo personalizado: delega para executePersonalizedJob ou executePersonalizedJobSample
   if (dispatchRecord.personalized) {
@@ -632,10 +720,10 @@ export async function executeDispatch(dispatchId: string): Promise<DispatchResul
       .single()
     const nomeEscola = (communityRow?.theme as { nomeEscola?: string } | null)?.nomeEscola ?? ''
 
-    // Se é amostral, usa executePersonalizedJobSample; senão, usa executePersonalizedJob
+    // scope 'sample' → executePersonalizedJobSample; outros → executePersonalizedJob
     const results = await Promise.allSettled(
       jobs.map(async (job: { id: string; community_id: string }) => {
-        const res = isAmostral
+        const res = isSampleScope
           ? await executePersonalizedJobSample(
               job.id,
               dispatchRecord as DispatchRecord,

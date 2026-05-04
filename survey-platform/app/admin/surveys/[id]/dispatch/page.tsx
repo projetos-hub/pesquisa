@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient }        from '@/lib/supabase-service'
 import DispatchForm    from './DispatchForm'
 import DispatchHistory from './DispatchHistory'
+import ManualDispatch  from './ManualDispatch'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -60,6 +61,13 @@ export default async function DispatchPage({ params }: PageProps) {
     email_action_label: string | null; email_background_url: string | null;
   }[]
 
+  // Contagem de emails resolvidos na amostra
+  const { count: sampleCount } = await service
+    .from('survey_sample_lists')
+    .select('*', { count: 'exact', head: true })
+    .eq('survey_id', surveyId)
+    .not('layers_user_id', 'is', null)
+
   // Histórico de disparos (não templates)
   const { data: dispatches } = await service
     .from('survey_dispatches')
@@ -109,9 +117,15 @@ export default async function DispatchPage({ params }: PageProps) {
               communities={communities}
               templates={templates ?? []}
               openDate={survey.open_date}
+              sampleCount={sampleCount ?? 0}
             />
           )}
         </div>
+
+        {/* Disparo rápido */}
+        {communities.length > 0 && (
+          <ManualDispatch surveyId={surveyId} communities={communities} />
+        )}
 
         {/* Histórico */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
