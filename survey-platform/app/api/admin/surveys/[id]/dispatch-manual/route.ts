@@ -43,15 +43,14 @@ export async function POST(
     const { community_id, emails, title, body, channels, roles,
             push_title, push_body, email_title, email_body, email_action_label } = parsed.data
 
-    // Busca nomeEscola do tema da community para {{nomeEscola}}
+    // Busca nomeEscola da tabela communities (fonte única de verdade)
     const serviceSupabase = createServiceClient()
     const { data: commRow } = await serviceSupabase
-      .from('survey_communities')
-      .select('theme')
-      .eq('survey_id', surveyId)
+      .from('communities')
+      .select('nome_escola')
       .eq('community_id', community_id)
-      .single()
-    const nomeEscola = (commRow?.theme as { nomeEscola?: string } | null)?.nomeEscola ?? ''
+      .maybeSingle()
+    const nomeEscola = commRow?.nome_escola ?? ''
 
     // Processa cada email em paralelo (com limite de 10 simultâneos)
     const results: { email: string; status: 'sent' | 'not_found' | 'failed'; error?: string }[] = []
