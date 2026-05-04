@@ -21,23 +21,38 @@ export async function installCommunity(surveyId: string, formData: FormData) {
 
     const supabase = createServiceClient()
 
-    // Herdar tema existente da mesma comunidade em outra survey (tema não muda entre surveys)
-    const { data: existingInstall } = await supabase
-      .from('survey_communities')
-      .select('theme')
+    // Buscar tema da tabela communities (fonte única de verdade)
+    const { data: community } = await supabase
+      .from('communities')
+      .select('nome_escola, primary_color, secondary_color, logo')
       .eq('community_id', communityId)
-      .neq('survey_id', surveyId)
-      .not('theme', 'eq', '{}')
-      .not('theme', 'is', null)
-      .limit(1)
       .maybeSingle()
 
-    const inheritedTheme = existingInstall?.theme ?? {}
+    const inheritedTheme = community
+      ? {
+          nomeEscola:     community.nome_escola,
+          primaryColor:   community.primary_color,
+          secondaryColor: community.secondary_color,
+          logo:           community.logo,
+        }
+      : {}
+
+    // Preservar override existente (ex: indicacaoLink) se já instalada
+    const { data: existingRow } = await supabase
+      .from('survey_communities')
+      .select('theme')
+      .eq('survey_id', surveyId)
+      .eq('community_id', communityId)
+      .maybeSingle()
+
+    const themeToUse = (existingRow?.theme && Object.keys(existingRow.theme).length > 0)
+      ? { ...inheritedTheme, ...existingRow.theme }
+      : inheritedTheme
 
     const { error } = await supabase
       .from('survey_communities')
       .upsert(
-        { survey_id: surveyId, community_id: communityId, status, active: true, theme: inheritedTheme },
+        { survey_id: surveyId, community_id: communityId, status, active: true, theme: themeToUse },
         { onConflict: 'survey_id,community_id', ignoreDuplicates: false }
       )
 
