@@ -5,6 +5,12 @@ import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-service'
 
+// datetime-local envia "YYYY-MM-DDTHH:mm" sem timezone — interpreta como Brasília (UTC-3, sem DST)
+function toUTCIso(localStr: string | null): string | null {
+  if (!localStr) return null
+  return new Date(localStr + ':00-03:00').toISOString()
+}
+
 async function requireAuth() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -27,8 +33,8 @@ export async function updateSurvey(
   const status         = formData.get('status')         as string
   const access_control = formData.get('access_control') as string
   const survey_type    = (formData.get('survey_type')   as string) || null
-  const open_date      = (formData.get('open_date')     as string) || null
-  const close_date     = (formData.get('close_date')    as string) || null
+  const open_date      = toUTCIso((formData.get('open_date')  as string) || null)
+  const close_date     = toUTCIso((formData.get('close_date') as string) || null)
 
   if (!title?.trim())  return { error: 'Título é obrigatório' }
   if (!status?.trim()) return { error: 'Status é obrigatório' }

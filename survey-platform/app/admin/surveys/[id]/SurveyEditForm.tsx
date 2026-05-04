@@ -37,6 +37,12 @@ const STATUS_OPTIONS = [
   { value: 'encerrada', label: 'Encerrada' },
 ]
 
+function toDatetimeLocal(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(new Date(iso).getTime() - 3 * 60 * 60 * 1000)
+  return d.toISOString().slice(0, 16)
+}
+
 export default function SurveyEditForm({ survey }: { survey: Survey }) {
   const [state, formAction, isPending] = useActionState(
     async (_prev: State, formData: FormData): Promise<State> => {
@@ -127,20 +133,20 @@ export default function SurveyEditForm({ survey }: { survey: Survey }) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Data de abertura</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Data e hora de abertura</label>
           <input
-            type="date"
+            type="datetime-local"
             name="open_date"
-            defaultValue={survey.open_date ? survey.open_date.slice(0, 10) : ''}
+            defaultValue={toDatetimeLocal(survey.open_date)}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Data de encerramento</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Data e hora de encerramento</label>
           <input
-            type="date"
+            type="datetime-local"
             name="close_date"
-            defaultValue={survey.close_date ? survey.close_date.slice(0, 10) : ''}
+            defaultValue={toDatetimeLocal(survey.close_date)}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
