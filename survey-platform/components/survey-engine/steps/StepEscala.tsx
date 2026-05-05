@@ -87,7 +87,7 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
   const ok = perguntas.every((_, i) => simpleRatings[i] != null)
   const pendentesSimples = perguntas.filter((_, i) => simpleRatings[i] == null).length
   const buildAns = () =>
-    perguntas.reduce<Record<string, unknown>>((a, l, i) => ({ ...a, [l]: simpleRatings[i] }), {})
+    perguntas.reduce<Record<string, unknown>>((a, _l, i) => ({ ...a, [String(i)]: simpleRatings[i] }), {})
 
   function handleNextSimple() {
     if (!ok) { setTentou(true); return }

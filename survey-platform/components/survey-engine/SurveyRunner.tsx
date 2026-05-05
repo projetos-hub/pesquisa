@@ -352,7 +352,8 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
 
   const isWelcome  = currentStep?.type === 'welcome' && !submitted
   const isThankyou = currentStep?.type === 'thankyou' || (submitted && !submitError)
-  const npsAnswer  = answers.nps as NPSAnswer | undefined
+  const npsKey     = activeSteps.find(s => s.type === 'nps')?.key ?? 'nps'
+  const npsAnswer  = answers[npsKey] as NPSAnswer | undefined
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
@@ -386,7 +387,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
           <StepNPS
             key={currentStep.key}
             step={currentStep}
-            onNext={d => next('nps', d)}
+            onNext={d => next(currentStep.key, d)}
             onBack={back}
             tipo={tipo}
           />
