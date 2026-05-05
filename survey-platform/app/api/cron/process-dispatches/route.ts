@@ -8,10 +8,13 @@ import { executeDispatch, executePersonalizedJob, type DispatchRecord } from '@/
 import { fetchLayersUserByEmail }                                        from '@/lib/layers-hub'
 
 function isAuthorized(req: Request): boolean {
-  const auth   = req.headers.get('authorization') ?? ''
-  const secret = process.env.CRON_SECRET
-  if (!secret) return false
-  return auth === `Bearer ${secret}`
+  const auth        = req.headers.get('authorization') ?? ''
+  const cronSecret  = process.env.CRON_SECRET
+  const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!auth) return false
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : auth
+  return (!!cronSecret && token === cronSecret) ||
+         (!!serviceKey  && token === serviceKey)
 }
 
 export async function GET(request: Request) {
