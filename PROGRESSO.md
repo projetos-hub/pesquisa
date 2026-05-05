@@ -311,6 +311,47 @@ WHERE community_id = 'qi-freguesia';
 
 ---
 
+---
+
+### Sessão 2026-05-05 — Lançamento Amostral 1 + Fixes críticos
+
+#### Bugs corrigidos
+
+| Bug | Causa | Fix |
+|-----|-------|-----|
+| NPS zerado no export | `SurveyRunner` hardcodava `next('nps', d)` — chave errada descartada no submit | Usa `currentStep.key` + `npsKey` dinâmico para ThankYou |
+| Colunas de escala em branco | `question_options` vazia para perguntas criadas antes do auto-populate | Migration 018 backfill + export com fallback label→índice |
+| Build bloqueado no Vercel | `sequence_steps: unknown[]` incompatível com `SequenceStep[]`; `z.record()` sem 2 args | Cast explícito + `z.record(z.string(), z.unknown())` |
+| Disparo travado em 30/303 | Cron `*/5 * * * *` não registrado no `vercel.json`; Hobby plan bloqueou depois | pg_cron + pg_net como workaround |
+| Cron 401 | pg_net timeout 5s → pg_net POST (405) → vault sem rows | GET + timeout 30s + CRON_SECRET simples |
+| Fila de dispatches bloqueada | 17 dispatches de teste presos em `sending` sem jobs ativos | UPDATE manual + botão cancelar (P2 roadmap) |
+
+#### Migrations aplicadas
+
+| Migration | O que faz |
+|-----------|-----------|
+| `014_communities_table.sql` | Tabela `communities` como fonte de verdade para identidade visual |
+| `018_backfill_question_options.sql` | Popula `question_options` para perguntas scale sem opções |
+
+#### Infra configurada
+
+- pg_cron job `process-dispatches` ativo (*/5 * * * *) chamando endpoint Vercel via pg_net
+- `CRON_SECRET=pesquisa-cron-2026` configurado no Vercel
+- Endpoint aceita CRON_SECRET ou SUPABASE_SERVICE_ROLE_KEY
+
+#### Estado das respostas Amostral 1
+
+- 4 sessões de teste (30/04 a 05/05) sem NPS — bug pré-fix, irrecuperável
+- A partir de 05/05 15:40: NPS salvo corretamente com key `qual_e_a_probabilidade_de_voce_recomenda`
+- Escala: dados históricos por label, novos por índice — export faz fallback dos dois
+- Disparo Amostral 1 em andamento: 60/303 (unificado-zonasul) e 60/149 (uniao) às 17h UTC
+
+#### Roadmap de melhorias criado
+
+Ver `docs/roadmap-melhorias.md` — 13 itens priorizados P0→P3.
+
+---
+
 ## Próximos passos
 
 ### Fase 7 — Deploy na Vercel ✅ (commit dab4774 - 2026-04-16)
