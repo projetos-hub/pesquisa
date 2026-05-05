@@ -124,7 +124,7 @@ export default async function DispatchPage({ params }: PageProps) {
               surveyId={surveyId}
               surveySlug={survey.slug}
               communities={communities}
-              templates={templates ?? []}
+              templates={(templates ?? []) as unknown as Parameters<typeof DispatchForm>[0]['templates']}
               openDate={survey.open_date}
               sampleCount={sampleCount ?? 0}
             />

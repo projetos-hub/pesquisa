@@ -53,7 +53,7 @@ const DispatchSchema = z.object({
   // Template
   save_as_template:  z.boolean().optional(),
   template_name:     z.string().optional().nullable(),
-  sequence_steps:    z.array(z.record(z.unknown())).optional().nullable(),
+  sequence_steps:    z.array(z.record(z.string(), z.unknown())).optional().nullable(),
 })
 
 type DispatchBody = z.infer<typeof DispatchSchema>
