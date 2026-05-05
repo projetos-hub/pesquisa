@@ -69,8 +69,15 @@ function buildColumnSchema(questions: QuestionRow[], options: OptionRow[]): ColD
       for (const opt of optsByQuestion[q.id] ?? []) {
         cols.push({
           header: opt.label,
-          getValue: ans =>
-            (ans[q.key] as Record<string, number> | undefined)?.[opt.label] ?? '',
+          getValue: ans => {
+            const row = ans[q.key] as Record<string, number | string> | undefined
+            if (!row) return ''
+            // Tenta pelo índice numérico primeiro (novo formato após fix de StepEscala),
+            // depois pelo label literal (compatibilidade com respostas anteriores).
+            const byIndex = row[String(opt.order_index)]
+            if (byIndex != null) return byIndex
+            return row[opt.label] ?? ''
+          },
         })
       }
     } else if (q.type === 'scale_sections') {
