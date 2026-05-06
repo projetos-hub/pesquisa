@@ -4,7 +4,7 @@
 //           (2) jobs personalizados em andamento (status 'sending')
 
 import { createServiceClient }                                          from '@/lib/supabase-service'
-import { executeDispatch, executePersonalizedJob, type DispatchRecord } from '@/lib/layers-notifications'
+import { executeDispatch, executePersonalizedJob, executePersonalizedJobSample, type DispatchRecord } from '@/lib/layers-notifications'
 import { fetchLayersUserByEmail }                                        from '@/lib/layers-hub'
 
 function isAuthorized(req: Request): boolean {
@@ -75,12 +75,13 @@ export async function GET(request: Request) {
 
       if (!dispatch) return { jobId: job.id, processed: 0, failed: 0, hasMore: false }
 
-      const result = await executePersonalizedJob(
-        job.id,
-        dispatch as DispatchRecord,
-        job.community_id,
-        '',
-      )
+      const dispatchRecord = dispatch as DispatchRecord
+      const isSampleScope  = dispatchRecord.target_scope === 'sample'
+
+      const result = isSampleScope
+        ? await executePersonalizedJobSample(job.id, dispatchRecord, job.community_id)
+        : await executePersonalizedJob(job.id, dispatchRecord, job.community_id, '')
+
       return { jobId: job.id, ...result }
     })
   )
