@@ -62,6 +62,7 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
   const [formRequired, setFormRequired]   = useState(true)
   const [formOptions, setFormOptions]         = useState<string[]>(['', ''])
   const [formCorrectAnswer, setFormCorrectAnswer] = useState<string>('')
+  const [formQuizMode, setFormQuizMode]       = useState(false)
   const optionRefs = useRef<(HTMLInputElement | null)[]>([])
 
   function notify(msg: string, isError = false) {
@@ -87,7 +88,7 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
   function resetForm() {
     setFormKey(''); setFormTitle(''); setFormDesc(''); setFormPergunta('')
     setFormPlaceholder(''); setFormAccept(''); setFormOptions(['', ''])
-    setFormCorrectAnswer(''); setFormRequired(true); setKeyEdited(false)
+    setFormCorrectAnswer(''); setFormQuizMode(false); setFormRequired(true); setKeyEdited(false)
     setShowAdd(false); setEditingMetadataId(null)
   }
 
@@ -227,6 +228,7 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
     setFormPlaceholder((q.settings?.placeholder as string) || '')
     setFormAccept((q.settings?.accept as string) || '')
     setFormCorrectAnswer((q.settings?.correctAnswer as string) || '')
+    setFormQuizMode(!!(q.settings?.correctAnswer as string))
     setKeyEdited(true)
   }
 
@@ -425,14 +427,21 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
           </div>
         )}
 
-        {/* Resposta correta (só múltipla escolha) */}
-        {formType === 'radio' && (isEdit ? true : formOptions.some(o => o.trim())) && (
-          <div style={{ marginTop: 12, padding: '10px 12px', background: '#fffbeb', border: '1px solid #fbd38d', borderRadius: 8 }}>
+        {/* Modo quiz — só múltipla escolha */}
+        {formType === 'radio' && (
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '.875rem', color: '#4a5568' }}>
+              <input type="checkbox" checked={formQuizMode} onChange={e => { setFormQuizMode(e.target.checked); if (!e.target.checked) setFormCorrectAnswer('') }} />
+              Modo quiz — esta pergunta tem uma resposta certa
+            </label>
+          </div>
+        )}
+        {formType === 'radio' && formQuizMode && (isEdit ? true : formOptions.some(o => o.trim())) && (
+          <div style={{ marginTop: 4, padding: '10px 12px', background: '#fffbeb', border: '1px solid #fbd38d', borderRadius: 8 }}>
             <label style={{ fontSize: '.82rem', fontWeight: 500, color: '#744210', display: 'block', marginBottom: 6 }}>
-              Resposta correta <span style={{ fontWeight: 400, color: '#975a16' }}>(opcional)</span>
+              Qual é a resposta correta?
             </label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {/* Se for edit, podemos não ter as opções no state formOptions ainda */}
               {(isEdit ? questions.find(q => q.id === editingMetadataId)?.options.map(o => o.label) || [] : formOptions.filter(o => o.trim())).map(opt => (
                 <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '.85rem', color: '#2d3748' }}>
                   <input
@@ -447,7 +456,7 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
               {formCorrectAnswer && (
                 <button onClick={() => setFormCorrectAnswer('')}
                   style={{ alignSelf: 'flex-start', marginTop: 4, fontSize: '.75rem', color: '#e53e3e', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                  Remover resposta correta
+                  Limpar seleção
                 </button>
               )}
             </div>
