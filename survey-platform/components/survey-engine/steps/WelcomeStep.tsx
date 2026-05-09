@@ -28,9 +28,6 @@ export default function WelcomeStep({ step, nome, nomeAluno, serie, perfil, tipo
       {theme?.logo && (
         <img src={theme.logo} alt={nomeDaEscola} className="school-logo" />
       )}
-      <p className="welcome-greeting">
-        Olá, <span>{nome || 'bem-vindo(a)'}.</span>
-      </p>
       <div className="welcome-body">
         {welcomeBody ? (
           <p>{welcomeBody}</p>
