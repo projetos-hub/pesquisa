@@ -313,6 +313,46 @@ WHERE community_id = 'qi-freguesia';
 
 ---
 
+### Sessão 2026-05-07 — Bug fix: cron dispatch amostra
+
+#### Bug encontrado e corrigido (PR #35)
+
+**Root cause:** `process-dispatches/route.ts` sempre chamava `executePersonalizedJob` (Layers Hub) ao retomar jobs em andamento, mesmo para dispatches `target_scope='sample'` que deveriam usar `executePersonalizedJobSample` (survey_sample_lists).
+
+**Efeito:** disparo Amostral 1 parava em ~90 usuários (total do Layers Hub para `uniao`). Usuários da amostra nos slots 31–90 não foram notificados. Usuários do Layers Hub (fora da amostra) receberam a notificação nos batches 2 e 3.
+
+**Fix:** adicionada verificação `target_scope === 'sample'` no cron handler para chamar a função correta.
+
+| Batch | Função usada antes do fix | Função após o fix |
+|-------|--------------------------|-------------------|
+| 1 (0→30, criação) | `executePersonalizedJobSample` ✅ | inalterado |
+| 2+ (cron retoma) | `executePersonalizedJob` ❌ | `executePersonalizedJobSample` ✅ |
+
+**PR:** https://github.com/projetos-hub/pesquisa/pull/35  
+**Branch:** `fix/cron-sample-dispatch`  
+**Arquivo:** `survey-platform/app/api/cron/process-dispatches/route.ts`
+
+#### Após merge do PR #35 — rodar no Supabase SQL Editor
+
+```sql
+-- Resetar dispatches Amostral 1 para continuar do offset correto (60)
+UPDATE survey_dispatch_jobs
+SET status = 'sending', processed_users = 60
+WHERE status IN ('sent', 'sending')
+  AND dispatch_id IN (SELECT id FROM survey_dispatches WHERE status = 'sending');
+
+UPDATE survey_dispatches SET completed_jobs = 0 WHERE status = 'sending';
+```
+
+Depois aguardar 5 min — o cron retoma do offset 60 com a função correta e processa toda a amostra restante.
+
+#### Outros achados
+
+- Dois cron jobs duplicados ativos: `dispatch-processor` e `process-dispatches` (ambos `*/5 * * * *`) — não causa bug mas é ruído
+- `completed_jobs = total_jobs` enquanto `status = 'sending'` — lógica de contagem confusa, não é bug funcional
+
+---
+
 ### Sessão 2026-05-05 — Lançamento Amostral 1 + Fixes críticos
 
 #### Bugs corrigidos

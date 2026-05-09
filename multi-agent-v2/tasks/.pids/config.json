@@ -1,0 +1,27 @@
+﻿{
+    "projeto":  "Mini-App Pesquisa Layers",
+    "humano":  "Lucas",
+    "descricao":  "Um portal para disparo de pesquisas de opinião embeedadas no aplicativo Layers, o portal permite criar pesquisas com textos, perguntas, disparar notificações personalizadas dessas pesquisas e analisar e exportar os resultados. Esse portal funciona com um embeed no aplicativo Layers e consome sua api, é pelo aplicativo que o publico-alvo acessa o portal e entra e responde e ai o portal já consegue captar os dados do responsavel que entrou ali",
+    "motor":  "Claude",
+    "humanoInbox":  "para-lucas.md",
+    "agentes":  [
+                    {
+                        "hint":  "",
+                        "cor":  "DarkBlue",
+                        "id":  "AGENTE-1",
+                        "inbox":  "para-agente-1.md"
+                    },
+                    {
+                        "hint":  "",
+                        "cor":  "DarkGreen",
+                        "id":  "AGENTE-2",
+                        "inbox":  "para-agente-2.md"
+                    },
+                    {
+                        "hint":  "",
+                        "cor":  "DarkRed",
+                        "id":  "AGENTE-3",
+                        "inbox":  "para-agente-3.md"
+                    }
+                ]
+}
