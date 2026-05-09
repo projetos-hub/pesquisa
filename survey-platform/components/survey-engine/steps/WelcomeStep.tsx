@@ -18,6 +18,11 @@ export default function WelcomeStep({ step, nome, nomeAluno, serie, perfil, tipo
   const isResponsavel = perfil !== 'aluno'
   const nomeDaEscola = theme?.nomeEscola ?? tipo
 
+  // Título personalizado (ex: "Olá, {{nome}}")
+  const welcomeTitle = step.titulo
+    ? interpolate(step.titulo, { nome, nomeAluno, serie, nomeEscola: nomeDaEscola })
+    : null
+
   // Mensagem personalizada via admin (suporta {{nome}}, {{nomeAluno}}, {{serie}}, {{nomeEscola}})
   const welcomeBody = step.desc || theme?.welcomeMessage
     ? interpolate(step.desc || theme?.welcomeMessage || '', { nome, nomeAluno, serie, nomeEscola: nomeDaEscola })
@@ -27,6 +32,9 @@ export default function WelcomeStep({ step, nome, nomeAluno, serie, perfil, tipo
     <div className="welcome">
       {theme?.logo && (
         <img src={theme.logo} alt={nomeDaEscola} className="school-logo" />
+      )}
+      {welcomeTitle && (
+        <p className="welcome-greeting">{welcomeTitle}</p>
       )}
       <div className="welcome-body">
         {welcomeBody ? (
