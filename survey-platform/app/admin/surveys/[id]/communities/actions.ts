@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-service'
 
@@ -61,6 +61,7 @@ export async function saveCommunityTheme(
     }
 
     revalidatePath(`/admin/surveys/${surveyId}/communities`)
+    revalidateTag('survey-config', 'default')
     return {}
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro desconhecido'
@@ -106,6 +107,7 @@ export async function inheritThemesFromPreviousSurvey(surveyId: string) {
     }
 
     revalidatePath(`/admin/surveys/${surveyId}/communities`)
+    revalidateTag('survey-config', 'default')
     return { updated }
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro desconhecido'

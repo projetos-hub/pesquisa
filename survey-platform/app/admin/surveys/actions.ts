@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-service'
@@ -177,6 +177,7 @@ export async function createQuestion(
   }
 
   revalidatePath(`/admin/surveys/${surveyId}`)
+  revalidateTag('survey-config', 'default')
   return { id: created.id }
 }
 
@@ -227,6 +228,7 @@ export async function updateQuestion(
   }
 
   revalidatePath(`/admin/surveys/${surveyId}`)
+  revalidateTag('survey-config', 'default')
   return {}
 }
 
@@ -252,6 +254,7 @@ export async function saveQuestionOptions(
   }
 
   revalidatePath(`/admin/surveys/${surveyId}`)
+  revalidateTag('survey-config', 'default')
   return {}
 }
 
@@ -315,6 +318,7 @@ export async function toggleWelcomeStep(
   if (!add) {
     await supabase.from('questions').delete().eq('survey_id', surveyId).eq('type', 'welcome')
     revalidatePath(`/admin/surveys/${surveyId}`)
+    revalidateTag('survey-config', 'default')
     return {}
   }
 
@@ -340,6 +344,7 @@ export async function toggleWelcomeStep(
   })
 
   revalidatePath(`/admin/surveys/${surveyId}`)
+  revalidateTag('survey-config', 'default')
   return {}
 }
 

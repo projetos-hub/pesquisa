@@ -1,9 +1,10 @@
 'use client'
 
-import type { SurveyTheme } from '@/components/survey-engine/utils/types'
+import type { SurveyTheme, WelcomeStepDef } from '@/components/survey-engine/utils/types'
 import { interpolate } from '@/lib/interpolate'
 
 interface WelcomeStepProps {
+  step: WelcomeStepDef
   nome: string
   nomeAluno: string
   serie: string
@@ -13,13 +14,13 @@ interface WelcomeStepProps {
   onStart: () => void
 }
 
-export default function WelcomeStep({ nome, nomeAluno, serie, perfil, tipo, theme, onStart }: WelcomeStepProps) {
+export default function WelcomeStep({ step, nome, nomeAluno, serie, perfil, tipo, theme, onStart }: WelcomeStepProps) {
   const isResponsavel = perfil !== 'aluno'
   const nomeDaEscola = theme?.nomeEscola ?? tipo
 
   // Mensagem personalizada via admin (suporta {{nome}}, {{nomeAluno}}, {{serie}}, {{nomeEscola}})
-  const welcomeBody = theme?.welcomeMessage
-    ? interpolate(theme.welcomeMessage, { nome, nomeAluno, serie, nomeEscola: nomeDaEscola })
+  const welcomeBody = step.desc || theme?.welcomeMessage
+    ? interpolate(step.desc || theme?.welcomeMessage || '', { nome, nomeAluno, serie, nomeEscola: nomeDaEscola })
     : null
 
   return (
