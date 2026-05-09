@@ -78,7 +78,11 @@ export function rowsToConfig(
 
       switch (q.type) {
         case 'welcome':
-          return { type: 'welcome', ...base }
+          return {
+            type: 'welcome',
+            ...(q.description ? { desc: q.description } : {}),
+            ...base,
+          }
 
         case 'nps':
           return {

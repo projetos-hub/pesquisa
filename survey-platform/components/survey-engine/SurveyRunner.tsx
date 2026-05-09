@@ -373,6 +373,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
 
         {currentStep?.type === 'welcome' && (
           <WelcomeStep
+            step={currentStep}
             nome={nomeCompleto} nomeAluno={nomeAluno} serie={serie}
             perfil={perfil} tipo={tipo}
             theme={survey.installation?.theme ?? survey.settings?.theme}
