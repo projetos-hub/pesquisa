@@ -38,7 +38,7 @@ export default function WelcomeStep({ step, nome, nomeAluno, serie, perfil, tipo
       )}
       <div className="welcome-body">
         {welcomeBody ? (
-          <p>{welcomeBody}</p>
+          <p style={{ whiteSpace: 'pre-wrap' }}>{welcomeBody}</p>
         ) : (
           <>
             {isResponsavel ? (
