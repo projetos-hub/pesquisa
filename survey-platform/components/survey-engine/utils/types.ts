@@ -31,6 +31,7 @@ interface BaseStep {
 export interface WelcomeStepDef extends BaseStep {
   type: 'welcome'
   key?: string
+  titulo?: string
   desc?: string
 }
 

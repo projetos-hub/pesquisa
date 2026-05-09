@@ -80,6 +80,7 @@ export function rowsToConfig(
         case 'welcome':
           return {
             type: 'welcome',
+            ...(q.title ? { titulo: q.title } : {}),
             ...(q.description ? { desc: q.description } : {}),
             ...base,
           }

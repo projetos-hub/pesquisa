@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preview — Step Escala</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --color-primary: #c0392b;
+  --color-secondary: #2c3e8c;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.card { background: #fff; border-radius: 20px; width: 100%; max-width: 640px; box-shadow: 0 20px 60px rgba(0,0,0,.2); overflow: hidden; }
+.header { background: linear-gradient(135deg, var(--color-primary), var(--color-secondary)); padding: 32px 32px 24px; text-align: center; color: white; }
+.header h1 { font-size: 1.5rem; font-weight: 700; }
+
+.progress-wrap { padding: 14px 32px 0; background: #fafafa; }
+.progress-info { display: flex; justify-content: space-between; font-size: .78rem; color: #888; margin-bottom: 6px; }
+.progress-track { height: 6px; background: #e5e7eb; border-radius: 99px; }
+.progress-fill { height: 100%; width: 50%; background: linear-gradient(90deg, var(--color-primary), var(--color-secondary)); border-radius: 99px; }
+.progress-spacer { height: 12px; }
+
+.body { padding: 32px; }
+
+.step-title { font-size: 1.1rem; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; }
+.step-desc { font-size: .9rem; color: #666; margin-bottom: 24px; }
+
+/* ── Scale (novo estilo card) ── */
+.scale-group {
+  margin-bottom: 12px;
+  background: #fff;
+  border: 1.5px solid #e8eaed;
+  border-radius: 14px;
+  padding: 16px 18px 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.scale-group.highlight {
+  border-color: #e53e3e;
+  box-shadow: 0 0 0 2px rgba(229,62,62,.15);
+}
+.scale-label { font-size: .95rem; font-weight: 600; color: #222; margin-bottom: 12px; line-height: 1.4; }
+.scale-btns { display: flex; gap: 6px; flex-wrap: nowrap; }
+.scale-btn {
+  flex: 1; min-width: 0; height: 44px; border-radius: 10px;
+  border: 2px solid #e5e7eb; background: white;
+  font-size: .9rem; font-weight: 600; cursor: pointer;
+  transition: all .15s; color: #555; padding: 0;
+  font-family: inherit;
+}
+.scale-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.scale-btn.sel {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  border-color: transparent; color: white;
+}
+.scale-hint { display: flex; justify-content: space-between; font-size: .75rem; color: #aaa; margin-top: 4px; }
+
+.btn-row { display: flex; justify-content: space-between; align-items: center; margin-top: 32px; gap: 12px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; padding: 12px 28px; border-radius: 10px; font-size: .95rem; font-weight: 600; cursor: pointer; border: none; transition: all .2s; font-family: inherit; }
+.btn-primary { background: linear-gradient(135deg, var(--color-primary), var(--color-secondary)); color: white; }
+.btn-primary:hover { opacity: .9; transform: translateY(-1px); }
+.btn-secondary { background: #f0f0f0; color: #555; }
+.btn-secondary:hover { background: #e0e0e0; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <h1>Amostral 1 - 2026</h1>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-info">
+      <span>Etapa 3 de 4</span>
+      <span>50%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill"></div>
+    </div>
+    <div class="progress-spacer"></div>
+  </div>
+
+  <div class="body">
+    <p class="step-title">Avalie considerando 6 como "Muito Satisfeito" e 1 como "Muito Insatisfeito".</p>
+    <p class="step-desc">Avalie de 1 a 6 os seguintes aspectos:</p>
+
+    <!-- Item 1 — com seleção -->
+    <div class="scale-group">
+      <p class="scale-label">O ensino e a qualidade acadêmica.</p>
+      <div class="scale-btns">
+        <button class="scale-btn" onclick="select(this,0)">1</button>
+        <button class="scale-btn" onclick="select(this,0)">2</button>
+        <button class="scale-btn" onclick="select(this,0)">3</button>
+        <button class="scale-btn sel" onclick="select(this,0)">4</button>
+        <button class="scale-btn" onclick="select(this,0)">5</button>
+        <button class="scale-btn" onclick="select(this,0)">6</button>
+      </div>
+      <div class="scale-hint">
+        <span>1 - Muito Insatisfeito</span>
+        <span>6 - Muito Satisfeito</span>
+      </div>
+    </div>
+
+    <!-- Item 2 — sem seleção -->
+    <div class="scale-group">
+      <p class="scale-label">A área administrativa.</p>
+      <div class="scale-btns">
+        <button class="scale-btn" onclick="select(this,1)">1</button>
+        <button class="scale-btn" onclick="select(this,1)">2</button>
+        <button class="scale-btn" onclick="select(this,1)">3</button>
+        <button class="scale-btn" onclick="select(this,1)">4</button>
+        <button class="scale-btn" onclick="select(this,1)">5</button>
+        <button class="scale-btn" onclick="select(this,1)">6</button>
+      </div>
+      <div class="scale-hint">
+        <span>1 - Muito Insatisfeito</span>
+        <span>6 - Muito Satisfeito</span>
+      </div>
+    </div>
+
+    <!-- Item 3 — estado de erro (highlight) -->
+    <div class="scale-group highlight" id="group-2">
+      <p class="scale-label">A infraestrutura.</p>
+      <div class="scale-btns">
+        <button class="scale-btn" onclick="select(this,2)">1</button>
+        <button class="scale-btn" onclick="select(this,2)">2</button>
+        <button class="scale-btn" onclick="select(this,2)">3</button>
+        <button class="scale-btn" onclick="select(this,2)">4</button>
+        <button class="scale-btn" onclick="select(this,2)">5</button>
+        <button class="scale-btn" onclick="select(this,2)">6</button>
+      </div>
+      <div class="scale-hint">
+        <span>1 - Muito Insatisfeito</span>
+        <span>6 - Muito Satisfeito</span>
+      </div>
+    </div>
+
+    <!-- Item 4 — sem seleção -->
+    <div class="scale-group">
+      <p class="scale-label">O atendimento e suporte ao aluno.</p>
+      <div class="scale-btns">
+        <button class="scale-btn" onclick="select(this,3)">1</button>
+        <button class="scale-btn" onclick="select(this,3)">2</button>
+        <button class="scale-btn" onclick="select(this,3)">3</button>
+        <button class="scale-btn" onclick="select(this,3)">4</button>
+        <button class="scale-btn" onclick="select(this,3)">5</button>
+        <button class="scale-btn" onclick="select(this,3)">6</button>
+      </div>
+      <div class="scale-hint">
+        <span>1 - Muito Insatisfeito</span>
+        <span>6 - Muito Satisfeito</span>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary">← Voltar</button>
+      <button class="btn btn-primary">Próximo →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function select(btn, groupIdx) {
+  const group = btn.closest('.scale-group');
+  group.querySelectorAll('.scale-btn').forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+  // Remove highlight ao selecionar
+  group.classList.remove('highlight');
+}
+</script>
+</body>
+</html>

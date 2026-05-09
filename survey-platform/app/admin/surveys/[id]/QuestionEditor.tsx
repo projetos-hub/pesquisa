@@ -357,8 +357,14 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
           <label style={{ fontSize: '.85rem', fontWeight: 500, color: '#4a5568', display: 'block', marginBottom: 4 }}>
             Descrição <span style={{ color: '#a0aec0', fontWeight: 400 }}>(opcional)</span>
           </label>
-          <input value={formDesc} onChange={e => setFormDesc(e.target.value)}
-            placeholder="Instrução ou contexto para o respondente" style={inputStyle} />
+          {formType === 'welcome' ? (
+            <textarea value={formDesc} onChange={e => setFormDesc(e.target.value)}
+              placeholder="Texto de boas-vindas (suporta {{nome}}, {{nomeAluno}}, {{serie}}, {{nomeEscola}})"
+              style={{ ...inputStyle, minHeight: '120px', fontFamily: 'inherit', resize: 'vertical' }} />
+          ) : (
+            <input value={formDesc} onChange={e => setFormDesc(e.target.value)}
+              placeholder="Instrução ou contexto para o respondente" style={inputStyle} />
+          )}
         </div>
 
         {/* Texto da pergunta */}
