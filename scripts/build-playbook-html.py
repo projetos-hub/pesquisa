@@ -30,8 +30,6 @@ def shot_tag(name: str, caption: str = "") -> str:
 LOGO_SRC = b64(LOGO) if LOGO.exists() else ""
 
 CSS = """
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -51,7 +49,7 @@ CSS = """
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   font-size: 11pt;
   line-height: 1.65;
   color: #222;
