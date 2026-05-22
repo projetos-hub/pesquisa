@@ -50,7 +50,6 @@ export const NOMEFANTASIA_TO_COMMUNITY_ID: Record<string, string> = {
   "CRECHE ESCOLA GLOBAL TREE - ABM": "globaltree-abm",
   "CRECHE ESCOLA GLOBAL TREE - PENINSULA": "rf3zk695",
   "CRECHE ESCOLA GLOBAL TREE - RECREIO": "w9593n19",
-  "CRECHE ESCOLA GLOBAL TREE - RIO 2": "w95k0s77",
   "SARA DAWSEY - TIJUCA": "y9490m37",
   "SARAH DAWSEY - JUIZ DE FORA": "sarahdawsey-juizdefora",
 
