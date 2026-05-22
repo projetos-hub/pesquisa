@@ -281,7 +281,7 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
       const res = await toggleWelcomeStep(surveyId, !hasWelcome)
       if (res.error) { notify(res.error, true); return }
       if (!hasWelcome) {
-        const newQ: QuestionRow = { id: Math.random().toString(), order_index: 0, type: 'welcome', key: 'welcome', title: 'Boas-vindas', description: null, required: false, settings: {}, options: [] }
+        const newQ: QuestionRow = { id: res.id ?? crypto.randomUUID(), order_index: 0, type: 'welcome', key: 'welcome', title: 'Boas-vindas', description: null, required: false, settings: {}, options: [] }
         setQuestions(prev => [newQ, ...prev.map(q => ({ ...q, order_index: q.order_index + 1 }))])
         notify('Tela de boas-vindas adicionada.')
       } else {
@@ -296,7 +296,7 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
       const res = await toggleThankYouStep(surveyId, !hasThankYou)
       if (res.error) { notify(res.error, true); return }
       if (!hasThankYou) {
-        const newQ: QuestionRow = { id: Math.random().toString(), order_index: questions.length, type: 'thankyou', key: 'thankyou', title: 'Agradecimento', description: null, required: false, settings: {}, options: [] }
+        const newQ: QuestionRow = { id: res.id ?? crypto.randomUUID(), order_index: questions.length, type: 'thankyou', key: 'thankyou', title: 'Agradecimento', description: null, required: false, settings: {}, options: [] }
         setQuestions(prev => [...prev, newQ])
         notify('Tela de agradecimento adicionada.')
       } else {
