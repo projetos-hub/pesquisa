@@ -310,7 +310,7 @@ export async function moveQuestion(
 export async function toggleWelcomeStep(
   surveyId: string,
   add: boolean
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; id?: string }> {
   try { await requireAuth() } catch { return { error: 'Não autorizado' } }
 
   const supabase = createServiceClient()
@@ -333,7 +333,7 @@ export async function toggleWelcomeStep(
     await supabase.from('questions').update({ order_index: q.order_index + 1 }).eq('id', q.id)
   }
 
-  await supabase.from('questions').insert({
+  const { data: inserted } = await supabase.from('questions').insert({
     survey_id:   surveyId,
     order_index: 0,
     type:        'welcome',
@@ -341,18 +341,18 @@ export async function toggleWelcomeStep(
     title:       'Boas-vindas',
     required:    false,
     settings:    {},
-  })
+  }).select('id').single()
 
   revalidatePath(`/admin/surveys/${surveyId}`)
   revalidateTag('survey-config', 'default')
-  return {}
+  return { id: inserted?.id }
 }
 
 // ── Adiciona/remove tela de agradecimento ────────────────────────────────────
 export async function toggleThankYouStep(
   surveyId: string,
   add: boolean
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; id?: string }> {
   try { await requireAuth() } catch { return { error: 'Não autorizado' } }
 
   const supabase = createServiceClient()
@@ -373,7 +373,7 @@ export async function toggleThankYouStep(
 
   const nextOrder = (existing?.[0]?.order_index ?? -1) + 1
 
-  await supabase.from('questions').insert({
+  const { data: inserted } = await supabase.from('questions').insert({
     survey_id:   surveyId,
     order_index: nextOrder,
     type:        'thankyou',
@@ -381,10 +381,10 @@ export async function toggleThankYouStep(
     title:       'Agradecimento',
     required:    false,
     settings:    {},
-  })
+  }).select('id').single()
 
   revalidatePath(`/admin/surveys/${surveyId}`)
-  return {}
+  return { id: inserted?.id }
 }
 
 // ── Deleta pesquisa (e todos os dados relacionados) ───────────────────────────
