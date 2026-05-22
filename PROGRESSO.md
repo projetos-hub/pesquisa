@@ -313,6 +313,55 @@ WHERE community_id = 'qi-freguesia';
 
 ---
 
+### Sessão 2026-05-22 — Pesquisas Global Tree + SAP, fixes admin e mapeamento
+
+#### Novas pesquisas criadas (seeds)
+
+| Migration | Survey | Comunidades |
+|-----------|--------|-------------|
+| `020_seed_exposicao_arte_total.sql` | Exposição Cultural "Arte Total" — Global Tree | 7 unidades Global Tree |
+| `021_seed_mostra_sap_infantil_fund1.sql` | Mostra da Educação Infantil e Fund I — SAP | `sap` |
+
+**Atenção:** Seeds aplicadas via SQL Editor do Supabase (não via CLI). Encoding estava corrompido (UTF-8 lido como Latin-1 ao copiar do terminal Windows CP1252).
+
+**Arquivos de fix de encoding no Desktop:**
+- `fix_encoding_arte_total.txt` — corrige surveys + questions + options + move pergunta para title
+- `fix_encoding_mostra_sap.txt` — idem para a SAP
+
+Rodar no Supabase SQL Editor antes de usar as pesquisas.
+
+#### PRs mergeados (todos squash em main)
+
+| PR | O que faz |
+|----|-----------|
+| #40 | **Fix UUID**: `toggleWelcomeStep`/`toggleThankYouStep` retornam `id` real do banco; `QuestionEditor` parou de usar `Math.random()` como ID (causava `invalid input syntax for type uuid` ao editar título) |
+| #41 | **Cache**: TTL survey config reduzido 300s → 60s; novo endpoint `POST /api/revalidate-surveys` para bust imediato |
+| #42 | **Dispatch**: INSERT condiciona `sequence_steps` (evita erro se migration 017 não aplicada); erros do Supabase agora expostos em `detail` na resposta 500 |
+| #43 | **Mapping**: aliases `CRECHE ESCOLA GLOBAL TREE - ABM/PENINSULA/RECREIO` adicionados em `lib/community-mapping.ts` |
+| #44 | **Mapping**: `CRECHE ESCOLA GLOBAL TREE - RECREIO` → `w9593n19` (Barra Golf) corrigido |
+| #45 | **Mapping**: `GLOBAL TREE RIO 2` → `w95k0s77` corrigido |
+| #46 | **Build fix**: `revalidateTag('survey-config', 'default')` — Next.js 16 exige 2 args |
+
+#### Mapeamento Global Tree atualizado (lib/community-mapping.ts)
+
+| Nome no TOTVS/import | community_id |
+|---------------------|--------------|
+| GLOBAL TREE BOSQUE MARAPENDI | `globaltree-abm` |
+| GLOBAL TREE BOTAFOGO | `n6k47n81` |
+| GLOBAL TREE PENÍNSULA / PENINSULA | `rf3zk695` |
+| GLOBAL TREE BARRA GOLF / RECREIO | `w9593n19` |
+| GLOBAL TREE RIO 2 | `w95k0s77` |
+| CRECHE ESCOLA GLOBAL TREE - RIO 2 | `creche-globaltree` |
+| CRECHE ESCOLA GLOBAL TREE - ABM | `globaltree-abm` |
+| CRECHE ESCOLA GLOBAL TREE - PENINSULA | `rf3zk695` |
+| CRECHE ESCOLA GLOBAL TREE - RECREIO | `w9593n19` |
+
+#### Padrão de layout de perguntas (qualitativa)
+
+O campo `title` da question é o texto exibido em bold (pergunta principal). O `settings.pergunta` era usado como subtítulo — agora está vazio (`{}`) e o texto da pergunta vai diretamente no `title`. Fix aplicado via SQL (fix_encoding_*.txt).
+
+---
+
 ### Sessão 2026-05-07 — Bug fix: cron dispatch amostra
 
 #### Bug encontrado e corrigido (PR #35)

@@ -33,7 +33,7 @@ export const NOMEFANTASIA_TO_COMMUNITY_ID: Record<string, string> = {
   "UNIFICADO ZONA SUL": "unificado-zonasul",
   "COLÉGIO UNIÃO": "uniao",
   "COLÉGIO E CURSO UNIÃO LTDA": "uniao",
-  "CRECHE ESCOLA GLOBAL TREE - RIO 2": "creche-globaltree",
+  "CRECHE ESCOLA GLOBAL TREE - RIO 2": "w95k0s77",
   "CUBO GLOBAL SCHOOL BARRA GOLF": "k4ys44r2",
   "CUBO GLOBAL SCHOOL BOSQUE MARAPENDI": "yxak8s0k",
   "CUBO GLOBAL SCHOOL BOTAFOGO": "ns8z5w8m",
