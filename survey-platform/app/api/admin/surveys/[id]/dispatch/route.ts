@@ -131,37 +131,46 @@ export async function POST(
     const initialStatus = isScheduled ? 'scheduled' : 'sending'
 
     // Cria o registro de dispatch
+    const insertPayload: Record<string, unknown> = {
+      survey_id:            surveyId,
+      title:                body.title,
+      body:                 body.body,
+      push_title:           body.push_title   ?? null,
+      push_body:            body.push_body    ?? null,
+      email_title:          body.email_title  ?? null,
+      email_body:           body.email_body   ?? null,
+      email_action_label:   body.email_action_label ?? 'Responder Pesquisa',
+      email_background_url: body.email_background_url ?? null,
+      channels:             body.channels as Channel[],
+      target_scope:         body.target_scope,
+      target_community_ids: body.target_community_ids ?? null,
+      target_group_alias:   body.target_group_alias ?? null,
+      target_roles:         body.target_roles as TargetRole[],
+      personalized:         body.personalized ?? false,
+      scheduled_at:         body.scheduled_at ?? null,
+      status:               initialStatus,
+      total_jobs:           targetCommunities.length,
+      is_template:          body.save_as_template ?? false,
+      template_name:        body.template_name ?? null,
+      created_by:           user.id,
+    }
+    // sequence_steps só inclui se existir (evita erro se migration 017 não foi aplicada)
+    if (body.sequence_steps != null) {
+      insertPayload.sequence_steps = body.sequence_steps
+    }
+
     const { data: dispatch, error: dispatchErr } = await supabase
       .from('survey_dispatches')
-      .insert({
-        survey_id:            surveyId,
-        title:                body.title,
-        body:                 body.body,
-        push_title:           body.push_title   ?? null,
-        push_body:            body.push_body    ?? null,
-        email_title:          body.email_title  ?? null,
-        email_body:           body.email_body   ?? null,
-        email_action_label:   body.email_action_label ?? 'Responder Pesquisa',
-        email_background_url: body.email_background_url ?? null,
-        channels:             body.channels as Channel[],
-        target_scope:         body.target_scope,
-        target_community_ids: body.target_community_ids ?? null,
-        target_group_alias:   body.target_group_alias ?? null,
-        target_roles:         body.target_roles as TargetRole[],
-        personalized:         body.personalized ?? false,
-        scheduled_at:         body.scheduled_at ?? null,
-        status:               initialStatus,
-        total_jobs:           targetCommunities.length,
-        is_template:          body.save_as_template ?? false,
-        template_name:        body.template_name ?? null,
-        sequence_steps:       body.sequence_steps ?? null,
-        created_by:           user.id,
-      })
+      .insert(insertPayload)
       .select('*')
       .single()
 
     if (dispatchErr || !dispatch) {
-      return Response.json({ error: 'Erro ao criar dispatch' }, { status: 500 })
+      console.error('[dispatch] insert error:', dispatchErr)
+      return Response.json(
+        { error: 'Erro ao criar dispatch', detail: dispatchErr?.message ?? 'unknown' },
+        { status: 500 },
+      )
     }
 
     // Cria os jobs (um por comunidade)
@@ -176,9 +185,12 @@ export async function POST(
       )
 
     if (jobsErr) {
-      // Rollback do dispatch
+      console.error('[dispatch] jobs insert error:', jobsErr)
       await supabase.from('survey_dispatches').delete().eq('id', dispatch.id)
-      return Response.json({ error: 'Erro ao criar jobs de dispatch' }, { status: 500 })
+      return Response.json(
+        { error: 'Erro ao criar jobs de dispatch', detail: jobsErr.message },
+        { status: 500 },
+      )
     }
 
     // Disparo agendado: retorna imediatamente
