@@ -7,9 +7,9 @@ export default defineConfig({
   testMatch: '**/playbook-capture.spec.ts',
   fullyParallel: false,
   retries: 0,
-  timeout: 600_000,
+  timeout: 300_000,
   use: {
-    baseURL: process.env.PLAYBOOK_URL ?? 'http://localhost:3000',
+    baseURL: 'https://pesquisa-nu-sand.vercel.app',
     trace: 'off',
     screenshot: 'off',
     video: 'off',
