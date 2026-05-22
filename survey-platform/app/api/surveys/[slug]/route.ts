@@ -105,7 +105,7 @@ const getCachedSurveyConfig = unstable_cache(
     return { error: null, status: 200, data: config, surveyId: survey.id, accessControl: survey.access_control }
   },
   ['survey-config'], // Identificador do cache
-  { revalidate: 300 } // 5 minutos = 300 segundos
+  { revalidate: 60 } // 1 minuto
 )
 
 export async function GET(req: Request, { params }: RouteContext) {
