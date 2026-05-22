@@ -7,6 +7,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  revalidateTag('survey-config')
+  revalidateTag('survey-config', 'default')
   return NextResponse.json({ revalidated: true, at: new Date().toISOString() })
 }
