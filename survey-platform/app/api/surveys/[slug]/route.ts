@@ -22,7 +22,7 @@ export async function GET(req: Request, { params }: RouteContext) {
   // 1. Busca o template da pesquisa pelo slug (status 'ativa' garantido pelo RLS)
   const { data: survey, error: surveyError } = await supabase
     .from('surveys')
-    .select('id, slug, title, survey_type, target_roles, status, settings')
+    .select('id, slug, title, survey_type, target_roles, status, settings, open_date, close_date')
     .eq('slug', slug)
     .eq('status', 'ativa')
     .single()
@@ -47,6 +47,25 @@ export async function GET(req: Request, { params }: RouteContext) {
     }
 
     installation = inst as InstallationRow
+  }
+
+  // 2b. Sem communityId: monta instalação sintética a partir das datas da survey
+  //     Isso garante que open_date/close_date salvos no admin reflitam para o respondente
+  if (!installation && (survey.open_date || survey.close_date)) {
+    const now = new Date()
+    let respondentStatus = 'aberta'
+    if (survey.close_date && new Date(survey.close_date) < now) {
+      respondentStatus = 'encerrada'
+    } else if (survey.open_date && new Date(survey.open_date) > now) {
+      respondentStatus = 'nao_aberta'
+    }
+    installation = {
+      status: respondentStatus,
+      open_date: survey.open_date as string | null,
+      close_date: survey.close_date as string | null,
+      theme: {},
+      settings: {},
+    } as InstallationRow
   }
 
   // 3. Busca questions ordenadas
