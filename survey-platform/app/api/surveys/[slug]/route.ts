@@ -10,8 +10,8 @@ interface RouteContext {
 }
 
 // ── Função cacheada que busca a configuração da pesquisa ──────────────────────
-// Cache por slug + communityId com TTL de 5 minutos (300s).
-// Reduz 4 queries por acesso a 1 query a cada 5 minutos.
+// Cache por slug + communityId com TTL de 60s.
+// Reduz 4 queries por acesso a 1 query por minuto.
 const getCachedSurveyConfig = unstable_cache(
   async (slug: string, communityId: string) => {
     const supabase = createClient(
@@ -23,7 +23,7 @@ const getCachedSurveyConfig = unstable_cache(
     // 1. Busca o template da pesquisa pelo slug (status 'ativa' garantido pelo RLS)
     const { data: survey, error: surveyError } = await supabase
       .from('surveys')
-      .select('id, slug, title, survey_type, target_roles, status, settings, access_control')
+      .select('id, slug, title, survey_type, target_roles, status, settings, access_control, open_date, close_date')
       .eq('slug', slug)
       .eq('status', 'ativa')
       .single()
@@ -64,12 +64,30 @@ const getCachedSurveyConfig = unstable_cache(
           secondaryColor: community.secondary_color,
           logo:           community.logo,
         }
-        // Override com campos per-survey (indicacaoLink, etc.) se existirem
         installation = {
           ...installation,
           theme: { ...baseTheme, ...(installation.theme ?? {}) }
         }
       }
+    }
+
+    // 2b. Sem communityId: monta instalação sintética a partir das datas da survey
+    //     Garante que open_date/close_date salvos no admin reflitam para o respondente
+    if (!installation && (survey.open_date || survey.close_date)) {
+      const now = new Date()
+      let respondentStatus = 'aberta'
+      if (survey.close_date && new Date(survey.close_date) < now) {
+        respondentStatus = 'encerrada'
+      } else if (survey.open_date && new Date(survey.open_date) > now) {
+        respondentStatus = 'nao_aberta'
+      }
+      installation = {
+        status: respondentStatus,
+        open_date: survey.open_date as string | null,
+        close_date: survey.close_date as string | null,
+        theme: {},
+        settings: {},
+      } as InstallationRow
     }
 
     // 3. Busca questions ordenadas
@@ -104,8 +122,8 @@ const getCachedSurveyConfig = unstable_cache(
 
     return { error: null, status: 200, data: config, surveyId: survey.id, accessControl: survey.access_control }
   },
-  ['survey-config'], // Identificador do cache
-  { revalidate: 60 } // 1 minuto
+  ['survey-config'],
+  { revalidate: 60 }
 )
 
 export async function GET(req: Request, { params }: RouteContext) {
@@ -120,7 +138,7 @@ export async function GET(req: Request, { params }: RouteContext) {
     return NextResponse.json({ error: result.error }, { status: result.status })
   }
 
-  // CHECAGEM 3: Validar email na amostra se survey possui segmentação (access_control = 'amostra')
+  // Validar email na amostra se survey possui segmentação (access_control = 'amostra')
   if (result.accessControl === 'amostra') {
     const supabase = createServiceClient()
 
