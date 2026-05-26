@@ -66,8 +66,8 @@ export default function NewSurveyForm() {
         </select>
       </div>
 
-      <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
-        <label className="block text-sm font-bold text-indigo-900 mb-2">Controle de Acesso</label>
+      <div className="p-4 bg-[#F7941D]/5 rounded-xl border border-[#F7941D]/10">
+        <label className="block text-sm font-bold text-gray-900 mb-2">Controle de Acesso</label>
         <div className="space-y-2">
           {[
             { value: 'aberta',   label: 'Aberta (qualquer um com o link)', defaultChecked: true },

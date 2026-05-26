@@ -83,7 +83,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: 'Total de respostas', value: total,       color: 'text-indigo-600' },
+            { label: 'Total de respostas', value: total,       color: 'text-[#F7941D]' },
             { label: 'Responsáveis',       value: responsaveis, color: 'text-blue-600' },
             { label: 'Alunos',            value: alunos,       color: 'text-purple-600' },
           ].map(({ label, value, color }) => (
@@ -104,7 +104,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
                   <span className="text-gray-600 font-mono text-xs">{school}</span>
                   <div className="flex items-center gap-2">
                     <div
-                      className="h-1.5 bg-indigo-200 rounded-full"
+                      className="h-1.5 bg-[#F7941D]/20 rounded-full"
                       style={{ width: `${Math.round((count / total) * 80 + 20)}px` }}
                     />
                     <span className="text-gray-900 font-medium w-6 text-right">{count}</span>
@@ -138,7 +138,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
             </div>
             <Link
               href={`/admin/surveys/${id}/sample`}
-              className="bg-indigo-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+              className="bg-[#F7941D] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#D97B10] transition-colors font-medium"
             >
               📋 Gerenciar
             </Link>
@@ -156,7 +156,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
             </div>
             <Link
               href={`/admin/surveys/${id}/dispatch`}
-              className="bg-indigo-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+              className="bg-[#F7941D] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#D97B10] transition-colors font-medium"
             >
               📢 Disparar
             </Link>
@@ -167,14 +167,14 @@ export default async function SurveyDetailPage({ params }: PageProps) {
         <div className="flex justify-end gap-4">
           <Link
             href={`/admin/surveys/${id}/communities`}
-            className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+            className="text-sm text-[#F7941D] hover:text-[#D97B10] font-medium"
           >
             Identidade Visual →
           </Link>
           {total > 0 && (
             <Link
               href={`/admin/surveys/${id}/responses`}
-              className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+              className="text-sm text-[#F7941D] hover:text-[#D97B10] font-medium"
             >
               Ver todas as respostas →
             </Link>

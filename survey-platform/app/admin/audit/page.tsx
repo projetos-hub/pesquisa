@@ -61,7 +61,7 @@ export default async function AuditPage() {
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Taxa de sync (media)</p>
-          <p className="text-3xl font-bold text-indigo-600 mt-1">{avgSync}%</p>
+          <p className="text-3xl font-bold text-[#F7941D] mt-1">{avgSync}%</p>
         </div>
       </div>
 

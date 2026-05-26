@@ -325,7 +325,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
             Usar template
           </label>
           <select
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
             onChange={e => {
               const tmpl = templates.find(t => t.id === e.target.value)
               if (tmpl) loadTemplate(tmpl)
@@ -362,7 +362,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
                   // Amostra requer modo personalizado
                   if (val === 'sample') setPersonalized(true)
                 }}
-                className="text-indigo-600"
+                className="text-[#F7941D]"
               />
               {label}
             </label>
@@ -372,7 +372,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
         {/* Info de amostra + checklist de comunidades + seletor de grupo */}
         {scope === 'sample' && (
           <div className="space-y-2">
-            <div className="text-xs bg-indigo-50 border border-indigo-100 text-indigo-800 rounded-lg px-3 py-2">
+            <div className="text-xs bg-[#F7941D]/5 border border-[#F7941D]/10 text-[#D97B10] rounded-lg px-3 py-2">
               {sampleCount > 0
                 ? `📋 ${sampleCount} email(s) resolvido(s) na amostra desta pesquisa.`
                 : <>
@@ -412,7 +412,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
                               : [...prev, c.community_id]
                           })
                         }}
-                        className="text-indigo-600"
+                        className="text-[#F7941D]"
                       />
                       <span className="flex-1">{c.nome}</span>
                       <span className="text-gray-400">{c.resolved} resolvidos</span>
@@ -439,8 +439,8 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
                     onClick={() => setSelectedSampleGroup('')}
                     className={`text-xs px-3 py-1 rounded-full border transition-colors ${
                       selectedSampleGroup === ''
-                        ? 'bg-indigo-600 text-white border-indigo-600'
-                        : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400'
+                        ? 'bg-[#F7941D] text-white border-[#F7941D]'
+                        : 'bg-white text-gray-600 border-gray-300 hover:border-[#F7941D]/50'
                     }`}
                   >
                     Toda a amostra ({sampleCount})
@@ -473,7 +473,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
             <label className="text-xs text-gray-500">Comunidades selecionadas</label>
             <div className="flex gap-2 flex-wrap">
               {selectedComms.map(c => (
-                <span key={c} className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 text-xs rounded-full px-2.5 py-0.5 font-mono">
+                <span key={c} className="inline-flex items-center gap-1 bg-[#F7941D]/10 text-[#D97B10] text-xs rounded-full px-2.5 py-0.5 font-mono">
                   {c}
                   <button type="button" onClick={() => setSelectedComms(s => s.filter(x => x !== c))} className="hover:text-red-500">✕</button>
                 </span>
@@ -483,7 +483,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
               <input
                 list="comm-list-specific"
                 placeholder="ID da comunidade"
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
                 onKeyDown={e => {
                   if (e.key === 'Enter') {
                     e.preventDefault()
@@ -514,7 +514,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
               <select
                 value={groupComm}
                 onChange={e => { setGroupComm(e.target.value); setPreview(null) }}
-                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
               >
                 {communities.map(c => <option key={c.id} value={c.id}>{c.nome || c.id}</option>)}
               </select>
@@ -525,7 +525,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
                 value={groupAlias}
                 onChange={e => setGroupAlias(e.target.value)}
                 placeholder="ex: turma-3a"
-                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
               />
             </div>
           </div>
@@ -537,7 +537,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
           <div className="flex gap-4">
             {[['guardian', 'Responsáveis'], ['student', 'Alunos'], ['admin', 'Admins']].map(([val, label]) => (
               <label key={val} className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
-                <input type="checkbox" checked={roles.includes(val)} onChange={() => toggleRole(val)} className="rounded border-gray-300 text-indigo-600" />
+                <input type="checkbox" checked={roles.includes(val)} onChange={() => toggleRole(val)} className="rounded border-gray-300 text-[#F7941D]" />
                 {label}
               </label>
             ))}
@@ -548,12 +548,12 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
         <button
           type="button"
           onClick={fetchPreview}
-          className="text-xs text-indigo-600 hover:text-indigo-800 underline"
+          className="text-xs text-[#F7941D] hover:text-[#D97B10] underline"
         >
           Estimar alcance
         </button>
         {preview && (
-          <p className="text-xs text-gray-600 bg-indigo-50 rounded-lg px-3 py-2">
+          <p className="text-xs text-gray-600 bg-[#F7941D]/5 rounded-lg px-3 py-2">
             {preview.community_count} comunidade(s) será(ão) notificada(s)
             {personalized && preview.personalized_estimate_min > 0
               ? ` · estimativa personalizado: ~${preview.personalized_estimate_min} min`
@@ -571,7 +571,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
             ['email',            '📧 Email'],
           ].map(([val, label]) => (
             <label key={val} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-              <input type="checkbox" checked={channels.includes(val)} onChange={() => toggleChannel(val)} className="rounded border-gray-300 text-indigo-600" />
+              <input type="checkbox" checked={channels.includes(val)} onChange={() => toggleChannel(val)} className="rounded border-gray-300 text-[#F7941D]" />
               {label}
             </label>
           ))}
@@ -582,7 +582,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
       <section className="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-700">3. Mensagem</h3>
-          <button type="button" onClick={() => setShowImport(v => !v)} className="text-xs text-indigo-600 hover:underline">
+          <button type="button" onClick={() => setShowImport(v => !v)} className="text-xs text-[#F7941D] hover:underline">
             {showImport ? 'Fechar import' : '⬆ Importar texto'}
           </button>
         </div>
@@ -595,12 +595,12 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
               onChange={e => setImportText(e.target.value)}
               rows={4}
               placeholder={'Cole seu texto aqui.\nPrimeira linha → título\nResto → corpo da mensagem'}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D] font-mono"
             />
             <button
               type="button"
               onClick={applyImport}
-              className="bg-indigo-600 text-white text-xs px-4 py-1.5 rounded-lg hover:bg-indigo-700"
+              className="bg-[#F7941D] text-white text-xs px-4 py-1.5 rounded-lg hover:bg-[#D97B10]"
             >
               Aplicar
             </button>
@@ -615,7 +615,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
               key={p}
               type="button"
               onClick={() => setBody(b => b + p)}
-              className="text-xs bg-gray-100 hover:bg-indigo-100 hover:text-indigo-700 text-gray-600 rounded px-2 py-0.5 font-mono transition-colors"
+              className="text-xs bg-gray-100 hover:bg-[#F7941D]/10 hover:text-[#D97B10] text-gray-600 rounded px-2 py-0.5 font-mono transition-colors"
             >
               {p}
             </button>
@@ -630,7 +630,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
             onChange={e => setTitle(e.target.value)}
             maxLength={150}
             placeholder="Pesquisa de Satisfação — {{nomeEscola}}"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
           />
           <p className="text-xs text-gray-400 text-right mt-0.5">{title.length}/150</p>
         </div>
@@ -642,32 +642,32 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
             onChange={e => setBody(e.target.value)}
             rows={3}
             placeholder="Ei, {{nome}}! Queremos ouvir sua opinião sobre a experiência de {{nomeAluno}} na escola."
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
           />
         </div>
 
         {/* Personalizar por canal */}
         <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
-          <input type="checkbox" checked={customPerCh} onChange={e => setCustomPerCh(e.target.checked)} className="rounded border-gray-300 text-indigo-600" />
+          <input type="checkbox" checked={customPerCh} onChange={e => setCustomPerCh(e.target.checked)} className="rounded border-gray-300 text-[#F7941D]" />
           Personalizar mensagem por canal (push / email)
         </label>
 
         {customPerCh && (
-          <div className="space-y-3 pl-4 border-l-2 border-indigo-100">
+          <div className="space-y-3 pl-4 border-l-2 border-[#F7941D]/10">
             {channels.includes('pushNotification') && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Push</p>
-                <input value={pushTitle} onChange={e => setPushTitle(e.target.value)} placeholder="Título push (usa título geral se vazio)" className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                <textarea value={pushBody} onChange={e => setPushBody(e.target.value)} rows={2} placeholder="Corpo push" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <input value={pushTitle} onChange={e => setPushTitle(e.target.value)} placeholder="Título push (usa título geral se vazio)" className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]" />
+                <textarea value={pushBody} onChange={e => setPushBody(e.target.value)} rows={2} placeholder="Corpo push" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]" />
               </div>
             )}
             {channels.includes('email') && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</p>
-                <input value={emailTitle} onChange={e => setEmailTitle(e.target.value)} placeholder="Título email" className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                <textarea value={emailBody} onChange={e => setEmailBody(e.target.value)} rows={2} placeholder="Corpo email" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                <input value={emailLabel} onChange={e => setEmailLabel(e.target.value)} placeholder="Texto do botão CTA" className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                <input value={emailBgUrl} onChange={e => setEmailBgUrl(e.target.value)} placeholder="URL imagem de fundo (opcional)" type="url" className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <input value={emailTitle} onChange={e => setEmailTitle(e.target.value)} placeholder="Título email" className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]" />
+                <textarea value={emailBody} onChange={e => setEmailBody(e.target.value)} rows={2} placeholder="Corpo email" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]" />
+                <input value={emailLabel} onChange={e => setEmailLabel(e.target.value)} placeholder="Texto do botão CTA" className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]" />
+                <input value={emailBgUrl} onChange={e => setEmailBgUrl(e.target.value)} placeholder="URL imagem de fundo (opcional)" type="url" className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]" />
               </div>
             )}
           </div>
@@ -680,7 +680,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
               type="checkbox"
               checked={personalized}
               onChange={e => { setPersonalized(e.target.checked); setPreview(null) }}
-              className="rounded border-gray-300 text-indigo-600"
+              className="rounded border-gray-300 text-[#F7941D]"
             />
             Personalizar por usuário (usar {'{{'} nome {'}}'},  {'{{'} nomeAluno {'}}'} , etc.)
           </label>
@@ -700,7 +700,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-700">4. Régua de disparos</h3>
           <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
-            <input type="checkbox" checked={seqMode} onChange={e => setSeqMode(e.target.checked)} className="rounded border-gray-300 text-indigo-600" />
+            <input type="checkbox" checked={seqMode} onChange={e => setSeqMode(e.target.checked)} className="rounded border-gray-300 text-[#F7941D]" />
             Ativar régua
           </label>
         </div>
@@ -714,7 +714,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
         {seqMode && (
           <div className="space-y-3">
             {openDate && (
-              <p className="text-xs text-indigo-600 bg-indigo-50 rounded-lg px-3 py-1.5">
+              <p className="text-xs text-[#F7941D] bg-[#F7941D]/5 rounded-lg px-3 py-1.5">
                 Base: abertura da pesquisa em {new Date(openDate).toLocaleDateString('pt-BR')}. Os dias são relativos a essa data.
               </p>
             )}
@@ -730,10 +730,10 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
                 <div key={step.key} className="flex items-start gap-3 bg-white rounded-lg border border-gray-200 p-3">
                   {/* Marcador */}
                   <div className="flex flex-col items-center gap-1 pt-1 shrink-0">
-                    <div className="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs flex items-center justify-center font-bold">
+                    <div className="w-6 h-6 rounded-full bg-[#F7941D] text-white text-xs flex items-center justify-center font-bold">
                       {i + 1}
                     </div>
-                    {i < steps.length - 1 && <div className="w-px h-6 bg-indigo-200" />}
+                    {i < steps.length - 1 && <div className="w-px h-6 bg-[#F7941D]/20" />}
                   </div>
 
                   <div className="flex-1 space-y-2">
@@ -742,7 +742,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
                         value={step.label}
                         onChange={e => updateStep(step.key, 'label', e.target.value)}
                         placeholder="Rótulo"
-                        className="flex-1 border border-gray-200 rounded-lg px-2.5 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="flex-1 border border-gray-200 rounded-lg px-2.5 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#F7941D]"
                       />
                       <div className="flex items-center gap-1 shrink-0">
                         <span className="text-xs text-gray-500">Dia</span>
@@ -751,7 +751,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
                           min={0}
                           value={step.offsetDays}
                           onChange={e => updateStep(step.key, 'offsetDays', Number(e.target.value))}
-                          className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:ring-1 focus:ring-[#F7941D]"
                         />
                       </div>
                       {steps.length > 1 && (
@@ -762,14 +762,14 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
                       value={step.overrideTitle}
                       onChange={e => updateStep(step.key, 'overrideTitle', e.target.value)}
                       placeholder="Título específico (usa título geral se vazio)"
-                      className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#F7941D]"
                     />
                     <textarea
                       value={step.overrideBody}
                       onChange={e => updateStep(step.key, 'overrideBody', e.target.value)}
                       rows={2}
                       placeholder="Mensagem específica (usa mensagem geral se vazio)"
-                      className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#F7941D]"
                     />
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-xs text-gray-400">Placeholders:</span>
@@ -778,7 +778,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
                           key={p}
                           type="button"
                           onClick={() => updateStep(step.key, 'overrideBody', (step.overrideBody || '') + p)}
-                          className="text-xs bg-gray-100 hover:bg-indigo-100 hover:text-indigo-700 text-gray-500 rounded px-1.5 py-0.5 font-mono transition-colors"
+                          className="text-xs bg-gray-100 hover:bg-[#F7941D]/10 hover:text-[#D97B10] text-gray-500 rounded px-1.5 py-0.5 font-mono transition-colors"
                         >
                           {p}
                         </button>
@@ -791,13 +791,13 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
                         type="checkbox"
                         checked={step.customPerCh}
                         onChange={e => updateStep(step.key, 'customPerCh', e.target.checked)}
-                        className="rounded border-gray-300 text-indigo-600"
+                        className="rounded border-gray-300 text-[#F7941D]"
                       />
                       Personalizar push/email neste passo
                     </label>
 
                     {step.customPerCh && (
-                      <div className="space-y-2 pl-3 border-l-2 border-indigo-100 mt-1">
+                      <div className="space-y-2 pl-3 border-l-2 border-[#F7941D]/10 mt-1">
                         {channels.includes('pushNotification') && (
                           <div className="space-y-1">
                             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Push</p>
@@ -805,14 +805,14 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
                               value={step.pushTitle}
                               onChange={e => updateStep(step.key, 'pushTitle', e.target.value)}
                               placeholder="Título push (usa título do passo se vazio)"
-                              className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#F7941D]"
                             />
                             <textarea
                               value={step.pushBody}
                               onChange={e => updateStep(step.key, 'pushBody', e.target.value)}
                               rows={2}
                               placeholder="Corpo push"
-                              className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#F7941D]"
                             />
                           </div>
                         )}
@@ -823,20 +823,20 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
                               value={step.emailTitle}
                               onChange={e => updateStep(step.key, 'emailTitle', e.target.value)}
                               placeholder="Título email"
-                              className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#F7941D]"
                             />
                             <textarea
                               value={step.emailBody}
                               onChange={e => updateStep(step.key, 'emailBody', e.target.value)}
                               rows={2}
                               placeholder="Corpo email"
-                              className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#F7941D]"
                             />
                             <input
                               value={step.emailLabel}
                               onChange={e => updateStep(step.key, 'emailLabel', e.target.value)}
                               placeholder="Texto do botão CTA"
-                              className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#F7941D]"
                             />
                           </div>
                         )}
@@ -850,7 +850,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
             <button
               type="button"
               onClick={addStep}
-              className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+              className="text-sm text-[#F7941D] hover:text-[#D97B10] font-medium"
             >
               + Adicionar passo
             </button>
@@ -865,7 +865,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
           <div className="flex gap-6">
             {([['immediate', 'Enviar agora'], ['scheduled', 'Agendar']] as const).map(([val, label]) => (
               <label key={val} className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
-                <input type="radio" name="schedMode" value={val} checked={schedMode === val} onChange={() => setSchedMode(val)} className="text-indigo-600" />
+                <input type="radio" name="schedMode" value={val} checked={schedMode === val} onChange={() => setSchedMode(val)} className="text-[#F7941D]" />
                 {label}
               </label>
             ))}
@@ -876,7 +876,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
               value={scheduledAt}
               onChange={e => setScheduledAt(e.target.value)}
               required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
             />
           )}
         </section>
@@ -885,7 +885,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
       {/* ── 6. Salvar como template ───────────────────────────────────────── */}
       <section className="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-2">
         <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
-          <input type="checkbox" checked={saveTemplate} onChange={e => setSaveTemplate(e.target.checked)} className="rounded border-gray-300 text-indigo-600" />
+          <input type="checkbox" checked={saveTemplate} onChange={e => setSaveTemplate(e.target.checked)} className="rounded border-gray-300 text-[#F7941D]" />
           Salvar como template para reutilizar
         </label>
         {saveTemplate && (
@@ -893,7 +893,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
             value={templateName}
             onChange={e => setTemplateName(e.target.value)}
             placeholder="Nome do template (ex: Convite CSAT 2026)"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
           />
         )}
       </section>
@@ -903,7 +903,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
         <button
           type="submit"
           disabled={loading}
-          className="bg-indigo-600 text-white text-sm px-6 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors font-medium"
+          className="bg-[#F7941D] text-white text-sm px-6 py-2 rounded-lg hover:bg-[#D97B10] disabled:opacity-50 transition-colors font-medium"
         >
           {loading
             ? 'Enviando...'

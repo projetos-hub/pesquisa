@@ -85,7 +85,7 @@ export default function CommunityInstallManager({
                 onChange={e => startTransition(async () => {
                   await updateCommunityStatus(surveyId, inst.community_id, e.target.value)
                 })}
-                className="border border-gray-200 rounded-lg text-xs px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+                className="border border-gray-200 rounded-lg text-xs px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#F7941D] disabled:opacity-50"
               >
                 {STATUS_OPTIONS.map(o => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -148,7 +148,7 @@ export default function CommunityInstallManager({
             placeholder="ID da comunidade"
             required
             disabled={isPending}
-            className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+            className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D] disabled:opacity-50"
           />
           <datalist id="community-list">
             {KNOWN_COMMUNITIES.map(c => <option key={c} value={c} />)}
@@ -158,7 +158,7 @@ export default function CommunityInstallManager({
           name="status"
           defaultValue="ativa"
           disabled={isPending}
-          className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+          className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D] disabled:opacity-50"
         >
           {STATUS_OPTIONS.map(o => (
             <option key={o.value} value={o.value}>{o.label}</option>
@@ -167,7 +167,7 @@ export default function CommunityInstallManager({
         <button
           type="submit"
           disabled={isPending}
-          className="bg-indigo-600 text-white text-sm px-4 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors font-medium"
+          className="bg-[#F7941D] text-white text-sm px-4 py-1.5 rounded-lg hover:bg-[#D97B10] disabled:opacity-50 transition-colors font-medium"
         >
           {isPending ? 'Salvando...' : 'Instalar'}
         </button>

@@ -75,7 +75,7 @@ export default function SurveyEditForm({ survey }: { survey: Survey }) {
           name="title"
           defaultValue={survey.title}
           required
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
         />
       </div>
 
@@ -84,7 +84,7 @@ export default function SurveyEditForm({ survey }: { survey: Survey }) {
         <select
           name="survey_type"
           defaultValue={survey.survey_type}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
         >
           {SURVEY_TYPES.map(({ value, label }) => (
             <option key={value} value={value}>{label}</option>
@@ -92,8 +92,8 @@ export default function SurveyEditForm({ survey }: { survey: Survey }) {
         </select>
       </div>
 
-      <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
-        <label className="block text-sm font-bold text-indigo-900 mb-2">Controle de Acesso</label>
+      <div className="p-4 bg-[#F7941D]/5 rounded-xl border border-[#F7941D]/10">
+        <label className="block text-sm font-bold text-gray-900 mb-2">Controle de Acesso</label>
         <div className="space-y-2">
           {ACCESS_CONTROL_OPTIONS.map(({ value, label }) => (
             <label key={value} className="flex items-center gap-2 cursor-pointer">
@@ -102,13 +102,13 @@ export default function SurveyEditForm({ survey }: { survey: Survey }) {
                 name="access_control"
                 value={value}
                 defaultChecked={survey.access_control === value || (!survey.access_control && value === 'aberta')}
-                className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                className="w-4 h-4 text-[#F7941D] border-gray-300 focus:ring-[#F7941D]"
               />
               <span className="text-sm text-gray-700">{label}</span>
             </label>
           ))}
         </div>
-        <p className="text-xs text-indigo-500 mt-2">
+        <p className="text-xs text-[#F7941D]/70 mt-2">
           Se selecionar &ldquo;Amostra Segmentada&rdquo;, o sistema bloqueará qualquer pessoa cujo email não esteja na lista de amostra.
         </p>
       </div>
@@ -120,7 +120,7 @@ export default function SurveyEditForm({ survey }: { survey: Survey }) {
         <select
           name="status"
           defaultValue={survey.status}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
         >
           {STATUS_OPTIONS.map(({ value, label }) => (
             <option key={value} value={value}>{label}</option>
@@ -138,7 +138,7 @@ export default function SurveyEditForm({ survey }: { survey: Survey }) {
             type="datetime-local"
             name="open_date"
             defaultValue={toDatetimeLocal(survey.open_date)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
           />
         </div>
         <div>
@@ -147,7 +147,7 @@ export default function SurveyEditForm({ survey }: { survey: Survey }) {
             type="datetime-local"
             name="close_date"
             defaultValue={toDatetimeLocal(survey.close_date)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
           />
         </div>
       </div>
@@ -156,7 +156,7 @@ export default function SurveyEditForm({ survey }: { survey: Survey }) {
         <button
           type="submit"
           disabled={isPending}
-          className="bg-indigo-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors font-medium"
+          className="bg-[#F7941D] text-white text-sm px-5 py-2 rounded-lg hover:bg-[#D97B10] disabled:opacity-50 transition-colors font-medium"
         >
           {isPending ? 'Salvando...' : 'Salvar alterações'}
         </button>
