@@ -55,7 +55,7 @@ export async function POST(req: Request, { params }: RouteContext) {
     accountId = '',
     onda = '',
     school = '',
-    tipo = '',
+    tipo: _tipo = '', // eslint-disable-line @typescript-eslint/no-unused-vars
     perfil = '',
     nomeCompleto = '',
     nomeAluno = '',
@@ -66,7 +66,7 @@ export async function POST(req: Request, { params }: RouteContext) {
   } = body
 
   // Garante unicidade mesmo se userId vier vazio no embed Layers
-  const effectiveUserId = userId || accountId
+  const effectiveUserId = userId || accountId || `anon-${crypto.randomUUID()}`
 
   if (!answers || typeof answers !== 'object') {
     return NextResponse.json({ error: 'answers is required' }, { status: 400 })
@@ -86,19 +86,7 @@ export async function POST(req: Request, { params }: RouteContext) {
     return NextResponse.json({ error: 'Survey not found' }, { status: 404 })
   }
 
-  // ── 1b. Busca nomeEscola do survey_communities.theme ──────────────────────
-  let nomeEscola = ''
-  if (communityId) {
-    const { data: comm } = await supabase
-      .from('survey_communities')
-      .select('theme')
-      .eq('survey_id', survey.id)
-      .eq('community_id', communityId)
-      .single()
-    nomeEscola = (comm?.theme as { nomeEscola?: string })?.nomeEscola ?? ''
-  }
-
-  // ── 1c. Valida email na amostra (se survey possui segmentação amostral) ──────
+  // ── 1b. Valida email na amostra (se survey possui segmentação amostral) ──────
   // Agora respeita o campo access_control
   if (survey.access_control === 'amostra') {
     if (!email) {
@@ -186,6 +174,11 @@ export async function POST(req: Request, { params }: RouteContext) {
       question_key: key,
       value,
     }))
+
+  if (Object.keys(answers).length > 0 && responseRows.length === 0) {
+    await supabase.from('response_sessions').delete().eq('id', sessionId)
+    return NextResponse.json({ error: 'No valid answers matched survey questions' }, { status: 422 })
+  }
 
   if (responseRows.length > 0) {
     const { error: responsesError } = await supabase
