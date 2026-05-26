@@ -18,12 +18,12 @@ export default async function AdminLayout({
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* ── Sidebar ──────────────────────────────────────────── */}
-      <aside className="w-56 bg-white border-r border-gray-200 flex flex-col shrink-0">
-        <div className="p-4 border-b border-gray-200">
-          <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wider mb-0.5">
+      <aside className="w-56 bg-[#1E2433] border-r border-[#2D3748] flex flex-col shrink-0">
+        <div className="p-4 border-b border-[#2D3748]">
+          <p className="text-xs font-semibold text-[#F7941D] uppercase tracking-wider mb-0.5">
             Admin
           </p>
-          <p className="text-xs text-gray-500 truncate" title={user.email}>
+          <p className="text-xs text-[#718096] truncate" title={user.email}>
             {user.email}
           </p>
         </div>
@@ -31,35 +31,42 @@ export default async function AdminLayout({
         <nav className="flex-1 p-3 space-y-0.5">
           <Link
             href="/admin/surveys"
-            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-[#A0AEC0] rounded-lg hover:bg-[#2D3748] transition-colors"
           >
             <span>📋</span>
             Pesquisas
           </Link>
           <Link
             href="/admin/export"
-            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-[#A0AEC0] rounded-lg hover:bg-[#2D3748] transition-colors"
           >
             <span>📥</span>
             Exportar
           </Link>
           <Link
             href="/admin/dispatch"
-            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-[#A0AEC0] rounded-lg hover:bg-[#2D3748] transition-colors"
           >
             <span>📢</span>
             Disparos
           </Link>
           <Link
             href="/admin/communities"
-            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-[#A0AEC0] rounded-lg hover:bg-[#2D3748] transition-colors"
           >
             <span>🎨</span>
             Identidade Visual
           </Link>
+          <Link
+            href="/admin/audit"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-[#A0AEC0] rounded-lg hover:bg-[#2D3748] transition-colors"
+          >
+            <span>📊</span>
+            Auditoria
+          </Link>
         </nav>
 
-        <div className="p-3 border-t border-gray-200">
+        <div className="p-3 border-t border-[#2D3748]">
           <LogoutButton />
         </div>
       </aside>
