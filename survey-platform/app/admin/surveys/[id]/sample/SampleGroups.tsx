@@ -169,7 +169,7 @@ export default function SampleGroups({ surveyId, communities }: Props) {
         <h3 className="text-sm font-semibold text-gray-700">Grupos de Segmentação</h3>
         <button
           onClick={() => setShowCreate(true)}
-          className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700"
+          className="text-xs bg-[#F7941D] text-white px-3 py-1.5 rounded-lg hover:bg-[#D97B10]"
         >
           + Novo grupo
         </button>
@@ -177,7 +177,7 @@ export default function SampleGroups({ surveyId, communities }: Props) {
 
       {/* Criar grupo */}
       {showCreate && (
-        <div className="border border-dashed border-indigo-300 rounded-xl bg-indigo-50 p-4 space-y-3">
+        <div className="border border-dashed border-[#F7941D]/30 rounded-xl bg-[#F7941D]/5 p-4 space-y-3">
           <div className="flex gap-2">
             <input
               type="text"
@@ -203,7 +203,7 @@ export default function SampleGroups({ surveyId, communities }: Props) {
             <button
               onClick={() => void handleCreateGroup()}
               disabled={creating || !newName.trim()}
-              className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
+              className="text-xs bg-[#F7941D] text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
             >
               {creating ? 'Criando…' : 'Criar'}
             </button>
@@ -222,7 +222,7 @@ export default function SampleGroups({ surveyId, communities }: Props) {
             <div
               key={g.id}
               className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
-                activeGroup === g.id ? 'bg-indigo-50 border border-indigo-200' : 'hover:bg-gray-50 border border-transparent'
+                activeGroup === g.id ? 'bg-[#F7941D]/5 border border-[#F7941D]/20' : 'hover:bg-gray-50 border border-transparent'
               }`}
               onClick={() => { setActiveGroup(g.id === activeGroup ? null : g.id); setViewMode('members') }}
             >
@@ -251,7 +251,7 @@ export default function SampleGroups({ surveyId, communities }: Props) {
                   onClick={() => setViewMode(m)}
                   className={`text-xs px-3 py-1 rounded-md transition-colors ${
                     viewMode === m
-                      ? 'bg-indigo-600 text-white'
+                      ? 'bg-[#F7941D] text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
@@ -302,13 +302,13 @@ export default function SampleGroups({ surveyId, communities }: Props) {
 
           {/* Ações em lote */}
           {selected.size > 0 && (
-            <div className="flex items-center gap-2 bg-indigo-50 rounded-lg px-3 py-2">
-              <span className="text-xs text-indigo-700 flex-1">{selected.size} selecionado(s)</span>
+            <div className="flex items-center gap-2 bg-[#F7941D]/5 rounded-lg px-3 py-2">
+              <span className="text-xs text-[#D97B10] flex-1">{selected.size} selecionado(s)</span>
               {viewMode === 'add' ? (
                 <button
                   onClick={() => void handleAddMembers()}
                   disabled={saving}
-                  className="text-xs bg-indigo-600 text-white px-3 py-1 rounded disabled:opacity-50"
+                  className="text-xs bg-[#F7941D] text-white px-3 py-1 rounded disabled:opacity-50"
                 >
                   {saving ? 'Adicionando…' : `Adicionar ${selected.size} ao grupo`}
                 </button>
@@ -358,7 +358,7 @@ export default function SampleGroups({ surveyId, communities }: Props) {
                     return (
                       <tr
                         key={e.id}
-                        className={`hover:bg-gray-50 cursor-pointer ${selected.has(e.id) ? 'bg-indigo-50' : ''}`}
+                        className={`hover:bg-gray-50 cursor-pointer ${selected.has(e.id) ? 'bg-[#F7941D]/5' : ''}`}
                         onClick={() => toggleSelect(e.id)}
                       >
                         <td className="px-2 py-1.5">

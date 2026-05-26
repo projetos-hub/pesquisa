@@ -31,7 +31,7 @@ export default function NewSurveyForm() {
           name="title"
           required
           placeholder="Pesquisa de Satisfação 2026"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
         />
       </div>
 
@@ -47,7 +47,7 @@ export default function NewSurveyForm() {
             placeholder="csat-2026"
             pattern="[a-z0-9\-]+"
             title="Apenas letras minúsculas, números e hífens"
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
           />
         </div>
         <p className="text-xs text-gray-400 mt-1">
@@ -59,15 +59,15 @@ export default function NewSurveyForm() {
         <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
         <select
           name="survey_type"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
         >
           <option value="quantitativa">Quantitativa (escala + NPS)</option>
           <option value="qualitativa">Qualitativa (perguntas abertas)</option>
         </select>
       </div>
 
-      <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
-        <label className="block text-sm font-bold text-indigo-900 mb-2">Controle de Acesso</label>
+      <div className="p-4 bg-[#F7941D]/5 rounded-xl border border-[#F7941D]/10">
+        <label className="block text-sm font-bold text-gray-900 mb-2">Controle de Acesso</label>
         <div className="space-y-2">
           {[
             { value: 'aberta',   label: 'Aberta (qualquer um com o link)', defaultChecked: true },
@@ -79,7 +79,7 @@ export default function NewSurveyForm() {
                 name="access_control"
                 value={value}
                 defaultChecked={defaultChecked}
-                className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                className="w-4 h-4 text-[#F7941D] border-gray-300 focus:ring-[#F7941D]"
               />
               <span className="text-sm text-gray-700">{label}</span>
             </label>
@@ -102,7 +102,7 @@ export default function NewSurveyForm() {
                 name="target_roles"
                 value={value}
                 defaultChecked={checked}
-                className="rounded border-gray-300 text-indigo-600"
+                className="rounded border-gray-300 text-[#F7941D]"
               />
               {label}
             </label>
@@ -114,7 +114,7 @@ export default function NewSurveyForm() {
         <button
           type="submit"
           disabled={isPending}
-          className="bg-indigo-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors font-medium"
+          className="bg-[#F7941D] text-white text-sm px-5 py-2 rounded-lg hover:bg-[#D97B10] disabled:opacity-50 transition-colors font-medium"
         >
           {isPending ? 'Criando...' : 'Criar pesquisa'}
         </button>

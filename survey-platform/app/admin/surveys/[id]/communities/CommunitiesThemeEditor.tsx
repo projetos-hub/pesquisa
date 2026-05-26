@@ -101,7 +101,7 @@ export default function CommunitiesThemeEditor({ surveyId, communities }: Props)
                     <td className="px-4 py-3 text-right">
                       <button
                         onClick={() => setExpandedId(community.id)}
-                        className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                        className="text-sm text-[#F7941D] hover:text-[#D97B10] font-medium"
                       >
                         Editar
                       </button>
@@ -186,7 +186,7 @@ function ThemeEditForm({ surveyId, community, onClose }: FormProps) {
                 name="nomeEscola"
                 defaultValue={community.theme?.nomeEscola || ''}
                 placeholder="Ex: Escola Raiz"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
               />
             </div>
 
@@ -207,7 +207,7 @@ function ThemeEditForm({ surveyId, community, onClose }: FormProps) {
                   onChange={e => setPrimaryColor(e.target.value)}
                   placeholder="#000000"
                   pattern="^#[0-9A-Fa-f]{6}$"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D] font-mono"
                 />
               </div>
             </div>
@@ -229,7 +229,7 @@ function ThemeEditForm({ surveyId, community, onClose }: FormProps) {
                   onChange={e => setSecondaryColor(e.target.value)}
                   placeholder="#ffffff"
                   pattern="^#[0-9A-Fa-f]{6}$"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D] font-mono"
                 />
               </div>
             </div>
@@ -242,7 +242,7 @@ function ThemeEditForm({ surveyId, community, onClose }: FormProps) {
                 name="logo"
                 defaultValue={community.theme?.logo || community.logoUrl}
                 placeholder={community.logoUrl}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-xs"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D] font-mono text-xs"
               />
               <p className="text-xs text-gray-500 mt-1">
                 Default: {community.logoUrl}
@@ -257,7 +257,7 @@ function ThemeEditForm({ surveyId, community, onClose }: FormProps) {
                 name="indicacaoLink"
                 defaultValue={(community.theme as { indicacaoLink?: string } | undefined)?.indicacaoLink || ''}
                 placeholder="https://quemconfia.com.br/escola"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-xs"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D] font-mono text-xs"
               />
               <p className="text-xs text-gray-500 mt-1">Exibido no ThankYou para promotores (NPS 9-10)</p>
             </div>
@@ -274,7 +274,7 @@ function ThemeEditForm({ surveyId, community, onClose }: FormProps) {
               <button
                 type="submit"
                 disabled={isPending}
-                className="flex-1 px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-3 py-2 bg-[#F7941D] text-white rounded-lg text-sm font-medium hover:bg-[#D97B10] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isPending ? 'Salvando...' : 'Salvar'}
               </button>

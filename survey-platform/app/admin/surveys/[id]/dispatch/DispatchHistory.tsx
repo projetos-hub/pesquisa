@@ -146,7 +146,7 @@ export default function DispatchHistory({
             {/* Data */}
             <span className="text-xs text-gray-400 shrink-0 w-28">
               {d.sequence_step !== null && (
-                <span className="inline-block bg-indigo-100 text-indigo-600 text-xs rounded px-1 mr-1">
+                <span className="inline-block bg-[#F7941D]/10 text-[#F7941D] text-xs rounded px-1 mr-1">
                   passo {(d.sequence_step ?? 0) + 1}
                 </span>
               )}
@@ -211,7 +211,7 @@ export default function DispatchHistory({
                       }}
                       className={`text-xs px-3 py-1 rounded-t-md transition-colors ${
                         (auditTab[d.id] ?? 'jobs') === tab
-                          ? 'bg-indigo-50 text-indigo-700 font-medium border border-b-white border-gray-200'
+                          ? 'bg-[#F7941D]/5 text-[#D97B10] font-medium border border-b-white border-gray-200'
                           : 'text-gray-400 hover:text-gray-600'
                       }`}
                     >

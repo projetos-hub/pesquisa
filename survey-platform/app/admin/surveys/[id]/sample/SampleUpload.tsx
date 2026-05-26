@@ -194,11 +194,11 @@ export default function SampleUpload({ surveyId, communities }: Props) {
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Arquivo Excel (TOTVS)</label>
         <input type="file" accept=".xlsx,.xls" onChange={handleFileChange}
-          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-[#F7941D]/5 file:text-[#D97B10] hover:file:bg-[#F7941D]/10" />
         <div className="flex items-center justify-between mt-1">
           <p className="text-xs text-gray-500">Colunas esperadas: NOME, NOMEFANTASIA, EMAIL INSTITUCIONAL, EMAIL RESP FIN, EMAIL RESP ACAD</p>
           <button onClick={handleDownloadTemplate} type="button"
-            className="text-xs text-indigo-600 hover:text-indigo-800 whitespace-nowrap ml-3">
+            className="text-xs text-[#F7941D] hover:text-[#D97B10] whitespace-nowrap ml-3">
             ⬇ Baixar modelo
           </button>
         </div>
@@ -232,7 +232,7 @@ export default function SampleUpload({ surveyId, communities }: Props) {
 
       {preview.length > 0 && (
         <button onClick={handleUpload} disabled={loading}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded">
+          className="w-full bg-[#F7941D] hover:bg-[#D97B10] disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded">
           {loading ? 'Salvando...' : 'Salvar amostra'}
         </button>
       )}

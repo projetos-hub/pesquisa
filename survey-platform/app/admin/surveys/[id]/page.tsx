@@ -104,7 +104,11 @@ export default async function SurveyDetailPage({ params }: PageProps) {
                   <span className="text-gray-600 font-mono text-xs">{school}</span>
                   <div className="flex items-center gap-2">
                     <div
+<<<<<<< HEAD
                       className="h-1.5 bg-[#F7941D]/30 rounded-full"
+=======
+                      className="h-1.5 bg-[#F7941D]/20 rounded-full"
+>>>>>>> origin/main
                       style={{ width: `${Math.round((count / total) * 80 + 20)}px` }}
                     />
                     <span className="text-gray-900 font-medium w-6 text-right">{count}</span>

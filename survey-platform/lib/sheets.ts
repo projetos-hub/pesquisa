@@ -26,9 +26,13 @@ function sleep(ms: number) {
 
 async function callWebhook(url: string, body: string): Promise<boolean> {
   try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    const secret = process.env.SHEETS_WEBHOOK_SECRET
+    if (secret) headers['X-Webhook-Secret'] = secret
+
     const res = await fetch(url, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body,
       signal:  AbortSignal.timeout(10_000),
     })

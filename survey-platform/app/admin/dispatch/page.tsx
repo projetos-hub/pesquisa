@@ -101,7 +101,7 @@ export default async function DispatchCenterPage() {
                   </div>
                   <Link
                     href={`/admin/surveys/${s.id}/dispatch`}
-                    className="bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors font-medium shrink-0"
+                    className="bg-[#F7941D] text-white text-xs px-3 py-1.5 rounded-lg hover:bg-[#D97B10] transition-colors font-medium shrink-0"
                   >
                     📢 Disparar
                   </Link>
@@ -161,7 +161,7 @@ export default async function DispatchCenterPage() {
                     <StatusBadge status={d.status} />
                     <Link
                       href={`/admin/surveys/${d.survey.id}/dispatch`}
-                      className="text-xs text-indigo-500 hover:text-indigo-700"
+                      className="text-xs text-[#F7941D]/70 hover:text-[#D97B10]"
                       title="Ver detalhes"
                     >
                       →

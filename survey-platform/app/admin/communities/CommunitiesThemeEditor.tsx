@@ -57,7 +57,7 @@ export default function CommunitiesThemeEditor({ communities }: Props) {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button onClick={() => setExpandedId(community.community_id)} className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+                      <button onClick={() => setExpandedId(community.community_id)} className="text-sm text-[#F7941D] hover:text-[#D97B10] font-medium">
                         Editar
                       </button>
                     </td>
@@ -120,7 +120,7 @@ function ThemeEditForm({ community, onClose }: { community: Community; onClose: 
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1.5">Nome da Escola</label>
           <input type="text" name="nomeEscola" defaultValue={community.nome_escola} placeholder="Ex: Escola Raiz"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]" />
         </div>
 
         <div>
@@ -129,7 +129,7 @@ function ThemeEditForm({ community, onClose }: { community: Community; onClose: 
             <input type="color" name="primaryColor" value={primaryColor} onChange={e => setPrimaryColor(e.target.value)}
               className="w-12 h-10 rounded-lg border border-gray-300 cursor-pointer" />
             <input type="text" value={primaryColor} onChange={e => setPrimaryColor(e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="#667eea" />
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#F7941D]" placeholder="#667eea" />
           </div>
         </div>
 
@@ -139,14 +139,14 @@ function ThemeEditForm({ community, onClose }: { community: Community; onClose: 
             <input type="color" name="secondaryColor" value={secondaryColor} onChange={e => setSecondaryColor(e.target.value)}
               className="w-12 h-10 rounded-lg border border-gray-300 cursor-pointer" />
             <input type="text" value={secondaryColor} onChange={e => setSecondaryColor(e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="#764ba2" />
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#F7941D]" placeholder="#764ba2" />
           </div>
         </div>
 
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1.5">URL do Logo</label>
           <input type="url" name="logo" defaultValue={community.logo} placeholder="https://..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]" />
         </div>
 
         {error   && <div className="text-sm text-red-600 bg-red-50 p-2 rounded">{error}</div>}
@@ -154,7 +154,7 @@ function ThemeEditForm({ community, onClose }: { community: Community; onClose: 
 
         <div className="flex gap-2 pt-2">
           <button type="submit" disabled={isPending}
-            className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:bg-gray-400">
+            className="flex-1 px-4 py-2 bg-[#F7941D] text-white rounded-lg text-sm font-medium hover:bg-[#D97B10] disabled:bg-gray-400">
             {isPending ? 'Salvando...' : 'Salvar'}
           </button>
           <button type="button" onClick={onClose}
