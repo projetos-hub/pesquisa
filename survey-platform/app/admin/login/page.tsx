@@ -48,7 +48,7 @@ export default function LoginPage() {
               required
               autoFocus
               placeholder="seu@email.com"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D] focus:border-transparent"
             />
           </div>
 
@@ -62,7 +62,7 @@ export default function LoginPage() {
               onChange={e => setPassword(e.target.value)}
               required
               placeholder="••••••••"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D] focus:border-transparent"
             />
           </div>
 
@@ -75,7 +75,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-indigo-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full bg-[#F7941D] text-white rounded-lg py-2 text-sm font-medium hover:bg-[#D97B10] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? 'Entrando...' : 'Entrar'}
           </button>

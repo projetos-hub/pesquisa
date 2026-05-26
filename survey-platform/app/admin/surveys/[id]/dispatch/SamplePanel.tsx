@@ -69,7 +69,7 @@ export default function SamplePanel({ surveyId, initial }: Props) {
         <button
           type="button"
           onClick={() => setExpanded(v => !v)}
-          className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+          className="text-xs text-[#F7941D] hover:text-[#D97B10] font-medium"
         >
           {expanded ? 'Fechar' : 'Gerenciar'}
         </button>
@@ -100,7 +100,7 @@ export default function SamplePanel({ surveyId, initial }: Props) {
             <label className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors ${
               uploading
                 ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                : 'bg-[#F7941D] text-white hover:bg-[#D97B10]'
             }`}>
               {uploading ? 'Enviando...' : hasData ? '↑ Substituir amostra' : '↑ Carregar amostra'}
               <input
@@ -140,7 +140,7 @@ export default function SamplePanel({ surveyId, initial }: Props) {
             </button>
             <Link
               href={`/admin/surveys/${surveyId}/sample`}
-              className="text-xs text-indigo-600 hover:text-indigo-800 underline"
+              className="text-xs text-[#F7941D] hover:text-[#D97B10] underline"
             >
               Gestão completa (grupos, visualização) →
             </Link>

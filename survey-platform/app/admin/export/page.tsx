@@ -67,7 +67,7 @@ export default async function ExportPage() {
                   <a
                     href={`/api/admin/export?surveyId=${survey.id}`}
                     download
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-[#F7941D] hover:bg-[#D97B10] rounded-lg transition-colors"
                   >
                     ⬇ XLSX
                   </a>

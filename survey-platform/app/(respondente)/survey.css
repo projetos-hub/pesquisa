@@ -6,8 +6,8 @@
 /* ── Tokens de cor (sobrescritos inline pelo SurveyRunner via theme) ── */
 /* Defaults neutros: evita flash de roxo genérico antes do tema da escola carregar */
 :root {
-  --color-primary:   #9ca3af;
-  --color-secondary: #d1d5db;
+  --color-primary:   #F7941D;
+  --color-secondary: #D97B10;
 }
 
 /* Wrapper do layout respondente (equivale ao body + #root do original) */
