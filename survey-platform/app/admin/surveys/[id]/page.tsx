@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import SurveyEditForm from './SurveyEditForm'
 import QuestionEditor from './QuestionEditor'
+import CommunityInstallManager from './CommunityInstallManager'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -15,7 +16,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
   // Busca survey
   const { data: survey } = await supabase
     .from('surveys')
-    .select('id, slug, title, status, survey_type, target_roles, open_date, close_date, description')
+    .select('id, slug, title, status, survey_type, target_roles, open_date, close_date, description, access_control')
     .eq('id', id)
     .single()
 
@@ -40,6 +41,13 @@ export default async function SurveyDetailPage({ params }: PageProps) {
     description: q.description as string | null,
     options: (optionsRaw ?? []).filter(o => o.question_id === q.id),
   }))
+
+  // Comunidades instaladas
+  const { data: installs } = await supabase
+    .from('survey_communities')
+    .select('community_id, status, active')
+    .eq('survey_id', id)
+    .order('community_id', { ascending: true })
 
   // Stats de respostas
   const { data: sessions } = await supabase
@@ -75,7 +83,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: 'Total de respostas', value: total,       color: 'text-indigo-600' },
+            { label: 'Total de respostas', value: total,       color: 'text-[#F7941D]' },
             { label: 'Responsáveis',       value: responsaveis, color: 'text-blue-600' },
             { label: 'Alunos',            value: alunos,       color: 'text-purple-600' },
           ].map(({ label, value, color }) => (
@@ -96,7 +104,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
                   <span className="text-gray-600 font-mono text-xs">{school}</span>
                   <div className="flex items-center gap-2">
                     <div
-                      className="h-1.5 bg-indigo-200 rounded-full"
+                      className="h-1.5 bg-[#F7941D]/20 rounded-full"
                       style={{ width: `${Math.round((count / total) * 80 + 20)}px` }}
                     />
                     <span className="text-gray-900 font-medium w-6 text-right">{count}</span>
@@ -107,17 +115,71 @@ export default async function SurveyDetailPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* Link para respostas */}
-        {total > 0 && (
-          <div className="flex justify-end">
+        {/* Comunidades instaladas */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">Comunidades</h3>
+          <p className="text-xs text-gray-400 mb-4">
+            Define em quais comunidades esta pesquisa aparece no portal Layers.
+          </p>
+          <CommunityInstallManager
+            surveyId={id}
+            installs={installs ?? []}
+          />
+        </div>
+
+        {/* Card de amostra */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700">Amostra Segmentada</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Faça upload de uma lista de usuários para segmentar esta pesquisa.
+              </p>
+            </div>
+            <Link
+              href={`/admin/surveys/${id}/sample`}
+              className="bg-[#F7941D] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#D97B10] transition-colors font-medium"
+            >
+              📋 Gerenciar
+            </Link>
+          </div>
+        </div>
+
+        {/* Card de disparos */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700">Disparos</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Envie notificações push e email para as famílias via Layers.
+              </p>
+            </div>
+            <Link
+              href={`/admin/surveys/${id}/dispatch`}
+              className="bg-[#F7941D] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#D97B10] transition-colors font-medium"
+            >
+              📢 Disparar
+            </Link>
+          </div>
+        </div>
+
+        {/* Links para respostas e identidade visual */}
+        <div className="flex justify-end gap-4">
+          <Link
+            href={`/admin/surveys/${id}/communities`}
+            className="text-sm text-[#F7941D] hover:text-[#D97B10] font-medium"
+          >
+            Identidade Visual →
+          </Link>
+          {total > 0 && (
             <Link
               href={`/admin/surveys/${id}/responses`}
-              className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+              className="text-sm text-[#F7941D] hover:text-[#D97B10] font-medium"
             >
               Ver todas as respostas →
             </Link>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Formulário de edição */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">

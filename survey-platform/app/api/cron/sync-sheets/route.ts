@@ -31,6 +31,7 @@ export async function GET(req: Request) {
       serie,
       school,
       onda,
+      sync_attempts,
       surveys ( slug )
     `)
     .eq('synced_to_sheets', false)
@@ -44,6 +45,19 @@ export async function GET(req: Request) {
 
   if (!sessions?.length) {
     return NextResponse.json({ ok: true, synced: 0, message: 'Nada pendente' })
+  }
+
+  // Busca nomeEscola de todas as comunidades das sessões em batch
+  const communityIds = [...new Set(sessions.map(s => s.community_id).filter(Boolean))]
+  const { data: communities } = await supabase
+    .from('survey_communities')
+    .select('community_id, theme')
+    .in('community_id', communityIds)
+
+  const nomeEscolaMap = new Map<string, string>()
+  for (const c of communities ?? []) {
+    const nome = (c.theme as { nomeEscola?: string })?.nomeEscola ?? ''
+    nomeEscolaMap.set(c.community_id, nome)
   }
 
   let synced = 0
@@ -74,7 +88,7 @@ export async function GET(req: Request) {
       nomeCompleto: session.nome_responsavel ?? '',
       nomeAluno:    session.nome_aluno      ?? '',
       serie:        session.serie           ?? '',
-      nomeEscola:   '',
+      nomeEscola:   nomeEscolaMap.get(session.community_id ?? '') ?? '',
       answers,
     })
 
@@ -85,6 +99,14 @@ export async function GET(req: Request) {
         .eq('id', session.id)
       synced++
     } else {
+      await supabase
+        .from('response_sessions')
+        .update({
+          sync_attempts: (session.sync_attempts ?? 0) + 1,
+          sync_error: 'webhook_failed',
+          sync_last_attempted_at: new Date().toISOString(),
+        })
+        .eq('id', session.id)
       failed++
     }
   }

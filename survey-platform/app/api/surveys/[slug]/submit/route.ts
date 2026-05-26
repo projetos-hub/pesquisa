@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-service'
-import { syncToSheets } from '@/lib/sheets'
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 
 interface RouteContext {
   params: Promise<{ slug: string }>
@@ -17,11 +17,30 @@ interface SubmitBody {
   nomeCompleto?: string
   nomeAluno?: string
   serie?: string
+  email?: string
+  layersMeta?: Record<string, unknown>
   answers: Record<string, unknown>
 }
 
 export async function POST(req: Request, { params }: RouteContext) {
   const { slug } = await params
+
+  // ── Rate limiting: máx 100 submissões por IP a cada 1 hora ──────────────────
+  const clientIp = getClientIp(req)
+  const { allowed, retryAfter } = checkRateLimit(clientIp, {
+    maxRequests: 100,
+    windowMs: 3_600_000, // 1 hora
+  })
+
+  if (!allowed) {
+    return NextResponse.json(
+      { error: `Rate limit exceeded. Retry after ${retryAfter}s` },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(retryAfter) },
+      }
+    )
+  }
 
   let body: SubmitBody
   try {
@@ -36,16 +55,18 @@ export async function POST(req: Request, { params }: RouteContext) {
     accountId = '',
     onda = '',
     school = '',
-    tipo = '',
+    tipo: _tipo = '', // eslint-disable-line @typescript-eslint/no-unused-vars
     perfil = '',
     nomeCompleto = '',
     nomeAluno = '',
     serie = '',
+    email = '',
+    layersMeta = {},
     answers,
   } = body
 
   // Garante unicidade mesmo se userId vier vazio no embed Layers
-  const effectiveUserId = userId || accountId
+  const effectiveUserId = userId || accountId || `anon-${crypto.randomUUID()}`
 
   if (!answers || typeof answers !== 'object') {
     return NextResponse.json({ error: 'answers is required' }, { status: 400 })
@@ -56,7 +77,7 @@ export async function POST(req: Request, { params }: RouteContext) {
   // ── 1. Busca survey ativa ──────────────────────────────────────────────────
   const { data: survey } = await supabase
     .from('surveys')
-    .select('id')
+    .select('id, access_control')
     .eq('slug', slug)
     .eq('status', 'ativa')
     .single()
@@ -65,16 +86,29 @@ export async function POST(req: Request, { params }: RouteContext) {
     return NextResponse.json({ error: 'Survey not found' }, { status: 404 })
   }
 
-  // ── 1b. Busca nomeEscola do survey_communities.theme ──────────────────────
-  let nomeEscola = ''
-  if (communityId) {
-    const { data: comm } = await supabase
-      .from('survey_communities')
-      .select('theme')
+  // ── 1b. Valida email na amostra (se survey possui segmentação amostral) ──────
+  // Agora respeita o campo access_control
+  if (survey.access_control === 'amostra') {
+    if (!email) {
+      return NextResponse.json(
+        { error: 'not_in_sample', message: 'Email não fornecido para pesquisa segmentada' },
+        { status: 403 }
+      )
+    }
+
+    const { data: userInSample } = await supabase
+      .from('survey_sample_lists')
+      .select('id')
       .eq('survey_id', survey.id)
-      .eq('community_id', communityId)
-      .single()
-    nomeEscola = (comm?.theme as { nomeEscola?: string })?.nomeEscola ?? ''
+      .eq('email', email.toLowerCase())
+      .limit(1)
+
+    if (!userInSample || userInSample.length === 0) {
+      return NextResponse.json(
+        { error: 'not_in_sample', message: 'Você não está na amostra desta pesquisa' },
+        { status: 403 }
+      )
+    }
   }
 
   // ── 2. Insere response_session (idempotente) ───────────────────────────────
@@ -95,6 +129,8 @@ export async function POST(req: Request, { params }: RouteContext) {
         serie,
         school,
         onda,
+        email,
+        layers_meta:      Object.keys(layersMeta).length > 0 ? layersMeta : null,
       },
       {
         onConflict:       'survey_id,community_id,user_id',
@@ -139,6 +175,11 @@ export async function POST(req: Request, { params }: RouteContext) {
       value,
     }))
 
+  if (Object.keys(answers).length > 0 && responseRows.length === 0) {
+    await supabase.from('response_sessions').delete().eq('id', sessionId)
+    return NextResponse.json({ error: 'No valid answers matched survey questions' }, { status: 422 })
+  }
+
   if (responseRows.length > 0) {
     const { error: responsesError } = await supabase
       .from('responses')
@@ -156,26 +197,11 @@ export async function POST(req: Request, { params }: RouteContext) {
     }
   }
 
-  // ── 5. Espelhar no Google Sheets (falha silenciosa) ──────────────────────────
-  const synced = await syncToSheets({
-    surveyId:     slug,
-    communityId,
-    userId:       effectiveUserId,
-    onda,
-    perfil,
-    nomeCompleto,
-    nomeAluno,
-    serie,
-    nomeEscola,
-    answers,
-  })
-
-  if (synced) {
-    await supabase
-      .from('response_sessions')
-      .update({ synced_to_sheets: true, synced_at: new Date().toISOString() })
-      .eq('id', sessionId)
-  }
+  // ── 5. Responder imediatamente ao usuário ────────────────────────────────────
+  //
+  // Sincronização com Google Sheets é feita pelo cron (a cada 11h UTC).
+  // As sessions com synced_to_sheets = false serão processadas quando o cron rodar.
+  // Isso permite responder ao usuário em <100ms em vez de ficar esperando até 30s.
 
   return NextResponse.json({ ok: true, sessionId })
 }

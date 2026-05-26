@@ -17,7 +17,7 @@ export default function StepRadio({ step, tipo, onNext, onBack, isLast, loading 
   const [ans, setAns] = useState<string | null>(null)
   const [tentou, setTentou] = useState(false)
   const resolve = (l: string) => l.replace(/\{tipo\}/g, tipo)
-  const opcoes = [...step.opcoes].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  const opcoes = step.opcoes
 
   function handleNext() {
     if (!ans) { setTentou(true); return }

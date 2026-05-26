@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import DeleteSurveyButton from './DeleteSurveyButton'
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   rascunho:  { label: 'Rascunho',  cls: 'bg-gray-100 text-gray-600' },
@@ -22,7 +23,7 @@ export default async function SurveysPage() {
         <h2 className="text-lg font-semibold text-gray-900">Pesquisas</h2>
         <Link
           href="/admin/surveys/new"
-          className="bg-indigo-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+          className="bg-[#F7941D] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#D97B10] transition-colors font-medium"
         >
           + Nova pesquisa
         </Link>
@@ -80,12 +81,19 @@ export default async function SurveysPage() {
                       : '—'}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/admin/surveys/${s.id}`}
-                      className="text-indigo-600 hover:text-indigo-800 font-medium"
-                    >
-                      Editar →
-                    </Link>
+                    <div className="flex items-center justify-end gap-4">
+                      <Link
+                        href={`/admin/surveys/${s.id}`}
+                        className="text-[#F7941D] hover:text-[#D97B10] font-medium text-sm"
+                      >
+                        Editar →
+                      </Link>
+                      <DeleteSurveyButton
+                        surveyId={s.id}
+                        surveyTitle={s.title}
+                        responseCount={count}
+                      />
+                    </div>
                   </td>
                 </tr>
               )

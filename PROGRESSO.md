@@ -9,7 +9,7 @@
 
 ---
 
-## Estado atual: Fase 3 concluída + fix ERR_TOO_MANY_REDIRECTS aplicado
+## Estado atual: Fase 7 concluída (Deploy Vercel) → Fase 8 em planejamento
 
 ---
 
@@ -270,6 +270,7 @@ WHERE email = 'seu@email.com';
 | 3-fix | ERR_TOO_MANY_REDIRECTS no login | ✅ Corrigido (commit 107ccd1) |
 | 4 | Google Sheets espelho + retry + cron | ✅ Concluída (commit fcae9e6) |
 | 5 | Polimento e remoção de hardcodes | ✅ Concluída (commit ddd8180) |
+| 6 | Segmentação amostral por escola | ✅ Concluída (commit 20a08a8) — amostra Excel, acesso por email, disparo amostral personalizado |
 
 ---
 
@@ -310,36 +311,202 @@ WHERE community_id = 'qi-freguesia';
 
 ---
 
+---
+
+### Sessão 2026-05-22 — Pesquisas Global Tree + SAP, fixes admin e mapeamento
+
+#### Novas pesquisas criadas (seeds)
+
+| Migration | Survey | Comunidades |
+|-----------|--------|-------------|
+| `020_seed_exposicao_arte_total.sql` | Exposição Cultural "Arte Total" — Global Tree | 7 unidades Global Tree |
+| `021_seed_mostra_sap_infantil_fund1.sql` | Mostra da Educação Infantil e Fund I — SAP | `sap` |
+
+**Atenção:** Seeds aplicadas via SQL Editor do Supabase (não via CLI). Encoding estava corrompido (UTF-8 lido como Latin-1 ao copiar do terminal Windows CP1252).
+
+**Arquivos de fix de encoding no Desktop:**
+- `fix_encoding_arte_total.txt` — corrige surveys + questions + options + move pergunta para title
+- `fix_encoding_mostra_sap.txt` — idem para a SAP
+
+Rodar no Supabase SQL Editor antes de usar as pesquisas.
+
+#### PRs mergeados (todos squash em main)
+
+| PR | O que faz |
+|----|-----------|
+| #40 | **Fix UUID**: `toggleWelcomeStep`/`toggleThankYouStep` retornam `id` real do banco; `QuestionEditor` parou de usar `Math.random()` como ID (causava `invalid input syntax for type uuid` ao editar título) |
+| #41 | **Cache**: TTL survey config reduzido 300s → 60s; novo endpoint `POST /api/revalidate-surveys` para bust imediato |
+| #42 | **Dispatch**: INSERT condiciona `sequence_steps` (evita erro se migration 017 não aplicada); erros do Supabase agora expostos em `detail` na resposta 500 |
+| #43 | **Mapping**: aliases `CRECHE ESCOLA GLOBAL TREE - ABM/PENINSULA/RECREIO` adicionados em `lib/community-mapping.ts` |
+| #44 | **Mapping**: `CRECHE ESCOLA GLOBAL TREE - RECREIO` → `w9593n19` (Barra Golf) corrigido |
+| #45 | **Mapping**: `GLOBAL TREE RIO 2` → `w95k0s77` corrigido |
+| #46 | **Build fix**: `revalidateTag('survey-config', 'default')` — Next.js 16 exige 2 args |
+
+#### Mapeamento Global Tree atualizado (lib/community-mapping.ts)
+
+| Nome no TOTVS/import | community_id |
+|---------------------|--------------|
+| GLOBAL TREE BOSQUE MARAPENDI | `globaltree-abm` |
+| GLOBAL TREE BOTAFOGO | `n6k47n81` |
+| GLOBAL TREE PENÍNSULA / PENINSULA | `rf3zk695` |
+| GLOBAL TREE BARRA GOLF / RECREIO | `w9593n19` |
+| GLOBAL TREE RIO 2 | `w95k0s77` |
+| CRECHE ESCOLA GLOBAL TREE - RIO 2 | `creche-globaltree` |
+| CRECHE ESCOLA GLOBAL TREE - ABM | `globaltree-abm` |
+| CRECHE ESCOLA GLOBAL TREE - PENINSULA | `rf3zk695` |
+| CRECHE ESCOLA GLOBAL TREE - RECREIO | `w9593n19` |
+
+#### Padrão de layout de perguntas (qualitativa)
+
+O campo `title` da question é o texto exibido em bold (pergunta principal). O `settings.pergunta` era usado como subtítulo — agora está vazio (`{}`) e o texto da pergunta vai diretamente no `title`. Fix aplicado via SQL (fix_encoding_*.txt).
+
+---
+
+### Sessão 2026-05-07 — Bug fix: cron dispatch amostra
+
+#### Bug encontrado e corrigido (PR #35)
+
+**Root cause:** `process-dispatches/route.ts` sempre chamava `executePersonalizedJob` (Layers Hub) ao retomar jobs em andamento, mesmo para dispatches `target_scope='sample'` que deveriam usar `executePersonalizedJobSample` (survey_sample_lists).
+
+**Efeito:** disparo Amostral 1 parava em ~90 usuários (total do Layers Hub para `uniao`). Usuários da amostra nos slots 31–90 não foram notificados. Usuários do Layers Hub (fora da amostra) receberam a notificação nos batches 2 e 3.
+
+**Fix:** adicionada verificação `target_scope === 'sample'` no cron handler para chamar a função correta.
+
+| Batch | Função usada antes do fix | Função após o fix |
+|-------|--------------------------|-------------------|
+| 1 (0→30, criação) | `executePersonalizedJobSample` ✅ | inalterado |
+| 2+ (cron retoma) | `executePersonalizedJob` ❌ | `executePersonalizedJobSample` ✅ |
+
+**PR:** https://github.com/projetos-hub/pesquisa/pull/35  
+**Branch:** `fix/cron-sample-dispatch`  
+**Arquivo:** `survey-platform/app/api/cron/process-dispatches/route.ts`
+
+#### Após merge do PR #35 — rodar no Supabase SQL Editor
+
+```sql
+-- Resetar dispatches Amostral 1 para continuar do offset correto (60)
+UPDATE survey_dispatch_jobs
+SET status = 'sending', processed_users = 60
+WHERE status IN ('sent', 'sending')
+  AND dispatch_id IN (SELECT id FROM survey_dispatches WHERE status = 'sending');
+
+UPDATE survey_dispatches SET completed_jobs = 0 WHERE status = 'sending';
+```
+
+Depois aguardar 5 min — o cron retoma do offset 60 com a função correta e processa toda a amostra restante.
+
+#### Outros achados
+
+- Dois cron jobs duplicados ativos: `dispatch-processor` e `process-dispatches` (ambos `*/5 * * * *`) — não causa bug mas é ruído
+- `completed_jobs = total_jobs` enquanto `status = 'sending'` — lógica de contagem confusa, não é bug funcional
+
+---
+
+### Sessão 2026-05-05 — Lançamento Amostral 1 + Fixes críticos
+
+#### Bugs corrigidos
+
+| Bug | Causa | Fix |
+|-----|-------|-----|
+| NPS zerado no export | `SurveyRunner` hardcodava `next('nps', d)` — chave errada descartada no submit | Usa `currentStep.key` + `npsKey` dinâmico para ThankYou |
+| Colunas de escala em branco | `question_options` vazia para perguntas criadas antes do auto-populate | Migration 018 backfill + export com fallback label→índice |
+| Build bloqueado no Vercel | `sequence_steps: unknown[]` incompatível com `SequenceStep[]`; `z.record()` sem 2 args | Cast explícito + `z.record(z.string(), z.unknown())` |
+| Disparo travado em 30/303 | Cron `*/5 * * * *` não registrado no `vercel.json`; Hobby plan bloqueou depois | pg_cron + pg_net como workaround |
+| Cron 401 | pg_net timeout 5s → pg_net POST (405) → vault sem rows | GET + timeout 30s + CRON_SECRET simples |
+| Fila de dispatches bloqueada | 17 dispatches de teste presos em `sending` sem jobs ativos | UPDATE manual + botão cancelar (P2 roadmap) |
+
+#### Migrations aplicadas
+
+| Migration | O que faz |
+|-----------|-----------|
+| `014_communities_table.sql` | Tabela `communities` como fonte de verdade para identidade visual |
+| `018_backfill_question_options.sql` | Popula `question_options` para perguntas scale sem opções |
+
+#### Infra configurada
+
+- pg_cron job `process-dispatches` ativo (*/5 * * * *) chamando endpoint Vercel via pg_net
+- `CRON_SECRET=pesquisa-cron-2026` configurado no Vercel
+- Endpoint aceita CRON_SECRET ou SUPABASE_SERVICE_ROLE_KEY
+
+#### Estado das respostas Amostral 1
+
+- 4 sessões de teste (30/04 a 05/05) sem NPS — bug pré-fix, irrecuperável
+- A partir de 05/05 15:40: NPS salvo corretamente com key `qual_e_a_probabilidade_de_voce_recomenda`
+- Escala: dados históricos por label, novos por índice — export faz fallback dos dois
+- Disparo Amostral 1 em andamento: 60/303 (unificado-zonasul) e 60/149 (uniao) às 17h UTC
+
+#### Roadmap de melhorias criado
+
+Ver `docs/roadmap-melhorias.md` — 13 itens priorizados P0→P3.
+
+---
+
 ## Próximos passos
 
-### 1. Deploy na Vercel (bloqueante)
-- Conectar repositório GitHub à Vercel apontando para `survey-platform/` como root
-- Configurar variáveis de ambiente:
+### Fase 7 — Deploy na Vercel ✅ (commit dab4774 - 2026-04-16)
 
-| Variável | Descrição |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | URL do projeto Supabase |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Chave anon |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service role key |
-| `SHEETS_WEBHOOK_URL` | URL do Apps Script (sem `/a/`) |
-| `CRON_SECRET` | String segura para proteger o cron |
+**Completado:**
+- ✅ Repositório GitHub conectado à Vercel (`survey-platform/` como root)
+- ✅ Variáveis de ambiente configuradas (SUPABASE_*, LAYERS_API_TOKEN, CRON_SECRET)
+- ✅ Todas as migrations rodadas em produção (001-010)
+- ✅ App ao vivo em: https://pesquisa-nu-sand.vercel.app
 
-### 2. Configurações no Supabase
-- Rodar `003_admin_rls_and_constraints.sql` no SQL Editor (se ainda não rodou)
-- Adicionar URL de produção em Authentication → Redirect URLs: `https://seu-dominio.vercel.app/admin/auth/callback`
-- Criar usuário admin e inserir em `admin_profiles`
+**Bugs corrigidos durante deploy:**
+- ✅ Next.js 16 async params issue em `sample/route.ts`
+- ✅ Admin redirect loop (logout → login)
+- ✅ Dispatch tab visibility (sidebar)
 
-### 3. Migrar SCHOOL_LINKS para o banco
-Links de indicação por escola ainda estão hardcoded em `lib/surveys.ts`.
-Migrar para `surveys.settings.indicacao_links` no Supabase via SQL ou pelo admin.
+---
 
-### 4. Integração LayersPortal.js
-Conectar parâmetros reais da Layers (`userId`, `communityId`, `token`) no `SurveyRunner.tsx`.
-Aguarda resposta da Layers sobre os parâmetros de URL por escola.
+### Fase 8 — Cron Supabase + Audit Logs + Sample Scope ✅ (commits e18106b..2d3e3b0)
 
-### 5. Testes (Playwright + QAT)
-Configurar após deploy no ar. Pré-requisitos:
-- Playwright instalado + configurado
-- Auth state gerado (`tests/e2e/.auth/user.json`)
-- Estrutura `tests/qat/` criada
-- `ANTHROPIC_API_KEY` configurada
+**PR #8:** https://github.com/projetos-hub/pesquisa/pull/8  
+**Branch:** `feat/phase-8-cron-audit-sample`
+
+**Implementado:**
+- ✅ Migration 011 — pg_cron `*/5 * * * *` via `trigger_dispatch_processor` + pg_net
+- ✅ `notification_audit_logs` — rastreia sent/failed por email
+- ✅ `target_scope = 'sample'` — constraint estendido, valida personalized=true
+- ✅ `executePersonalizedJobSample()` — audit log + fix offset (não loopa em falhas)
+- ✅ DispatchForm — radio "📊 Amostra" + info box
+- ✅ GET /dispatch-audit — endpoint de audit logs
+- ✅ ManualDispatch — disparo rápido por email (max 50)
+- ✅ **Fix segurança**: POST /submit agora re-valida amostra (bypasse bloqueado)
+
+**Bateria de testes (Sprint 8 + 9):**
+- Unit: `submit-sample-gate.test.ts` (5), `audit-log.test.ts` (5), `sample-dispatch.test.ts` (7)
+- E2E: `sample-gate.spec.ts` (7), `admin-sample.spec.ts` (7), `dispatch-execution.spec.ts` (6)
+
+**🔴 BLOQUEADOR — fazer ANTES de mergear o PR:**
+
+1. Abrir [Supabase SQL Editor](https://supabase.com/dashboard/project/qnpvlhfjknnvfiyxrhhl/sql/new)
+2. Rodar primeiro (valor do CRON_SECRET está em `.env.local`):
+   ```sql
+   ALTER DATABASE postgres SET "app.cron_secret" = '<valor de CRON_SECRET do .env.local>';
+   SELECT pg_reload_conf();
+   ```
+3. Depois rodar o restante de `supabase/migrations/011_phase8_dispatch_audit.sql`
+4. Verificar: `SELECT * FROM cron.job WHERE jobname = 'dispatch-processor';`
+5. Mergear PR #8 → deploy automático
+
+**Após merge:**
+- Verificar [Vercel dashboard](https://vercel.com) que deploy passou
+- Testar: acessar survey com email fora da amostra → deve bloquear (403)
+- Testar: criar dispatch scope=sample → audit logs em /dispatch-audit
+
+---
+
+### Ajustes visuais e dados — 2026-05-04 (commits 2edd60f, 1ff5045)
+
+**Código — `survey-platform/`:**
+- `StepNPS.tsx` — `titulo` exibido como pergunta principal (`step-title`), `desc` como subtítulo
+- `StepNPS.tsx` — labels "Nada provável" (ao lado do 0) e "Extremamente provável" (ao lado do 10) embutidos na linha dos botões; removido `nps-hint` separado
+- `ScaleRow.tsx` — labels "1 - Muito Insatisfeito" e "6 - Muito Satisfeito" ao lado dos botões 1 e 6
+- `survey.css` — `.scale-btns` com `flex-wrap: nowrap` e `.scale-btn` com `flex: 1` para 6 botões caberem em uma linha
+- `StepEscala.tsx` — texto fallback atualizado de "1 a 5" para "1 a 6"
+- `SurveyEditForm.tsx` — campos de data voltaram para `type="date"` (sem horário), labels atualizados
+
+**Banco de dados (Supabase — pesquisa CSAT):**
+- `surveys.open_date` → `2026-05-04`
+- `surveys.close_date` → `2026-05-17`
+- `questions.description` das 3 escalas (pedagógico, administrativo, infraestrutura) → "Avalie de 1 a 6 os seguintes aspectos:"

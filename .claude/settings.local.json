@@ -64,7 +64,12 @@
       "Bash(PYTHONIOENCODING=utf-8 python3:*)",
       "WebFetch(domain:raizeducacao.com.br)",
       "WebFetch(domain:www.brandcolorcode.com)",
-      "WebFetch(domain:brandfetch.com)"
+      "WebFetch(domain:brandfetch.com)",
+      "WebFetch(domain:developers.layers.education)",
+      "WebFetch(domain:api.layers.digital)",
+      "mcp__google-workspace__search_drive_files",
+      "mcp__google-workspace__get_drive_file_content",
+      "WebFetch(domain:docs.google.com)"
     ],
     "deny": [
       "Read(.env)",

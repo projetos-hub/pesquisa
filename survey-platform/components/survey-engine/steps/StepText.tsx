@@ -25,7 +25,7 @@ export default function StepText({ step, tipo, onNext, onBack, isLast, loading }
 
   return (
     <div>
-      <p className="step-title">{step.titulo}</p>
+      {step.titulo !== step.pergunta && <p className="step-title">{step.titulo}</p>}
       {step.desc && <p className="step-desc">{step.desc}</p>}
       <div className="q-group">
         <p className="question-label">{resolve(step.pergunta)}</p>

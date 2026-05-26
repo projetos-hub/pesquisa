@@ -42,7 +42,7 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
     return (
       <div>
         <p className="step-title">{step.titulo}</p>
-        <p className="step-desc">{step.desc || 'Avalie os aspectos abaixo.'}</p>
+        {step.desc && <p className="step-desc">{step.desc}</p>}
         {step.secoes.map(sec => (
           <div key={sec.key}>
             <p className="section-div">{sec.titulo}</p>
@@ -87,7 +87,7 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
   const ok = perguntas.every((_, i) => simpleRatings[i] != null)
   const pendentesSimples = perguntas.filter((_, i) => simpleRatings[i] == null).length
   const buildAns = () =>
-    perguntas.reduce<Record<string, unknown>>((a, l, i) => ({ ...a, [l]: simpleRatings[i] }), {})
+    perguntas.reduce<Record<string, unknown>>((a, _l, i) => ({ ...a, [String(i)]: simpleRatings[i] }), {})
 
   function handleNextSimple() {
     if (!ok) { setTentou(true); return }
@@ -97,7 +97,7 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
   return (
     <div>
       <p className="step-title">{step.titulo}</p>
-      <p className="step-desc">{step.desc || 'Avalie de 1 a 5 os seguintes aspectos:'}</p>
+      {step.desc && <p className="step-desc">{step.desc}</p>}
       {perguntas.map((l, i) => (
         <ScaleRow
           key={i}

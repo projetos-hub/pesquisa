@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 interface PageProps {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ page?: string }>
 }
 
 function npsClass(score: number | undefined) {
@@ -20,8 +21,12 @@ function npsCategory(score: number | undefined) {
   return `${score} ✗`
 }
 
-export default async function ResponsesPage({ params }: PageProps) {
+export default async function ResponsesPage({ params, searchParams }: PageProps) {
   const { id } = await params
+  const { page: pageStr } = await searchParams
+  const pageNum = Math.max(1, parseInt(pageStr ?? '1', 10))
+  const pageSize = 100
+
   const supabase = await createServerSupabaseClient()
 
   // Survey
@@ -33,12 +38,22 @@ export default async function ResponsesPage({ params }: PageProps) {
 
   if (!survey) notFound()
 
-  // Sessions com todas as respostas embutidas
+  // Conta total de sessões para paginação
+  const { count: totalSessions } = await supabase
+    .from('response_sessions')
+    .select('id', { count: 'exact', head: true })
+    .eq('survey_id', id)
+
+  const totalPages = Math.ceil((totalSessions ?? 0) / pageSize)
+
+  // Sessions com todas as respostas embutidas — com LIMIT e OFFSET
+  const offset = (pageNum - 1) * pageSize
   const { data: sessions } = await supabase
     .from('response_sessions')
     .select('id, submitted_at, perfil, nome_responsavel, nome_aluno, serie, school, onda, responses(question_key, value)')
     .eq('survey_id', id)
     .order('submitted_at', { ascending: false })
+    .range(offset, offset + pageSize - 1)
 
   return (
     <div className="p-6">
@@ -149,6 +164,33 @@ export default async function ResponsesPage({ params }: PageProps) {
           </tbody>
         </table>
       </div>
+
+      {/* Paginação */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6">
+          <div className="text-sm text-gray-500">
+            Página {pageNum} de {totalPages} • Total: {totalSessions ?? 0} {(totalSessions ?? 0) === 1 ? 'resposta' : 'respostas'}
+          </div>
+          <div className="flex gap-2">
+            {pageNum > 1 && (
+              <Link
+                href={`?page=${pageNum - 1}`}
+                className="px-3 py-1.5 text-sm font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+              >
+                ← Anterior
+              </Link>
+            )}
+            {pageNum < totalPages && (
+              <Link
+                href={`?page=${pageNum + 1}`}
+                className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Próxima →
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -10,6 +10,7 @@ interface Survey {
   survey_type: string
   open_date: string | null
   close_date: string | null
+  access_control?: string
 }
 
 const SURVEY_TYPES = [
@@ -22,6 +23,11 @@ const SURVEY_TYPES = [
   { value: 'misto',         label: 'Misto (aberta + fechada)' },
 ]
 
+const ACCESS_CONTROL_OPTIONS = [
+  { value: 'aberta',   label: 'Aberta (qualquer um com o link)' },
+  { value: 'amostra',  label: 'Amostra Segmentada (apenas lista pré-definida)' },
+]
+
 type State = { error?: string; ok?: boolean }
 
 const STATUS_OPTIONS = [
@@ -30,6 +36,12 @@ const STATUS_OPTIONS = [
   { value: 'pausada',   label: 'Pausada' },
   { value: 'encerrada', label: 'Encerrada' },
 ]
+
+function toDatetimeLocal(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(new Date(iso).getTime() - 3 * 60 * 60 * 1000)
+  return d.toISOString().slice(0, 16)
+}
 
 export default function SurveyEditForm({ survey }: { survey: Survey }) {
   const [state, formAction, isPending] = useActionState(
@@ -63,7 +75,7 @@ export default function SurveyEditForm({ survey }: { survey: Survey }) {
           name="title"
           defaultValue={survey.title}
           required
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
         />
       </div>
 
@@ -72,12 +84,33 @@ export default function SurveyEditForm({ survey }: { survey: Survey }) {
         <select
           name="survey_type"
           defaultValue={survey.survey_type}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
         >
           {SURVEY_TYPES.map(({ value, label }) => (
             <option key={value} value={value}>{label}</option>
           ))}
         </select>
+      </div>
+
+      <div className="p-4 bg-[#F7941D]/5 rounded-xl border border-[#F7941D]/10">
+        <label className="block text-sm font-bold text-gray-900 mb-2">Controle de Acesso</label>
+        <div className="space-y-2">
+          {ACCESS_CONTROL_OPTIONS.map(({ value, label }) => (
+            <label key={value} className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="access_control"
+                value={value}
+                defaultChecked={survey.access_control === value || (!survey.access_control && value === 'aberta')}
+                className="w-4 h-4 text-[#F7941D] border-gray-300 focus:ring-[#F7941D]"
+              />
+              <span className="text-sm text-gray-700">{label}</span>
+            </label>
+          ))}
+        </div>
+        <p className="text-xs text-[#F7941D]/70 mt-2">
+          Se selecionar &ldquo;Amostra Segmentada&rdquo;, o sistema bloqueará qualquer pessoa cujo email não esteja na lista de amostra.
+        </p>
       </div>
 
       <div>
@@ -87,7 +120,7 @@ export default function SurveyEditForm({ survey }: { survey: Survey }) {
         <select
           name="status"
           defaultValue={survey.status}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
         >
           {STATUS_OPTIONS.map(({ value, label }) => (
             <option key={value} value={value}>{label}</option>
@@ -104,8 +137,8 @@ export default function SurveyEditForm({ survey }: { survey: Survey }) {
           <input
             type="datetime-local"
             name="open_date"
-            defaultValue={survey.open_date ? survey.open_date.slice(0, 16) : ''}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            defaultValue={toDatetimeLocal(survey.open_date)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
           />
         </div>
         <div>
@@ -113,8 +146,8 @@ export default function SurveyEditForm({ survey }: { survey: Survey }) {
           <input
             type="datetime-local"
             name="close_date"
-            defaultValue={survey.close_date ? survey.close_date.slice(0, 16) : ''}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            defaultValue={toDatetimeLocal(survey.close_date)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
           />
         </div>
       </div>
@@ -123,7 +156,7 @@ export default function SurveyEditForm({ survey }: { survey: Survey }) {
         <button
           type="submit"
           disabled={isPending}
-          className="bg-indigo-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors font-medium"
+          className="bg-[#F7941D] text-white text-sm px-5 py-2 rounded-lg hover:bg-[#D97B10] disabled:opacity-50 transition-colors font-medium"
         >
           {isPending ? 'Salvando...' : 'Salvar alterações'}
         </button>

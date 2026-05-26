@@ -24,8 +24,18 @@ interface SurveyRunnerProps {
   surveySlug: string
 }
 
+const STORAGE_BASE = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/school-assets`
+  : null
+
 export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const searchParams = useSearchParams()
+
+  // communityId disponível imediatamente via URL params — usado no loading
+  const initialCommunityId = searchParams.get('communityId') ?? ''
+  const loadingLogoUrl = STORAGE_BASE && initialCommunityId
+    ? `${STORAGE_BASE}/${initialCommunityId}/logo.png`
+    : null
   const [currentKey, setCurrentKey] = useState('welcome')
   const [answers, setAnswers] = useState<Answers>({})
   const [loading, setLoading] = useState(false)
@@ -34,6 +44,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const [survey, setSurvey] = useState<SurveyConfig | null>(null)
   const [surveyNotFound, setSurveyNotFound] = useState(false)
   const [accessDenied, setAccessDenied] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
 
   // ── Contexto de sessão (LayersPortal + Layers Hub API) ──────────────────────
   useEffect(() => {
@@ -66,25 +77,40 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
       let hubNome      = ''
       let hubPerfil: Perfil = 'responsavel'
       let hubNomeAluno = ''
+      let hubSerie     = ''
+      let hubEmail     = ''
+      let hubMeta: Record<string, unknown> = {}
 
       const effectiveId = userId || accountId
       if (effectiveId && communityId) {
         try {
-          const qs = new URLSearchParams({ userId: effectiveId, communityId })
+          const qs = new URLSearchParams({ userId: effectiveId, communityId, surveySlug })
           const res = await fetch(`/api/user-context?${qs}`)
           if (res.ok) {
             const profile = await res.json() as {
               nome: string; perfil: Perfil; nomeAluno: string; serie: string
+              email: string; meta: Record<string, unknown>
+            } | null
+            if (profile) {
+              hubNome      = profile.nome      || ''
+              hubPerfil    = profile.perfil    || 'responsavel'
+              hubNomeAluno = profile.nomeAluno || ''
+              hubSerie     = profile.serie     || ''
+              hubEmail     = profile.email     || ''
+              hubMeta      = profile.meta      || {}
             }
-            hubNome      = profile.nome      || ''
-            hubPerfil    = profile.perfil    || 'responsavel'
-            hubNomeAluno = profile.nomeAluno || ''
+            // profile null = sem role familiar (admin puro, teacher, etc.)
+            // hubPerfil fica 'responsavel' (default), survey.publico bloqueia no render
           }
         } catch {
           // Hub API indisponível — continua com URL params
         }
       }
 
+      // Hub API tem prioridade sobre URL params para campos com acentos.
+      // URL params do Layers podem vir com encoding Latin-1 (%E3 em vez de %C3%A3),
+      // produzindo \ufffd ao decodificar como UTF-8. O Hub API retorna JSON UTF-8 correto.
+      // URL params ficam como fallback (testes sem userId real).
       setCtx({
         userId,
         communityId,
@@ -97,10 +123,12 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
         status:    (searchParams.get('status')     || 'aberta') as SurveyContext['status'],
         school:    searchParams.get('school')      || '',
         tipo:      searchParams.get('tipo')        || 'escola',
-        nome:      searchParams.get('nome') || searchParams.get('name') || hubNome,
-        perfil:    ((searchParams.get('role') || hubPerfil) as Perfil),
-        nomeAluno: searchParams.get('studentName') || hubNomeAluno,
-        serie:     searchParams.get('grade')       || '',
+        nome:       hubNome      || searchParams.get('nome') || searchParams.get('name') || '',
+        perfil:     ((searchParams.get('role') || hubPerfil) as Perfil),
+        nomeAluno:  hubNomeAluno || searchParams.get('studentName') || '',
+        serie:      hubSerie     || searchParams.get('grade')       || '',
+        email:      hubEmail,
+        layersMeta: hubMeta,
       })
     }
 
@@ -114,10 +142,13 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
 
     setSurvey(null)
     setSurveyNotFound(false)
+    setAccessDenied(false)
 
-    const qs = ctx.communityId
-      ? `?communityId=${encodeURIComponent(ctx.communityId)}`
-      : ''
+    const params = new URLSearchParams()
+    if (ctx.communityId) params.append('communityId', ctx.communityId)
+    if (ctx.email) params.append('email', ctx.email)
+
+    const qs = params.toString() ? `?${params.toString()}` : ''
 
     fetch(`/api/surveys/${surveySlug}${qs}`)
       .then(res => {
@@ -133,14 +164,32 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [surveySlug, ctx])
 
-  // ── Spinner: aguarda contexto E config da pesquisa ───────────────────────────
+  // ── Tema: injeta CSS vars no :root para afetar o fundo do layout ─────────────
+  useEffect(() => {
+    const primary   = survey?.installation?.theme?.primaryColor   ?? survey?.settings?.theme?.primaryColor
+    const secondary = survey?.installation?.theme?.secondaryColor ?? survey?.settings?.theme?.secondaryColor
+    if (primary) {
+      document.documentElement.style.setProperty('--color-primary', primary)
+      document.documentElement.style.setProperty('--color-secondary', secondary ?? primary)
+    }
+  }, [survey])
+
+  // ── Loading personalizado por comunidade ─────────────────────────────────────
   if (!ctx || (!survey && !surveyNotFound)) {
     return (
-      <div className="card">
-        <div className="header"><h1>Pesquisa de Satisfação</h1></div>
-        <div className="loading-screen">
-          <div className="spinner" />
-          <p>Carregando...</p>
+      <div className="card loading-card">
+        {loadingLogoUrl && (
+          <img
+            src={loadingLogoUrl}
+            alt=""
+            className="loading-logo-pulse"
+            onError={e => { e.currentTarget.style.display = 'none' }}
+          />
+        )}
+        <div className="loading-dots">
+          <span className="loading-dot" />
+          <span className="loading-dot" />
+          <span className="loading-dot" />
         </div>
       </div>
     )
@@ -169,7 +218,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const {
     onda,
     school, tipo, nome: nomeCompleto, perfil, nomeAluno, serie,
-    communityId, userId, accountId,
+    communityId, userId, accountId, email, layersMeta,
   } = ctx
 
   // Status e datas: instalação do banco tem prioridade sobre URL params
@@ -177,8 +226,8 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const openDate  =  survey.installation?.open_date  ?? ctx.openDate
   const closeDate =  survey.installation?.close_date ?? ctx.closeDate
 
-  // CSS vars de tema por comunidade (injetadas inline no .card)
-  const theme = survey.installation?.theme ?? survey.settings?.theme
+  // CSS vars de tema por comunidade — aplicadas no :root para afetar o fundo também
+  const theme = survey?.installation?.theme ?? survey?.settings?.theme
   const themeVars = theme?.primaryColor
     ? {
         '--color-primary':   theme.primaryColor,
@@ -187,7 +236,8 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     : undefined
 
   // ── Perfil sem acesso ────────────────────────────────────────────────────────
-  if (survey.publico && !survey.publico.includes(perfil)) {
+  const allowAllRoles = (survey.settings as { allow_all_roles?: boolean } | undefined)?.allow_all_roles
+  if (!allowAllRoles && survey.publico && !survey.publico.includes(perfil)) {
     return (
       <div className="card">
         <div className="header"><h1>{survey.titulo}</h1></div>
@@ -223,12 +273,14 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const activeSteps = buildActiveSteps(survey, perfil, answers)
   const currentIdx  = activeSteps.findIndex(s => stepId(s) === currentKey)
   const currentStep = activeSteps[currentIdx] || activeSteps[0]
-  // isLastData = step imediatamente antes do thankyou (idêntico ao original)
-  const isLastData  = currentIdx === activeSteps.length - 2
 
   // Steps de dados (exclui welcome e thankyou) para a progress bar
   const dataSteps = activeSteps.filter(s => s.type !== 'welcome' && s.type !== 'thankyou')
   const dataIdx   = dataSteps.findIndex(s => stepId(s) === currentKey)
+
+  // isLastData = o passo atual é o último que contém perguntas (não é welcome nem thankyou)
+  const lastDataStep = dataSteps[dataSteps.length - 1]
+  const isLastData   = lastDataStep && stepId(lastDataStep) === currentKey
 
   // ── Navegação ────────────────────────────────────────────────────────────────
   function next(key: string, data: unknown) {
@@ -240,7 +292,8 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     } else {
       // Recalcula com newAnswers para capturar mudanças condicionais (bilíngue)
       const newActive = buildActiveSteps(survey!, perfil, newAnswers)
-      const nextStep  = newActive[currentIdx + 1]
+      const currentIndexInNewActive = newActive.findIndex(s => stepId(s) === currentKey)
+      const nextStep  = newActive[currentIndexInNewActive + 1]
       if (nextStep) setCurrentKey(stepId(nextStep))
     }
   }
@@ -270,6 +323,8 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
           nomeCompleto,
           nomeAluno,
           serie,
+          email,
+          layersMeta,
           answers: finalAnswers,
         }),
       })
@@ -279,8 +334,14 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
         throw new Error((err as { error?: string }).error ?? `HTTP ${res.status}`)
       }
 
-      // { ok: true } ou { duplicate: true } — ambos navegam para ThankYou
-      setCurrentKey('thankyou')
+      // Se existir um step de agradecimento no config, vai para ele.
+      // Caso contrário, fica no estado de enviado (podemos mostrar algo ou apenas travar).
+      const hasThankYouStep = activeSteps.some(s => s.type === 'thankyou')
+      if (hasThankYouStep) {
+        setCurrentKey('thankyou')
+      } else {
+        setSubmitted(true)
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Erro desconhecido'
       setSubmitError(`Erro ao enviar. ${msg}. Verifique sua conexão e tente novamente.`)
@@ -289,9 +350,10 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     }
   }
 
-  const isWelcome  = currentStep?.type === 'welcome'
-  const isThankyou = currentStep?.type === 'thankyou' || currentKey === 'thankyou'
-  const npsAnswer  = answers.nps as NPSAnswer | undefined
+  const isWelcome  = currentStep?.type === 'welcome' && !submitted
+  const isThankyou = currentStep?.type === 'thankyou' || (submitted && !submitError)
+  const npsKey     = activeSteps.find(s => s.type === 'nps')?.key ?? 'nps'
+  const npsAnswer  = answers[npsKey] as NPSAnswer | undefined
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
@@ -311,6 +373,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
 
         {currentStep?.type === 'welcome' && (
           <WelcomeStep
+            step={currentStep}
             nome={nomeCompleto} nomeAluno={nomeAluno} serie={serie}
             perfil={perfil} tipo={tipo}
             theme={survey.installation?.theme ?? survey.settings?.theme}
@@ -325,7 +388,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
           <StepNPS
             key={currentStep.key}
             step={currentStep}
-            onNext={d => next('nps', d)}
+            onNext={d => next(currentStep.key, d)}
             onBack={back}
             tipo={tipo}
           />
