@@ -179,10 +179,11 @@ export default function CommunityInstallManager({
                 </button>
               </div>
 
-              {/* Linha de datas — compacta, abaixo do status */}
-              <div className="flex items-center gap-3 mt-2">
-                <div className="flex items-center gap-1.5">
-                  <label className="text-xs text-gray-400 whitespace-nowrap">Abertura</label>
+              {/* Datas — alinhadas sob o nome da escola */}
+              <div className="flex items-center gap-4 mt-1.5 pl-0">
+                <span className="text-xs text-gray-400 w-16 shrink-0">Período</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-gray-400">De</span>
                   <input
                     type="datetime-local"
                     value={localDates[inst.community_id]?.open_date?.slice(0, 16) ?? ''}
@@ -190,11 +191,11 @@ export default function CommunityInstallManager({
                     onChange={e =>
                       handleDateChange(inst.community_id, 'open_date', e.target.value || null)
                     }
-                    className="border border-gray-200 rounded-[4.8px] px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#F7941D] disabled:opacity-50 w-[168px]"
+                    className="border border-gray-200 bg-gray-50 rounded-[4.8px] px-2 py-0.5 text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-[#F7941D] focus:bg-white disabled:opacity-50"
                   />
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <label className="text-xs text-gray-400 whitespace-nowrap">Encerramento</label>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-gray-400">até</span>
                   <input
                     type="datetime-local"
                     value={localDates[inst.community_id]?.close_date?.slice(0, 16) ?? ''}
@@ -202,7 +203,7 @@ export default function CommunityInstallManager({
                     onChange={e =>
                       handleDateChange(inst.community_id, 'close_date', e.target.value || null)
                     }
-                    className="border border-gray-200 rounded-[4.8px] px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#F7941D] disabled:opacity-50 w-[168px]"
+                    className="border border-gray-200 bg-gray-50 rounded-[4.8px] px-2 py-0.5 text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-[#F7941D] focus:bg-white disabled:opacity-50"
                   />
                 </div>
               </div>
