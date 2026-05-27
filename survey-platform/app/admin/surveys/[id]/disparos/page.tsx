@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import DisparoForm from './DisparoForm'
 import { getBroadcasts } from './actions'
+import { formatCommunityId } from '@/lib/community-name'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -45,6 +46,9 @@ export default async function DisparosPage({ params }: PageProps) {
     label: (c.theme as { nomeEscola?: string })?.nomeEscola ?? c.community_id,
     status: c.status,
   }))
+
+  // Mapa community_id → nome legível para o histórico de disparos
+  const communityNameMap = Object.fromEntries(communityOptions.map(c => [c.id, c.label]))
 
   return (
     <div className="p-6 max-w-4xl">
@@ -96,7 +100,10 @@ export default async function DisparosPage({ params }: PageProps) {
                     <td className="px-4 py-2.5 text-xs text-gray-700">
                       {b.community_ids.length === 0
                         ? 'Todas'
-                        : b.community_ids.slice(0, 2).join(', ') + (b.community_ids.length > 2 ? ` +${b.community_ids.length - 2}` : '')}
+                        : b.community_ids
+                            .slice(0, 2)
+                            .map((cid: string) => communityNameMap[cid] ?? formatCommunityId(cid))
+                            .join(', ') + (b.community_ids.length > 2 ? ` +${b.community_ids.length - 2}` : '')}
                     </td>
                     <td className="px-4 py-2.5 text-xs text-gray-500 capitalize">{b.channel.replace('_', '+')}</td>
                     <td className="px-4 py-2.5">

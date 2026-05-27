@@ -7,11 +7,13 @@ import {
   updateCommunityStatus,
   removeCommunity,
 } from './install-actions'
+import { CommunityDisplay } from '@/lib/community-name'
 
 interface CommunityInstall {
   community_id: string
   status: string
   active: boolean
+  nomeEscola?: string | null
 }
 
 const KNOWN_COMMUNITIES = [
@@ -74,9 +76,11 @@ export default function CommunityInstallManager({
         <div className="divide-y divide-gray-100">
           {installs.map(inst => (
             <div key={inst.community_id} className="flex items-center gap-3 py-2.5">
-              <span className="font-mono text-xs text-gray-700 flex-1 truncate">
-                {inst.community_id}
-              </span>
+              <CommunityDisplay
+                communityId={inst.community_id}
+                nomeEscola={inst.nomeEscola}
+                className="flex-1 min-w-0"
+              />
 
               {/* Status */}
               <select

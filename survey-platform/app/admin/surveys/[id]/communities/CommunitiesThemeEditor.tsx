@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { saveCommunityTheme, updateCommunityDates } from './actions'
+import { CommunityDisplay } from '@/lib/community-name'
 
 interface Community {
   id: string
@@ -65,9 +66,12 @@ export default function CommunitiesThemeEditor({ surveyId, communities }: Props)
                       </div>
                     </td>
 
-                    {/* Community ID */}
+                    {/* Community ID + Nome */}
                     <td className="px-4 py-3">
-                      <div className="text-sm font-mono text-gray-900">{community.community_id}</div>
+                      <CommunityDisplay
+                        communityId={community.community_id}
+                        nomeEscola={community.theme?.nomeEscola}
+                      />
                     </td>
 
                     {/* Nome escola */}
