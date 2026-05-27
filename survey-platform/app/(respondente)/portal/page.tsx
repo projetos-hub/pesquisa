@@ -132,8 +132,7 @@ export default function PortalPage() {
   if (surveys && surveys.length > 1) {
     function fmtDate(d: string | null) {
       if (!d) return null
-      const [y, m, day] = d.split('-')
-      return `${day}/${m}/${y}`
+      return new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
     }
 
     return (
