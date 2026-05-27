@@ -43,6 +43,7 @@ export async function GET(req: Request) {
     `)
     .eq('community_id', communityId)
     .eq('active', true)
+    .eq('status', 'ativa')
     .eq('surveys.status', 'ativa')
     .order('close_date', { ascending: true, nullsFirst: false })
 
