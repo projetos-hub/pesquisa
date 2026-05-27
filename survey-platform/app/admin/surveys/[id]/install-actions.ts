@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-service'
 
@@ -59,6 +59,7 @@ export async function installCommunity(surveyId: string, formData: FormData) {
     if (error) return { error: 'Erro ao instalar: ' + error.message }
 
     revalidatePath(`/admin/surveys/${surveyId}`)
+    revalidateTag('survey-config')
     return {}
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro desconhecido' }
@@ -76,6 +77,7 @@ export async function toggleCommunityActive(surveyId: string, communityId: strin
       .eq('community_id', communityId)
     if (error) return { error: error.message }
     revalidatePath(`/admin/surveys/${surveyId}`)
+    revalidateTag('survey-config')
     return {}
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro desconhecido' }
@@ -93,6 +95,7 @@ export async function updateCommunityStatus(surveyId: string, communityId: strin
       .eq('community_id', communityId)
     if (error) return { error: error.message }
     revalidatePath(`/admin/surveys/${surveyId}`)
+    revalidateTag('survey-config')
     return {}
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro desconhecido' }
