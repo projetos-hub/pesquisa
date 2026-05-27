@@ -1,12 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { saveCommunityTheme } from './actions'
+import { saveCommunityTheme, updateCommunityDates } from './actions'
 
 interface Community {
   id: string
   community_id: string
   logoUrl: string
+  open_date?: string | null
+  close_date?: string | null
+  status?: string | null
   theme?: {
     nomeEscola?: string
     primaryColor?: string
@@ -163,10 +166,26 @@ function ThemeEditForm({ surveyId, community, onClose }: FormProps) {
       }
     )
 
+    if (result.error) {
+      setIsPending(false)
+      setError(result.error)
+      return
+    }
+
+    // Salva datas de abertura/encerramento
+    const openDate  = (formData.get('open_date')  as string) || null
+    const closeDate = (formData.get('close_date') as string) || null
+    const datesResult = await updateCommunityDates(
+      surveyId,
+      community.community_id,
+      openDate,
+      closeDate,
+    )
+
     setIsPending(false)
 
-    if (result.error) {
-      setError(result.error)
+    if (datesResult.error) {
+      setError(datesResult.error)
     } else {
       onClose()
     }
@@ -260,6 +279,50 @@ function ThemeEditForm({ surveyId, community, onClose }: FormProps) {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D] font-mono text-xs"
               />
               <p className="text-xs text-gray-500 mt-1">Exibido no ThankYou para promotores (NPS 9-10)</p>
+            </div>
+
+            {/* Datas de abertura e encerramento */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                Datas desta comunidade
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Abertura</label>
+                  <input
+                    type="datetime-local"
+                    name="open_date"
+                    defaultValue={
+                      community.open_date
+                        ? community.open_date.slice(0, 16)
+                        : ''
+                    }
+                    className="w-full border border-gray-300 rounded-[4.8px] px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#F7941D] focus:border-[#F7941D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Encerramento</label>
+                  <input
+                    type="datetime-local"
+                    name="close_date"
+                    defaultValue={
+                      community.close_date
+                        ? community.close_date.slice(0, 16)
+                        : ''
+                    }
+                    className="w-full border border-gray-300 rounded-[4.8px] px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#F7941D] focus:border-[#F7941D]"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                {community.status === 'encerrada'
+                  ? 'Encerrada'
+                  : community.status === 'nao_aberta'
+                  ? 'Ainda nao aberta'
+                  : community.status === 'ativa'
+                  ? 'Ativa'
+                  : 'Deixe em branco para usar as datas globais da pesquisa.'}
+              </p>
             </div>
 
             {/* Error */}

@@ -23,7 +23,7 @@ export default async function CommunitiesPage({ params }: PageProps) {
   // Busca todas as comunidades da pesquisa
   const { data: communities } = await supabase
     .from('survey_communities')
-    .select('id, community_id, theme')
+    .select('id, community_id, theme, open_date, close_date, status')
     .eq('survey_id', id)
     .order('community_id', { ascending: true })
 
@@ -57,6 +57,9 @@ export default async function CommunitiesPage({ params }: PageProps) {
       ? c.theme
       : (globalThemeMap.get(c.community_id) ?? c.theme),
     logoUrl: `${supabaseUrl}/storage/v1/object/public/school-assets/${c.community_id}/logo.png`,
+    open_date:  c.open_date  ?? null,
+    close_date: c.close_date ?? null,
+    status:     c.status     ?? null,
   }))
 
   // Conta comunidades com tema configurado
