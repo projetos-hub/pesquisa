@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { CommunityDisplay } from '@/lib/community-name'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -138,7 +139,9 @@ export default async function ResponsesPage({ params, searchParams }: PageProps)
                       {session.perfil === 'aluno' ? 'Aluno' : 'Responsável'}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-gray-500 font-mono text-xs">{session.school || '—'}</td>
+                  <td className="px-4 py-2.5">
+                    <CommunityDisplay communityId={session.school || ''} />
+                  </td>
                   <td className="px-4 py-2.5 text-gray-500 text-xs">{session.serie || '—'}</td>
                   <td className="px-4 py-2.5 text-gray-500 text-xs">{session.onda || '—'}</td>
                   <td className={`px-4 py-2.5 text-center text-sm ${npsClass(npsScore)}`}>

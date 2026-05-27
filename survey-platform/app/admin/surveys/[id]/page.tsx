@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import SurveyEditForm from './SurveyEditForm'
 import QuestionEditor from './QuestionEditor'
 import CommunityInstallManager from './CommunityInstallManager'
+import { formatCommunityId } from '@/lib/community-name'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -42,10 +43,10 @@ export default async function SurveyDetailPage({ params }: PageProps) {
     options: (optionsRaw ?? []).filter(o => o.question_id === q.id),
   }))
 
-  // Comunidades instaladas
+  // Comunidades instaladas (inclui theme para exibir nomeEscola)
   const { data: installs } = await supabase
     .from('survey_communities')
-    .select('community_id, status, active')
+    .select('community_id, status, active, theme')
     .eq('survey_id', id)
     .order('community_id', { ascending: true })
 
@@ -101,14 +102,10 @@ export default async function SurveyDetailPage({ params }: PageProps) {
             <div className="space-y-2">
               {topSchools.map(([school, count]) => (
                 <div key={school} className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600 font-mono text-xs">{school}</span>
+                  <span className="text-gray-600 text-xs">{formatCommunityId(school)}</span>
                   <div className="flex items-center gap-2">
                     <div
-<<<<<<< HEAD
                       className="h-1.5 bg-[#F7941D]/30 rounded-full"
-=======
-                      className="h-1.5 bg-[#F7941D]/20 rounded-full"
->>>>>>> origin/main
                       style={{ width: `${Math.round((count / total) * 80 + 20)}px` }}
                     />
                     <span className="text-gray-900 font-medium w-6 text-right">{count}</span>
@@ -127,7 +124,12 @@ export default async function SurveyDetailPage({ params }: PageProps) {
           </p>
           <CommunityInstallManager
             surveyId={id}
-            installs={installs ?? []}
+            installs={(installs ?? []).map(i => ({
+              community_id: i.community_id,
+              status:       i.status,
+              active:       i.active,
+              nomeEscola:   (i.theme as { nomeEscola?: string } | null)?.nomeEscola ?? null,
+            }))}
           />
         </div>
 

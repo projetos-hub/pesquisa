@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { saveCommunityTheme } from './actions'
 import type { Community } from './page'
+import { CommunityDisplay } from '@/lib/community-name'
 
 interface Props {
   communities: Community[]
@@ -41,7 +42,10 @@ export default function CommunitiesThemeEditor({ communities }: Props) {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="text-sm font-mono text-gray-900">{community.community_id}</div>
+                      <CommunityDisplay
+                        communityId={community.community_id}
+                        nomeEscola={community.nome_escola}
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <div className="text-sm text-gray-600">{community.nome_escola || '—'}</div>
