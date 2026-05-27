@@ -70,6 +70,68 @@ export async function saveCommunityTheme(
   }
 }
 
+function calcStatus(open: string | null, close: string | null): string {
+  const now = new Date()
+  if (close && new Date(close) < now) return 'encerrada'
+  if (open  && new Date(open)  > now) return 'nao_aberta'
+  return 'ativa'
+}
+
+export async function updateCommunityDates(
+  surveyId: string,
+  communityId: string,
+  openDate: string | null,
+  closeDate: string | null,
+): Promise<{ error?: string }> {
+  try {
+    await requireAuth()
+  } catch {
+    return { error: 'Não autorizado' }
+  }
+
+  if (!surveyId || !communityId) return { error: 'Parâmetros inválidos' }
+
+  // Normaliza datetime-local (sem tz) para TIMESTAMPTZ com offset de Brasília
+  const toTimestamptz = (v: string | null): string | null => {
+    if (!v) return null
+    // Se já tem offset (+/-HH:MM ou Z), usa como está
+    if (/[Z+\-]\d{0,2}:?\d{0,2}$/.test(v)) return v
+    // datetime-local: 'YYYY-MM-DDTHH:mm' → append '-03:00'
+    return `${v}:00-03:00`
+  }
+
+  const open  = toTimestamptz(openDate)
+  const close = toTimestamptz(closeDate)
+
+  if (open && close && new Date(open) >= new Date(close)) {
+    return { error: 'Data de abertura deve ser anterior ao encerramento' }
+  }
+
+  const supabase = createServiceClient()
+
+  const updatePayload: Record<string, unknown> = {
+    open_date:  open,
+    close_date: close,
+  }
+
+  // Recalcula status apenas se ao menos uma data foi fornecida
+  if (open || close) {
+    updatePayload.status = calcStatus(open, close)
+  }
+
+  const { error } = await supabase
+    .from('survey_communities')
+    .update(updatePayload)
+    .eq('survey_id', surveyId)
+    .eq('community_id', communityId)
+
+  if (error) return { error: error.message }
+
+  revalidatePath(`/admin/surveys/${surveyId}/communities`)
+  revalidateTag('survey-config', 'default')
+  return {}
+}
+
 export async function inheritThemesFromPreviousSurvey(surveyId: string) {
   try {
     await requireAuth()

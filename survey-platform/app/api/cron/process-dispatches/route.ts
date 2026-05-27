@@ -45,6 +45,7 @@ export async function GET(request: Request) {
     .select('id')
     .eq('status', 'sending')
     .eq('personalized', true)
+    .order('created_at', { ascending: false })
     .limit(5)
 
   const inProgressJobs: { id: string; community_id: string; dispatchId: string }[] = []
@@ -85,6 +86,41 @@ export async function GET(request: Request) {
       return { jobId: job.id, ...result }
     })
   )
+
+  // ── 2b. Fecha dispatches cujos jobs todos completaram ─────────────────────
+  // O cron chama executePersonalizedJob diretamente (sem executeDispatch), então
+  // a lógica de fechar o pai nunca roda automaticamente — sem isso, dispatches
+  // ficam em 'sending' para sempre (zombie).
+  const dispatchIdsToCheck = [...new Set(inProgressJobs.map(j => j.dispatchId))]
+
+  for (const dispatchId of dispatchIdsToCheck) {
+    const { data: allJobs } = await supabase
+      .from('survey_dispatch_jobs')
+      .select('status')
+      .eq('dispatch_id', dispatchId)
+
+    if (!allJobs || allJobs.length === 0) continue
+
+    const stillRunning = allJobs.filter(j => j.status === 'pending' || j.status === 'sending')
+    if (stillRunning.length > 0) continue  // ainda há trabalho a fazer neste dispatch
+
+    const sentCount   = allJobs.filter(j => j.status === 'sent').length
+    const failedCount = allJobs.filter(j => j.status === 'failed').length
+    const finalStatus =
+      failedCount === 0 ? 'sent' :
+      sentCount   === 0 ? 'failed' : 'partial_failure'
+
+    await supabase
+      .from('survey_dispatches')
+      .update({
+        status:         finalStatus,
+        completed_jobs: sentCount,
+        failed_jobs:    failedCount,
+        completed_at:   new Date().toISOString(),
+      })
+      .eq('id', dispatchId)
+      .eq('status', 'sending')  // guard: só fecha se ainda estava 'sending' (evita race)
+  }
 
   // ── 3. Resolve layers_user_id de amostras pendentes (50 por ciclo) ──────────
   // Resolve amostras pendentes — processa tudo com concorrência 20
