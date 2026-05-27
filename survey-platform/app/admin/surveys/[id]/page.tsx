@@ -43,10 +43,10 @@ export default async function SurveyDetailPage({ params }: PageProps) {
     options: (optionsRaw ?? []).filter(o => o.question_id === q.id),
   }))
 
-  // Comunidades instaladas (inclui theme para exibir nomeEscola)
+  // Comunidades instaladas (inclui theme para exibir nomeEscola e datas por comunidade)
   const { data: installs } = await supabase
     .from('survey_communities')
-    .select('community_id, status, active, theme')
+    .select('community_id, status, active, theme, open_date, close_date')
     .eq('survey_id', id)
     .order('community_id', { ascending: true })
 
@@ -129,6 +129,8 @@ export default async function SurveyDetailPage({ params }: PageProps) {
               status:       i.status,
               active:       i.active,
               nomeEscola:   (i.theme as { nomeEscola?: string } | null)?.nomeEscola ?? null,
+              open_date:    i.open_date as string | null ?? null,
+              close_date:   i.close_date as string | null ?? null,
             }))}
           />
         </div>
