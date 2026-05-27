@@ -56,6 +56,7 @@ export async function updateSurvey(
 
   revalidatePath(`/admin/surveys/${id}`)
   revalidatePath('/admin/surveys')
+  revalidateTag('survey-config', 'default')
   return {}
 }
 

@@ -13,6 +13,14 @@ export default function PortalPage() {
   const [communityId, setCommunityId] = useState('')
   const [error, setError] = useState<string | null>(null)
 
+  function buildSurveyUrl(slug: string, cId: string, uId: string, aId: string, sess: string) {
+    const p = new URLSearchParams({ communityId: cId })
+    if (uId)  p.set('userId',    uId)
+    if (aId)  p.set('accountId', aId)
+    if (sess) p.set('session',   sess)
+    return `/p/${slug}?${p.toString()}`
+  }
+
   useEffect(() => {
     async function init() {
       let cId = ''
@@ -52,7 +60,7 @@ export default function PortalPage() {
       if (aId)  qs.set('accountId', aId)
       if (sess) qs.set('session',   sess)
 
-      const res = await fetch(`/api/portal/resolve?communityId=${encodeURIComponent(cId)}`)
+      const res = await fetch('/api/portal/resolve?' + qs.toString())
       if (!res.ok) {
         setError('erro_api')
         return
@@ -78,14 +86,6 @@ export default function PortalPage() {
 
     init()
   }, [router])
-
-  function buildSurveyUrl(slug: string, cId: string, uId: string, aId: string, sess: string) {
-    const p = new URLSearchParams({ communityId: cId })
-    if (uId)  p.set('userId',    uId)
-    if (aId)  p.set('accountId', aId)
-    if (sess) p.set('session',   sess)
-    return `/p/${slug}?${p.toString()}`
-  }
 
   // ── Telas de estado ──────────────────────────────────────────────────────────
 

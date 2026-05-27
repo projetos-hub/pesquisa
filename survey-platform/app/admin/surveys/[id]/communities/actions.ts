@@ -114,10 +114,8 @@ export async function updateCommunityDates(
     close_date: close,
   }
 
-  // Recalcula status apenas se ao menos uma data foi fornecida
-  if (open || close) {
-    updatePayload.status = calcStatus(open, close)
-  }
+  // Sempre recalcula status — se ambas as datas forem removidas, volta para 'ativa'
+  updatePayload.status = (open || close) ? calcStatus(open, close) : 'ativa'
 
   const { error } = await supabase
     .from('survey_communities')

@@ -65,30 +65,38 @@ export async function installCommunity(surveyId: string, formData: FormData) {
   }
 }
 
-export async function toggleCommunityActive(surveyId: string, communityId: string, active: boolean) {
+export async function toggleCommunityActive(surveyId: string, communityId: string, active: boolean): Promise<{ error?: string }> {
   try {
     await requireAuth()
     const supabase = createServiceClient()
-    await supabase
+    const { error } = await supabase
       .from('survey_communities')
       .update({ active })
       .eq('survey_id', surveyId)
       .eq('community_id', communityId)
+    if (error) return { error: error.message }
     revalidatePath(`/admin/surveys/${surveyId}`)
-  } catch { /* silencia */ }
+    return {}
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Erro desconhecido' }
+  }
 }
 
-export async function updateCommunityStatus(surveyId: string, communityId: string, status: string) {
+export async function updateCommunityStatus(surveyId: string, communityId: string, status: string): Promise<{ error?: string }> {
   try {
     await requireAuth()
     const supabase = createServiceClient()
-    await supabase
+    const { error } = await supabase
       .from('survey_communities')
       .update({ status })
       .eq('survey_id', surveyId)
       .eq('community_id', communityId)
+    if (error) return { error: error.message }
     revalidatePath(`/admin/surveys/${surveyId}`)
-  } catch { /* silencia */ }
+    return {}
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Erro desconhecido' }
+  }
 }
 
 export async function removeCommunity(surveyId: string, communityId: string) {

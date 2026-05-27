@@ -84,7 +84,7 @@ const getCachedSurveyConfig = unstable_cache(
     //     Garante que open_date/close_date salvos no admin reflitam para o respondente
     if (!installation && (survey.open_date || survey.close_date)) {
       const now = new Date()
-      let respondentStatus = 'aberta'
+      let respondentStatus = 'ativa'
       if (survey.close_date && new Date(survey.close_date) < now) {
         respondentStatus = 'encerrada'
       } else if (survey.open_date && new Date(survey.open_date) > now) {
