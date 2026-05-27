@@ -1,3 +1,5 @@
+'use client'
+
 // Resolve o nome legível de uma comunidade a partir do community_id
 // Usa nomeEscola do theme (survey_communities) se disponível,
 // senão formata o community_id (ex: "matriz-bangu" → "Matriz Bangu")

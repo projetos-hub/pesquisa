@@ -132,7 +132,7 @@ const getCachedSurveyConfig = unstable_cache(
     return { error: null, status: 200, data: config, surveyId: survey.id, accessControl: survey.access_control }
   },
   ['survey-config'],
-  { revalidate: 60 }
+  { revalidate: 60, tags: ['survey-config'] }
 )
 
 export async function GET(req: Request, { params }: RouteContext) {
