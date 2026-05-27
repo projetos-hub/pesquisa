@@ -14,25 +14,27 @@ interface RouteContext {
 // Reduz 4 queries por acesso a 1 query por minuto.
 const getCachedSurveyConfig = unstable_cache(
   async (slug: string, communityId: string) => {
-    const supabase = createClient(
+    const anonClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
       { auth: { persistSession: false } }
     )
+    // Com communityId: service client bypassa RLS para ler surveys não-ativas
+    // (o controle de acesso é feito pela survey_communities.status)
+    // Sem communityId: anon client + RLS garante apenas surveys 'ativa'
+    const supabase = communityId ? createServiceClient() : anonClient
 
     // 1. Busca o template da pesquisa pelo slug
-    //    - Sem communityId: exige surveys.status = 'ativa' (controle global)
-    //    - Com communityId: aceita qualquer status global; survey_communities.status controla o acesso
-    let surveyQuery = supabase
+    //    - Sem communityId: RLS exige surveys.status = 'ativa' (controle global)
+    //    - Com communityId: service client lê qualquer status; survey_communities.status controla acesso
+    const baseQuery = supabase
       .from('surveys')
       .select('id, slug, title, survey_type, target_roles, status, settings, access_control, open_date, close_date')
       .eq('slug', slug)
 
-    if (!communityId) {
-      surveyQuery = surveyQuery.eq('status', 'ativa')
-    }
-
-    const { data: survey, error: surveyError } = await surveyQuery.single()
+    const { data: survey, error: surveyError } = await (
+      communityId ? baseQuery : baseQuery.eq('status', 'ativa')
+    ).single()
 
     if (surveyError || !survey) {
       return { error: 'Survey not found', status: 404, data: null }
