@@ -20,19 +20,26 @@ const getCachedSurveyConfig = unstable_cache(
       { auth: { persistSession: false } }
     )
 
-    // 1. Busca o template da pesquisa pelo slug (status 'ativa' garantido pelo RLS)
-    const { data: survey, error: surveyError } = await supabase
+    // 1. Busca o template da pesquisa pelo slug
+    //    - Sem communityId: exige surveys.status = 'ativa' (controle global)
+    //    - Com communityId: aceita qualquer status global; survey_communities.status controla o acesso
+    let surveyQuery = supabase
       .from('surveys')
       .select('id, slug, title, survey_type, target_roles, status, settings, access_control, open_date, close_date')
       .eq('slug', slug)
-      .eq('status', 'ativa')
-      .single()
+
+    if (!communityId) {
+      surveyQuery = surveyQuery.eq('status', 'ativa')
+    }
+
+    const { data: survey, error: surveyError } = await surveyQuery.single()
 
     if (surveyError || !survey) {
       return { error: 'Survey not found', status: 404, data: null }
     }
 
     // 2. Valida acesso via survey_communities (quando communityId é fornecido)
+    //    A instalação por comunidade é a fonte de verdade de status quando communityId existe.
     let installation: InstallationRow | undefined
     if (communityId) {
       const { data: inst, error: instError } = await supabase

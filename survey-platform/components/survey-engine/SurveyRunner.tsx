@@ -269,6 +269,19 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     )
   }
 
+  if (status === 'pausada') {
+    return (
+      <div className="card" style={themeVars}>
+        <div className="header"><h1>{survey.titulo}</h1></div>
+        <div className="prazo-screen">
+          <div className="icon">⏸</div>
+          <h2>Pesquisa pausada</h2>
+          <p>Esta pesquisa está temporariamente pausada. Tente novamente em breve.</p>
+        </div>
+      </div>
+    )
+  }
+
   // ── Steps ativos ─────────────────────────────────────────────────────────────
   const activeSteps = buildActiveSteps(survey, perfil, answers)
   const currentIdx  = activeSteps.findIndex(s => stepId(s) === currentKey)
