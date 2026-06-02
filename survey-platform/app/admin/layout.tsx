@@ -64,6 +64,13 @@ export default async function AdminLayout({
             <span>📊</span>
             Auditoria
           </Link>
+          <Link
+            href="/admin/analytics"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-[#A0AEC0] rounded-lg hover:bg-[#2D3748] transition-colors"
+          >
+            <span>📈</span>
+            Analytics
+          </Link>
         </nav>
 
         <div className="p-3 border-t border-[#2D3748]">
