@@ -251,27 +251,26 @@ export async function sendToOneCommunity(
 // ─── fetchCommunityUsers ──────────────────────────────────────────────────────
 //
 // Busca usuários de uma comunidade via Layers Hub API com paginação.
+// A Layers aceita apenas um role por request — quando múltiplos roles são
+// selecionados, faz uma chamada por role e deduplica por _id.
 
-async function fetchCommunityUsers(
+async function fetchUsersForRole(
   communityId: string,
-  roles: TargetRole[],
-  limit = 200,
-  offset = 0,
+  token: string,
+  role: TargetRole | null,
+  limit: number,
+  offset: number,
 ): Promise<{ users: LayersUserListItem[]; total: number }> {
-  const token = process.env.LAYERS_API_TOKEN
-  if (!token) return { users: [], total: 0 }
+  const params = new URLSearchParams({
+    active: 'true',
+    limit:  String(limit),
+    offset: String(offset),
+  })
+  if (role !== null) {
+    params.set('role', role)
+  }
 
   try {
-    const params = new URLSearchParams({
-      active: 'true',
-      limit:  String(limit),
-      offset: String(offset),
-    })
-    // Filtra por role se não for 'all'
-    if (roles.length > 0 && !(roles.includes('guardian') && roles.includes('student') && roles.includes('admin'))) {
-      params.set('role', roles[0]) // Layers aceita um role por vez
-    }
-
     const res = await fetch(`${LAYERS_BASE_URL}/v1/users?${params}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -294,6 +293,51 @@ async function fetchCommunityUsers(
   } catch {
     return { users: [], total: 0 }
   }
+}
+
+async function fetchCommunityUsers(
+  communityId: string,
+  roles: TargetRole[],
+  limit = 200,
+  offset = 0,
+): Promise<{ users: LayersUserListItem[]; total: number }> {
+  const token = process.env.LAYERS_API_TOKEN
+  if (!token) return { users: [], total: 0 }
+
+  const allRoles: TargetRole[] = ['guardian', 'student', 'admin']
+  const isAllRoles = allRoles.every(r => roles.includes(r))
+
+  // Sem filtro de role — busca todos os usuários da comunidade
+  if (roles.length === 0 || isAllRoles) {
+    return fetchUsersForRole(communityId, token, null, limit, offset)
+  }
+
+  // Apenas um role — chamada direta sem deduplicação
+  if (roles.length === 1) {
+    return fetchUsersForRole(communityId, token, roles[0], limit, offset)
+  }
+
+  // Múltiplos roles — a Layers aceita 1 por vez; faz uma chamada por role e deduplica
+  // Nota: o offset é aplicado após a deduplicação para manter consistência entre lotes
+  const results = await Promise.all(
+    roles.map(role => fetchUsersForRole(communityId, token, role, limit + offset, 0))
+  )
+
+  const seen = new Set<string>()
+  const merged: LayersUserListItem[] = []
+  for (const { users } of results) {
+    for (const u of users) {
+      if (!seen.has(u._id)) {
+        seen.add(u._id)
+        merged.push(u)
+      }
+    }
+  }
+
+  const total = merged.length
+  const page  = merged.slice(offset, offset + limit)
+
+  return { users: page, total }
 }
 
 // ─── formatFirstName ─────────────────────────────────────────────────────────

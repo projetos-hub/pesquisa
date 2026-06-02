@@ -44,15 +44,26 @@ export async function createDisparo(
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://pesquisa-nu-sand.vercel.app'
   const surveyUrl = `${appUrl}/p/${surveySlug}`
 
+  const notificationTitle = `Pesquisa de Satisfação — ${surveyTitle}`
+  const notificationBody  = 'Sua opinião é muito importante. Responda em menos de 2 minutos.'
+
+  // Layers API v2 espera channels como objeto, não array de strings
+  const buildChannels = () => {
+    const usePush  = channel === 'push_email' || channel === 'push'
+    const useEmail = channel === 'push_email' || channel === 'email'
+    return {
+      ...(usePush  ? { pushNotification: { title: notificationTitle, body: notificationBody } } : {}),
+      ...(useEmail ? { email: { title: notificationTitle, body: notificationBody, actionLabel: 'Ver pesquisa' } } : {}),
+    }
+  }
+
   const payload = {
-    title: `Pesquisa de Satisfação — ${surveyTitle}`,
-    description: 'Sua opinião é muito importante. Responda em menos de 2 minutos.',
+    title:       notificationTitle,
+    description: notificationBody,
     targets,
     action: { type: 'external' as const, url: surveyUrl },
     ...(scheduledAt ? { scheduleDate: new Date(scheduledAt).toISOString() } : {}),
-    channels: channel === 'push_email' ? (['push', 'email'] as ('push' | 'email')[])
-            : channel === 'push'       ? (['push'] as ('push' | 'email')[])
-            : (['email'] as ('push' | 'email')[]),
+    channels: buildChannels(),
   }
 
   // Registra o broadcast antes de tentar enviar
