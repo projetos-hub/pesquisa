@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
+  LayoutDashboardIcon,
   ClipboardListIcon,
   DownloadIcon,
   BellIcon,
@@ -11,11 +12,12 @@ import {
 } from '@/app/admin/icons'
 
 const NAV_ITEMS = [
+  { href: '/admin',             label: 'Visão Geral',      icon: LayoutDashboardIcon, exact: true },
   { href: '/admin/surveys',     label: 'Pesquisas',        icon: ClipboardListIcon },
-  { href: '/admin/export',      label: 'Exportar',         icon: DownloadIcon },
   { href: '/admin/dispatch',    label: 'Disparos',         icon: BellIcon },
-  { href: '/admin/communities', label: 'Identidade Visual', icon: PaletteIcon },
   { href: '/admin/audit',       label: 'Auditoria',        icon: BarChart3Icon },
+  { href: '/admin/communities', label: 'Identidade Visual', icon: PaletteIcon },
+  { href: '/admin/export',      label: 'Exportar',         icon: DownloadIcon },
 ]
 
 export default function SidebarNav() {
@@ -23,8 +25,10 @@ export default function SidebarNav() {
 
   return (
     <nav className="flex-1 p-3 space-y-0.5 sidebar-scroll overflow-y-auto">
-      {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-        const isActive = pathname === href || pathname.startsWith(href + '/')
+      {NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => {
+        const isActive = exact
+          ? pathname === href
+          : pathname === href || pathname.startsWith(href + '/')
         return (
           <Link
             key={href}

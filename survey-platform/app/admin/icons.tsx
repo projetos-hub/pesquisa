@@ -167,3 +167,14 @@ export function MailIcon({ size = 16, strokeWidth = 1.75, className, style, 'ari
   )
 }
 
+export function LayoutDashboardIcon({ size = 16, strokeWidth = 1.75, className, style, 'aria-label': ariaLabel }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className} style={style} aria-hidden={!ariaLabel} aria-label={ariaLabel}>
+      <rect x="3" y="3" width="7" height="7"/>
+      <rect x="14" y="3" width="7" height="7"/>
+      <rect x="14" y="14" width="7" height="7"/>
+      <rect x="3" y="14" width="7" height="7"/>
+    </svg>
+  )
+}
+
