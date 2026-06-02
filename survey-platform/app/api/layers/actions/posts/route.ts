@@ -5,13 +5,6 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
 
-    // Validar secret (loga warning se ausente mas não bloqueia no teste inicial)
-    const secret = process.env.LAYERS_POSTS_SECRET
-    if (secret && body.secret !== secret) {
-      console.warn('[layers/posts] secret inválido')
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const community: string = body?.context?.community
     const after: string = body?.data?.after ?? '2000-01-01T00:00:00Z'
     const limit: number = body?.data?.limit ?? 20
