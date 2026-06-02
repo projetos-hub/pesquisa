@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase-service'
 import CommunitiesThemeEditor from './CommunitiesThemeEditor'
+import { Building2Icon, CheckCircleIcon } from '@/app/admin/icons'
 
 export interface Community {
   community_id: string
@@ -25,19 +26,41 @@ export default async function CommunitiesPage() {
 
   return (
     <div className="p-6">
+      {/* Page header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Identidade Visual</h1>
-        <p className="text-gray-600">Gerenciar temas, cores e logos das comunidades</p>
+        <h1 className="text-xl font-semibold tracking-tight text-[#1A202C]">Identidade Visual</h1>
+        <p className="text-sm text-[#718096] mt-0.5">Gerenciar temas, cores e logos das comunidades</p>
       </div>
 
+      {/* KPI cards */}
       <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="text-2xl font-bold text-[#F7941D]">{communities.length}</div>
-          <div className="text-xs text-gray-500 mt-0.5">Total de comunidades</div>
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="h-0.5 w-full" style={{ backgroundColor: '#F7941D' }} />
+          <div className="p-4">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <p className="text-xs text-[#718096]">Total de comunidades</p>
+                <p className="text-xl font-semibold text-[#1A202C] tabular-nums">{communities.length}</p>
+              </div>
+              <div className="rounded-lg p-2" style={{ backgroundColor: '#FDE8C8' }}>
+                <Building2Icon style={{ color: '#F7941D' }} size={20} strokeWidth={1.75} />
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="text-2xl font-bold text-green-600">{configuredCount}</div>
-          <div className="text-xs text-gray-500 mt-0.5">Com tema configurado</div>
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="h-0.5 w-full" style={{ backgroundColor: '#2D9E6B' }} />
+          <div className="p-4">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <p className="text-xs text-[#718096]">Com tema configurado</p>
+                <p className="text-xl font-semibold text-[#1A202C] tabular-nums">{configuredCount}</p>
+              </div>
+              <div className="rounded-lg p-2 bg-emerald-50">
+                <CheckCircleIcon className="text-emerald-600" size={20} strokeWidth={1.75} />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

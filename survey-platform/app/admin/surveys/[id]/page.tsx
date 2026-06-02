@@ -5,6 +5,7 @@ import SurveyEditForm from './SurveyEditForm'
 import QuestionEditor from './QuestionEditor'
 import CommunityInstallManager from './CommunityInstallManager'
 import { formatCommunityId } from '@/lib/community-name'
+import { ChevronLeftIcon, ClipboardListIcon, BellIcon, UsersIcon, GraduationCapIcon } from '@/app/admin/icons'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -72,44 +73,66 @@ export default async function SurveyDetailPage({ params }: PageProps) {
   return (
     <div className="p-6 max-w-3xl">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-3 mb-6">
-        <Link href="/admin/surveys" className="text-gray-400 hover:text-gray-600 text-sm">
-          ← Pesquisas
+      <div className="flex items-center gap-2 mb-6 text-sm">
+        <Link
+          href="/admin/surveys"
+          className="flex items-center gap-1 text-[#718096] hover:text-[#1A202C] transition-colors"
+        >
+          <ChevronLeftIcon size={15} strokeWidth={1.75} />
+          Pesquisas
         </Link>
-        <span className="text-gray-300">/</span>
-        <h2 className="text-lg font-semibold text-gray-900 truncate">{survey.title}</h2>
+        <span className="text-[#E2E8F0]">/</span>
+        <span className="font-medium text-[#1A202C] truncate">{survey.title}</span>
       </div>
 
       <div className="grid gap-6">
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: 'Total de respostas', value: total,       color: 'text-[#F7941D]' },
-            { label: 'Responsáveis',       value: responsaveis, color: 'text-blue-600' },
-            { label: 'Alunos',            value: alunos,       color: 'text-purple-600' },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className={`text-2xl font-bold ${color}`}>{value}</div>
-              <div className="text-xs text-gray-500 mt-0.5">{label}</div>
+            { label: 'Total de respostas', value: total,        icon: ClipboardListIcon, iconBg: 'bg-[#FDE8C8]', iconColor: 'text-[#F7941D]', accentColor: '#F7941D' },
+            { label: 'Responsáveis',       value: responsaveis, icon: UsersIcon,         iconBg: 'bg-blue-50',   iconColor: 'text-blue-600',  accentColor: '#3B82F6' },
+            { label: 'Alunos',             value: alunos,       icon: GraduationCapIcon, iconBg: 'bg-purple-50', iconColor: 'text-purple-600', accentColor: '#9333EA' },
+          ].map(({ label, value, icon: Icon, iconBg, iconColor, accentColor }) => (
+            <div key={label} className="bg-white rounded-xl shadow-sm overflow-hidden">
+              <div className="h-0.5 w-full" style={{ backgroundColor: accentColor }} />
+              <div className="p-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs text-[#718096]">{label}</p>
+                    <p className="text-xl font-semibold text-[#1A202C] mt-1 tabular-nums">{value}</p>
+                  </div>
+                  <div className={`rounded-lg p-2 ${iconBg}`}>
+                    <Icon className={iconColor} size={18} strokeWidth={1.75} />
+                  </div>
+                </div>
+              </div>
             </div>
           ))}
         </div>
 
         {/* Top escolas */}
         {topSchools.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <h3 className="text-sm font-medium text-gray-700 mb-3">Respostas por escola</h3>
-            <div className="space-y-2">
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <h3 className="text-sm font-semibold text-[#1A202C] mb-3">Respostas por escola</h3>
+            <div className="flex flex-col gap-2">
               {topSchools.map(([school, count]) => (
-                <div key={school} className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600 text-xs">{formatCommunityId(school)}</span>
-                  <div className="flex items-center gap-2">
+                <div key={school} className="flex items-center gap-3">
+                  <span className="w-36 shrink-0 text-xs text-[#718096] truncate">
+                    {formatCommunityId(school)}
+                  </span>
+                  <div className="flex-1 h-[14px] bg-[#F8F9FA] rounded-sm overflow-hidden">
                     <div
-                      className="h-1.5 bg-[#F7941D]/30 rounded-full"
-                      style={{ width: `${Math.round((count / total) * 80 + 20)}px` }}
+                      className="h-full rounded-sm transition-all duration-300"
+                      style={{
+                        width: `${Math.round((count / total) * 100)}%`,
+                        backgroundColor: '#F7941D',
+                        opacity: 0.6,
+                      }}
                     />
-                    <span className="text-gray-900 font-medium w-6 text-right">{count}</span>
                   </div>
+                  <span className="w-8 shrink-0 text-xs font-semibold text-[#1A202C] text-right tabular-nums">
+                    {count}
+                  </span>
                 </div>
               ))}
             </div>
@@ -117,9 +140,9 @@ export default async function SurveyDetailPage({ params }: PageProps) {
         )}
 
         {/* Comunidades instaladas */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Comunidades</h3>
-          <p className="text-xs text-gray-400 mb-4">
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h3 className="text-sm font-semibold text-[#1A202C] mb-2">Comunidades</h3>
+          <p className="text-xs text-[#718096] mb-4">
             Define em quais comunidades esta pesquisa aparece no portal Layers.
           </p>
           <CommunityInstallManager
@@ -136,37 +159,41 @@ export default async function SurveyDetailPage({ params }: PageProps) {
         </div>
 
         {/* Card de amostra */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-gray-700">Amostra Segmentada</h3>
-              <p className="text-xs text-gray-400 mt-0.5">
+              <h3 className="text-sm font-semibold text-[#1A202C]">Amostra Segmentada</h3>
+              <p className="text-xs text-[#718096] mt-0.5">
                 Faça upload de uma lista de usuários para segmentar esta pesquisa.
               </p>
             </div>
             <Link
               href={`/admin/surveys/${id}/sample`}
-              className="bg-[#F7941D] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#D97B10] transition-colors font-medium"
+              className="inline-flex items-center gap-1.5 text-white text-sm px-4 py-2 rounded-lg transition-colors font-medium min-h-[40px]"
+              style={{ backgroundColor: '#F7941D' }}
             >
-              📋 Gerenciar
+              <ClipboardListIcon size={15} strokeWidth={1.75} />
+              Gerenciar
             </Link>
           </div>
         </div>
 
         {/* Card de disparos */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-gray-700">Disparos</h3>
-              <p className="text-xs text-gray-400 mt-0.5">
+              <h3 className="text-sm font-semibold text-[#1A202C]">Disparos</h3>
+              <p className="text-xs text-[#718096] mt-0.5">
                 Envie notificações push e email para as famílias via Layers.
               </p>
             </div>
             <Link
               href={`/admin/surveys/${id}/dispatch`}
-              className="bg-[#F7941D] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#D97B10] transition-colors font-medium"
+              className="inline-flex items-center gap-1.5 text-white text-sm px-4 py-2 rounded-lg transition-colors font-medium min-h-[40px]"
+              style={{ backgroundColor: '#F7941D' }}
             >
-              📢 Disparar
+              <BellIcon size={15} strokeWidth={1.75} />
+              Disparar
             </Link>
           </div>
         </div>
@@ -175,35 +202,35 @@ export default async function SurveyDetailPage({ params }: PageProps) {
         <div className="flex justify-end gap-4">
           <Link
             href={`/admin/surveys/${id}/communities`}
-            className="text-sm text-[#F7941D] hover:text-[#D97B10] font-medium"
+            className="text-sm text-[#F7941D] hover:text-[#D97B10] font-medium transition-colors"
           >
             Identidade Visual →
           </Link>
           {total > 0 && (
             <Link
               href={`/admin/surveys/${id}/responses`}
-              className="text-sm text-[#F7941D] hover:text-[#D97B10] font-medium"
+              className="text-sm text-[#F7941D] hover:text-[#D97B10] font-medium transition-colors"
             >
               Ver todas as respostas →
             </Link>
           )}
           <Link
             href={`/admin/surveys/${id}/disparos`}
-            className="text-sm text-[#F7941D] hover:text-[#D97B10] font-medium"
+            className="text-sm text-[#F7941D] hover:text-[#D97B10] font-medium transition-colors"
           >
             Disparos →
           </Link>
         </div>
 
         {/* Formulário de edição */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Metadados</h3>
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h3 className="text-sm font-semibold text-[#1A202C] mb-4">Metadados</h3>
           <SurveyEditForm survey={survey} />
         </div>
 
         {/* Editor de perguntas */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Perguntas</h3>
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h3 className="text-sm font-semibold text-[#1A202C] mb-4">Perguntas</h3>
           <QuestionEditor surveyId={id} questions={questions} />
         </div>
       </div>

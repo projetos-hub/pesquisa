@@ -1,12 +1,13 @@
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import DeleteSurveyButton from './DeleteSurveyButton'
+import { PlusIcon } from '@/app/admin/icons'
 
 const STATUS: Record<string, { label: string; cls: string }> = {
-  rascunho:  { label: 'Rascunho',  cls: 'bg-gray-100 text-gray-600' },
-  ativa:     { label: 'Ativa',     cls: 'bg-green-100 text-green-700' },
-  pausada:   { label: 'Pausada',   cls: 'bg-yellow-100 text-yellow-700' },
-  encerrada: { label: 'Encerrada', cls: 'bg-red-100 text-red-700' },
+  rascunho:  { label: 'Rascunho',  cls: 'bg-slate-100 text-slate-600' },
+  ativa:     { label: 'Ativa',     cls: 'bg-emerald-50 text-emerald-700' },
+  pausada:   { label: 'Pausada',   cls: 'bg-amber-50 text-amber-700' },
+  encerrada: { label: 'Encerrada', cls: 'bg-red-50 text-red-700' },
 }
 
 export default async function SurveysPage() {
@@ -19,72 +20,79 @@ export default async function SurveysPage() {
 
   return (
     <div className="p-6">
+      {/* Page header */}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-lg font-semibold text-gray-900">Pesquisas</h2>
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-[#1A202C]">Pesquisas</h1>
+          <p className="text-sm text-[#718096] mt-0.5">Gerencie as pesquisas de satisfação</p>
+        </div>
         <Link
           href="/admin/surveys/new"
-          className="bg-[#F7941D] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#D97B10] transition-colors font-medium"
+          className="inline-flex items-center gap-1.5 text-white text-sm px-4 py-2 rounded-lg transition-colors font-medium min-h-[40px]"
+          style={{ backgroundColor: '#F7941D' }}
         >
-          + Nova pesquisa
+          <PlusIcon size={16} strokeWidth={2} />
+          Nova pesquisa
         </Link>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      {/* Table card */}
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">
+            <tr className="border-b border-[#E2E8F0] bg-[#F8F9FA]">
+              <th className="text-left text-xs font-medium text-[#718096] uppercase tracking-wider px-4 py-3">
                 Pesquisa
               </th>
-              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">
+              <th className="text-left text-xs font-medium text-[#718096] uppercase tracking-wider px-4 py-3">
                 Status
               </th>
-              <th className="text-right text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">
+              <th className="text-right text-xs font-medium text-[#718096] uppercase tracking-wider px-4 py-3">
                 Respostas
               </th>
-              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">
+              <th className="text-left text-xs font-medium text-[#718096] uppercase tracking-wider px-4 py-3">
                 Abertura
               </th>
-              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">
+              <th className="text-left text-xs font-medium text-[#718096] uppercase tracking-wider px-4 py-3">
                 Encerramento
               </th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-[#E2E8F0]">
             {surveys?.map(s => {
               const st = STATUS[s.status] ?? STATUS.rascunho
               const count = Array.isArray(s.response_sessions) ? s.response_sessions.length : 0
 
               return (
-                <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900">{s.title}</div>
-                    <div className="text-xs text-gray-400 mt-0.5">/p/{s.slug}</div>
+                <tr key={s.id} className="hover:bg-[#F8F9FA] transition-colors">
+                  <td className="px-4 py-3.5">
+                    <div className="font-medium text-[#1A202C]">{s.title}</div>
+                    <div className="text-xs text-[#718096] mt-0.5 font-mono">/p/{s.slug}</div>
                   </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${st.cls}`}>
+                  <td className="px-4 py-3.5">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${st.cls}`}>
                       {st.label}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                  <td className="px-4 py-3.5 text-right font-semibold text-[#1A202C] tabular-nums">
                     {count}
                   </td>
-                  <td className="px-4 py-3 text-gray-500">
+                  <td className="px-4 py-3.5 text-[#718096] text-sm">
                     {s.open_date
                       ? new Date(s.open_date).toLocaleDateString('pt-BR')
                       : '—'}
                   </td>
-                  <td className="px-4 py-3 text-gray-500">
+                  <td className="px-4 py-3.5 text-[#718096] text-sm">
                     {s.close_date
                       ? new Date(s.close_date).toLocaleDateString('pt-BR')
                       : '—'}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3.5 text-right">
                     <div className="flex items-center justify-end gap-4">
                       <Link
                         href={`/admin/surveys/${s.id}`}
-                        className="text-[#F7941D] hover:text-[#D97B10] font-medium text-sm"
+                        className="text-[#F7941D] hover:text-[#D97B10] font-medium text-sm transition-colors"
                       >
                         Editar →
                       </Link>
@@ -101,8 +109,9 @@ export default async function SurveysPage() {
 
             {!surveys?.length && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-gray-400">
-                  Nenhuma pesquisa cadastrada.
+                <td colSpan={6} className="px-4 py-12 text-center">
+                  <p className="text-[#718096] text-sm">Nenhuma pesquisa cadastrada.</p>
+                  <p className="text-[#718096] text-xs mt-1">Crie sua primeira pesquisa clicando em &quot;Nova pesquisa&quot;.</p>
                 </td>
               </tr>
             )}

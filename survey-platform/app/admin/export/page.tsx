@@ -1,5 +1,5 @@
-import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { DownloadIcon } from '@/app/admin/icons'
 
 interface Survey {
   id: string
@@ -25,51 +25,53 @@ export default async function ExportPage() {
 
   return (
     <div className="p-6">
-      {/* Header */}
+      {/* Page header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Exportar Respostas</h1>
-        <p className="text-gray-600">Selecione uma pesquisa e exporte todas as respostas em XLSX</p>
+        <h1 className="text-xl font-semibold tracking-tight text-[#1A202C]">Exportar Respostas</h1>
+        <p className="text-sm text-[#718096] mt-0.5">Selecione uma pesquisa e exporte todas as respostas em XLSX</p>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full">
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden overflow-x-auto">
+        <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Pesquisa</th>
-              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Status</th>
-              <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Respostas</th>
-              <th className="text-right text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3 w-40">Ação</th>
+            <tr className="border-b border-[#E2E8F0] bg-[#F8F9FA]">
+              <th className="text-left text-xs font-medium text-[#718096] uppercase tracking-wider px-4 py-3">Pesquisa</th>
+              <th className="text-left text-xs font-medium text-[#718096] uppercase tracking-wider px-4 py-3">Status</th>
+              <th className="text-center text-xs font-medium text-[#718096] uppercase tracking-wider px-4 py-3">Respostas</th>
+              <th className="text-right text-xs font-medium text-[#718096] uppercase tracking-wider px-4 py-3 w-40">Ação</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-[#E2E8F0]">
             {surveyData.map(survey => (
-              <tr key={survey.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3">
-                  <div className="font-medium text-gray-900">{survey.title}</div>
-                  <div className="text-xs text-gray-500 font-mono mt-0.5">{survey.slug}</div>
+              <tr key={survey.id} className="hover:bg-[#F8F9FA] transition-colors">
+                <td className="px-4 py-3.5">
+                  <div className="font-medium text-[#1A202C]">{survey.title}</div>
+                  <div className="text-xs text-[#718096] font-mono mt-0.5">{survey.slug}</div>
                 </td>
-                <td className="px-4 py-3">
-                  <span className={`inline-flex text-xs px-2.5 py-1 rounded-full font-medium ${
+                <td className="px-4 py-3.5">
+                  <span className={`inline-flex text-xs px-2.5 py-0.5 rounded-full font-medium ${
                     survey.status === 'ativa'
-                      ? 'bg-green-100 text-green-700'
+                      ? 'bg-emerald-50 text-emerald-700'
                       : survey.status === 'nao_aberta'
-                      ? 'bg-yellow-100 text-yellow-700'
-                      : 'bg-gray-100 text-gray-700'
+                      ? 'bg-amber-50 text-amber-700'
+                      : 'bg-slate-100 text-slate-600'
                   }`}>
                     {survey.status === 'ativa' ? 'Ativa' : survey.status === 'nao_aberta' ? 'Não aberta' : 'Encerrada'}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-center">
-                  <span className="font-semibold text-gray-900">{survey.responseCount}</span>
+                <td className="px-4 py-3.5 text-center">
+                  <span className="font-semibold text-[#1A202C] tabular-nums">{survey.responseCount}</span>
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-4 py-3.5 text-right">
                   <a
                     href={`/api/admin/export?surveyId=${survey.id}`}
                     download
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-[#F7941D] hover:bg-[#D97B10] rounded-lg transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition-colors min-h-[32px]"
+                    style={{ backgroundColor: '#F7941D' }}
                   >
-                    ⬇ XLSX
+                    <DownloadIcon size={12} strokeWidth={2} />
+                    XLSX
                   </a>
                 </td>
               </tr>
@@ -77,7 +79,7 @@ export default async function ExportPage() {
 
             {surveyData.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-10 text-center text-gray-400">
+                <td colSpan={4} className="px-4 py-12 text-center text-[#718096] text-sm">
                   Nenhuma pesquisa disponível.
                 </td>
               </tr>
