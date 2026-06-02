@@ -43,13 +43,23 @@ export interface LayersNotificationTarget {
   roles?: string[]
 }
 
+export interface LayersNotificationChannels {
+  pushNotification?: { title: string; body: string }
+  email?: {
+    title:          string
+    body:           string
+    actionLabel?:   string
+    backgroundUrl?: string
+  }
+}
+
 export interface LayersNotificationPayload {
   title: string
   description: string
   targets: LayersNotificationTarget[]
   action?: { type: 'external'; url: string }
   scheduleDate?: string
-  channels?: ('push' | 'email')[]
+  channels?: LayersNotificationChannels
 }
 
 // Lista turmas ativas de uma comunidade
