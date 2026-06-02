@@ -39,6 +39,10 @@ export async function updateSurvey(
   if (!title?.trim())  return { error: 'Título é obrigatório' }
   if (!status?.trim()) return { error: 'Status é obrigatório' }
 
+  if (open_date && close_date && new Date(open_date) >= new Date(close_date)) {
+    return { error: 'Data de abertura deve ser anterior ao encerramento' }
+  }
+
   const supabase = createServiceClient()
   const { error } = await supabase
     .from('surveys')
