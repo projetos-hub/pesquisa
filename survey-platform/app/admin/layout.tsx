@@ -58,10 +58,17 @@ export default async function AdminLayout({
             Identidade Visual
           </Link>
           <Link
-            href="/admin/audit"
+            href="/admin/reports"
             className="flex items-center gap-2 px-3 py-2 text-sm text-[#A0AEC0] rounded-lg hover:bg-[#2D3748] transition-colors"
           >
             <span>📊</span>
+            Relatórios
+          </Link>
+          <Link
+            href="/admin/audit"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-[#A0AEC0] rounded-lg hover:bg-[#2D3748] transition-colors"
+          >
+            <span>🔍</span>
             Auditoria
           </Link>
           <Link

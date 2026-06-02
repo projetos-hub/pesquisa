@@ -3,105 +3,13 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-service'
 import ExcelJS from 'exceljs'
+import { buildColumnSchema, META_HEADERS, getMetaValues } from '@/lib/report-xlsx'
+import type { SessionRow, QuestionRow, OptionRow } from '@/lib/report-queries'
 
 interface ResponseRow {
   id: string
   question_key: string
   value: unknown
-}
-
-interface SessionRow {
-  id: string
-  survey_id: string
-  community_id: string
-  user_id: string
-  submitted_at: string
-  perfil: string
-  nome_responsavel: string
-  nome_aluno: string
-  serie: string
-  email: string
-  school: string
-  onda: string
-  responses: ResponseRow[]
-}
-
-interface QuestionRow {
-  id: string
-  key: string
-  type: string
-  title: string
-  order_index: number
-}
-
-interface OptionRow {
-  question_id: string
-  order_index: number
-  label: string
-}
-
-type ColDef = {
-  header: string
-  getValue: (ans: Record<string, unknown>) => unknown
-}
-
-function buildColumnSchema(questions: QuestionRow[], options: OptionRow[]): ColDef[] {
-  const cols: ColDef[] = []
-
-  const optsByQuestion: Record<string, OptionRow[]> = options.reduce(
-    (acc, o) => {
-      if (!acc[o.question_id]) acc[o.question_id] = []
-      acc[o.question_id].push(o)
-      return acc
-    },
-    {} as Record<string, OptionRow[]>
-  )
-
-  for (const q of questions) {
-    if (q.type === 'welcome' || q.type === 'thankyou') continue
-
-    if (q.type === 'nps') {
-      cols.push({
-        header: q.title,
-        getValue: ans => (ans[q.key] as { nps?: number } | undefined)?.nps ?? '',
-      })
-    } else if (q.type === 'scale') {
-      for (const opt of optsByQuestion[q.id] ?? []) {
-        cols.push({
-          header: opt.label,
-          getValue: ans => {
-            const row = ans[q.key] as Record<string, number | string> | undefined
-            if (!row) return ''
-            // Tenta pelo índice numérico primeiro (novo formato após fix de StepEscala),
-            // depois pelo label literal (compatibilidade com respostas anteriores).
-            const byIndex = row[String(opt.order_index)]
-            if (byIndex != null) return byIndex
-            return row[opt.label] ?? ''
-          },
-        })
-      }
-    } else if (q.type === 'scale_sections') {
-      // Incluir como JSON raw — tratamento completo em versão futura
-      cols.push({
-        header: q.title,
-        getValue: ans => {
-          const val = ans[q.key]
-          return val ? JSON.stringify(val) : ''
-        },
-      })
-    } else if (q.type === 'text' || q.type === 'radio' || q.type === 'checkbox') {
-      cols.push({
-        header: q.title,
-        getValue: ans => {
-          const val = ans[q.key]
-          if (Array.isArray(val)) return val.join(', ')
-          return typeof val === 'string' ? val : val != null ? String(val) : ''
-        },
-      })
-    }
-  }
-
-  return cols
 }
 
 export async function GET(request: Request) {
@@ -179,20 +87,6 @@ export async function GET(request: Request) {
     // Build column schema from questions
     const columnSchema = buildColumnSchema(questions, options)
 
-    // Metadata columns (matching Metabase format)
-    const surveyTitle = survey.title
-    const META_HEADERS = ['postId', 'title', 'community', 'userId', 'userName', 'userEmail', 'tipoRespondente', 'answeredAt']
-    const getMetaValues = (s: SessionRow): unknown[] => [
-      s.id,
-      surveyTitle,
-      s.community_id,
-      s.user_id,
-      s.perfil === 'aluno' ? (s.nome_aluno || '') : (s.nome_responsavel || ''),
-      s.email || '',
-      s.perfil === 'aluno' ? 'estudante' : 'responsavel',
-      s.submitted_at,
-    ]
-
     // Build answer lookup
     const answersBySession = new Map<string, Record<string, unknown>>()
     for (const session of sessions) {
@@ -219,10 +113,11 @@ export async function GET(request: Request) {
     headerRow.alignment = { horizontal: 'center', vertical: 'middle' }
 
     // Data rows
+    const surveyTitle = survey.title
     for (const session of sessions) {
       const ans = answersBySession.get(session.id) ?? {}
       worksheet.addRow([
-        ...getMetaValues(session),
+        ...getMetaValues(session, surveyTitle),
         ...columnSchema.map(c => c.getValue(ans)),
       ])
     }
