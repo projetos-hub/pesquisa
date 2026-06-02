@@ -47,6 +47,21 @@ function statusBadge(status: string) {
   return map[status] ?? 'bg-gray-100 text-gray-500'
 }
 
+function communitySchedulingHint(
+  openDate: string | null,
+  status: string
+): string | null {
+  if (!openDate) return null
+  if (status !== 'nao_aberta' && status !== 'pausada') return null
+  const now = new Date()
+  const open = new Date(openDate)
+  if (open <= now) return null
+  const diffDays = Math.ceil((open.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  if (diffDays === 0) return 'Abre hoje'
+  if (diffDays === 1) return 'Abre amanhã'
+  return `Abre em ${diffDays} dias`
+}
+
 export default function CommunityInstallManager({
   surveyId,
   installs,
@@ -206,6 +221,17 @@ export default function CommunityInstallManager({
                     className="border border-gray-200 bg-gray-50 rounded-[4.8px] px-2 py-0.5 text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-[#F7941D] focus:bg-white disabled:opacity-50"
                   />
                 </div>
+                {communitySchedulingHint(
+                  localDates[inst.community_id]?.open_date ?? null,
+                  inst.status
+                ) && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600">
+                    {communitySchedulingHint(
+                      localDates[inst.community_id]?.open_date ?? null,
+                      inst.status
+                    )}
+                  </span>
+                )}
               </div>
             </div>
           ))}

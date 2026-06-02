@@ -151,6 +151,9 @@ export default function SurveyEditForm({ survey }: { survey: Survey }) {
           />
         </div>
       </div>
+      <p className="text-xs text-gray-400 -mt-2">
+        Se preenchidas, a pesquisa abrirá e encerrará automaticamente. O status manual prevalece sobre as datas.
+      </p>
 
       <div className="pt-1">
         <button

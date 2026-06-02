@@ -2,6 +2,37 @@ import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import DeleteSurveyButton from './DeleteSurveyButton'
 
+function schedulingHint(
+  openDate: string | null,
+  closeDate: string | null,
+  status: string
+): string | null {
+  const now = new Date()
+  if (status === 'rascunho' || status === 'pausada') {
+    if (openDate) {
+      const open = new Date(openDate)
+      if (open > now) {
+        const diffDays = Math.ceil((open.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        if (diffDays === 0) return 'Abre hoje'
+        if (diffDays === 1) return 'Abre amanhã'
+        return `Abre em ${diffDays} dias`
+      }
+    }
+  }
+  if (status === 'ativa') {
+    if (closeDate) {
+      const close = new Date(closeDate)
+      if (close > now) {
+        const diffDays = Math.ceil((close.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        if (diffDays === 0) return 'Encerra hoje'
+        if (diffDays === 1) return 'Encerra amanhã'
+        return `Encerra em ${diffDays} dias`
+      }
+    }
+  }
+  return null
+}
+
 const STATUS: Record<string, { label: string; cls: string }> = {
   rascunho:  { label: 'Rascunho',  cls: 'bg-gray-100 text-gray-600' },
   ativa:     { label: 'Ativa',     cls: 'bg-green-100 text-green-700' },
@@ -74,6 +105,13 @@ export default async function SurveysPage() {
                     {s.open_date
                       ? new Date(s.open_date).toLocaleDateString('pt-BR')
                       : '—'}
+                    {schedulingHint(s.open_date, s.close_date, s.status) && (
+                      <div className="mt-0.5">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600">
+                          {schedulingHint(s.open_date, s.close_date, s.status)}
+                        </span>
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-gray-500">
                     {s.close_date
