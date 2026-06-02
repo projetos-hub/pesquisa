@@ -288,7 +288,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     setAnswers(newAnswers)
 
     if (isLastData) {
-      submitPesquisa(newAnswers)
+      submitPesquisa(newAnswers, activeSteps)
     } else {
       // Recalcula com newAnswers para capturar mudanças condicionais (bilíngue)
       const newActive = buildActiveSteps(survey!, perfil, newAnswers)
@@ -299,13 +299,14 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   }
 
   function back() {
+    if (currentStep?.type === 'thankyou') return
     if (currentIdx > 0) {
       setCurrentKey(stepId(activeSteps[currentIdx - 1]))
     }
   }
 
   // ── Submit ───────────────────────────────────────────────────────────────────
-  async function submitPesquisa(finalAnswers: Answers) {
+  async function submitPesquisa(finalAnswers: Answers, stepsSnapshot: typeof activeSteps) {
     setLoading(true)
     setSubmitError(null)
     try {
@@ -336,7 +337,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
 
       // Se existir um step de agradecimento no config, vai para ele.
       // Caso contrário, fica no estado de enviado (podemos mostrar algo ou apenas travar).
-      const hasThankYouStep = activeSteps.some(s => s.type === 'thankyou')
+      const hasThankYouStep = stepsSnapshot.some(s => s.type === 'thankyou')
       if (hasThankYouStep) {
         setCurrentKey('thankyou')
       } else {
@@ -350,10 +351,115 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     }
   }
 
-  const isWelcome  = currentStep?.type === 'welcome' && !submitted
   const isThankyou = currentStep?.type === 'thankyou' || (submitted && !submitError)
   const npsKey     = activeSteps.find(s => s.type === 'nps')?.key ?? 'nps'
   const npsAnswer  = answers[npsKey] as NPSAnswer | undefined
+
+  // ── Render exclusivo — apenas 1 step montado por vez ─────────────────────────
+  function renderCurrentStep() {
+    if (isThankyou) {
+      return (
+        <ThankYou
+          nps={npsAnswer?.nps}
+          perfil={perfil}
+          nomeAluno={nomeAluno}
+          school={school}
+          tipo={tipo}
+          theme={survey!.installation?.theme ?? survey!.settings?.theme}
+          indicacaoLinks={survey!.settings?.indicacao_links}
+        />
+      )
+    }
+    switch (currentStep?.type) {
+      case 'welcome':
+        return (
+          <WelcomeStep
+            step={currentStep}
+            nome={nomeCompleto} nomeAluno={nomeAluno} serie={serie}
+            perfil={perfil} tipo={tipo}
+            theme={survey!.installation?.theme ?? survey!.settings?.theme}
+            onStart={() => {
+              const nextStep = activeSteps[1]
+              if (nextStep) setCurrentKey(stepId(nextStep))
+            }}
+          />
+        )
+      case 'nps':
+        return (
+          <StepNPS
+            key={currentStep.key}
+            step={currentStep}
+            onNext={d => next(currentStep!.key, d)}
+            onBack={back}
+            tipo={tipo}
+          />
+        )
+      case 'scale':
+        return (
+          <StepEscala
+            key={currentStep.key}
+            step={currentStep}
+            tipo={tipo}
+            onNext={d => next(currentStep!.key, d)}
+            onBack={back}
+            isLast={isLastData}
+            loading={loading}
+          />
+        )
+      case 'radio':
+        return (
+          <StepRadio
+            key={currentStep.key}
+            step={currentStep}
+            tipo={tipo}
+            onNext={d => next(currentStep!.key, d)}
+            onBack={back}
+            isLast={isLastData}
+            loading={loading}
+          />
+        )
+      case 'text':
+        return (
+          <StepText
+            key={currentStep.key}
+            step={currentStep}
+            tipo={tipo}
+            onNext={d => next(currentStep!.key, d)}
+            onBack={back}
+            isLast={isLastData}
+            loading={loading}
+          />
+        )
+      case 'checkbox':
+        return (
+          <StepCheckbox
+            key={currentStep.key}
+            step={currentStep}
+            tipo={tipo}
+            onNext={d => next(currentStep!.key, d)}
+            onBack={back}
+            isLast={isLastData}
+            loading={loading}
+          />
+        )
+      case 'file_upload':
+        return (
+          <StepFileUpload
+            key={currentStep.key}
+            step={currentStep}
+            tipo={tipo}
+            onNext={d => next(currentStep!.key, d)}
+            onBack={back}
+            isLast={isLastData}
+            loading={loading}
+          />
+        )
+      default:
+        return null
+    }
+  }
+
+  const isWelcome = currentStep?.type === 'welcome' && !submitted
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
@@ -371,100 +477,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
           <p style={{ color: '#e53e3e', marginBottom: 16, fontWeight: 600 }}>⚠️ {submitError}</p>
         )}
 
-        {currentStep?.type === 'welcome' && (
-          <WelcomeStep
-            step={currentStep}
-            nome={nomeCompleto} nomeAluno={nomeAluno} serie={serie}
-            perfil={perfil} tipo={tipo}
-            theme={survey.installation?.theme ?? survey.settings?.theme}
-            onStart={() => {
-              const nextStep = activeSteps[1]
-              if (nextStep) setCurrentKey(stepId(nextStep))
-            }}
-          />
-        )}
-
-        {currentStep?.type === 'nps' && (
-          <StepNPS
-            key={currentStep.key}
-            step={currentStep}
-            onNext={d => next(currentStep.key, d)}
-            onBack={back}
-            tipo={tipo}
-          />
-        )}
-
-        {currentStep?.type === 'scale' && (
-          <StepEscala
-            key={currentStep.key}
-            step={currentStep}
-            tipo={tipo}
-            onNext={d => next(currentStep.key, d)}
-            onBack={back}
-            isLast={isLastData}
-            loading={loading}
-          />
-        )}
-
-        {currentStep?.type === 'radio' && (
-          <StepRadio
-            key={currentStep.key}
-            step={currentStep}
-            tipo={tipo}
-            onNext={d => next(currentStep.key, d)}
-            onBack={back}
-            isLast={isLastData}
-            loading={loading}
-          />
-        )}
-
-        {currentStep?.type === 'text' && (
-          <StepText
-            key={currentStep.key}
-            step={currentStep}
-            tipo={tipo}
-            onNext={d => next(currentStep.key, d)}
-            onBack={back}
-            isLast={isLastData}
-            loading={loading}
-          />
-        )}
-
-        {currentStep?.type === 'checkbox' && (
-          <StepCheckbox
-            key={currentStep.key}
-            step={currentStep}
-            tipo={tipo}
-            onNext={d => next(currentStep.key, d)}
-            onBack={back}
-            isLast={isLastData}
-            loading={loading}
-          />
-        )}
-
-        {currentStep?.type === 'file_upload' && (
-          <StepFileUpload
-            key={currentStep.key}
-            step={currentStep}
-            tipo={tipo}
-            onNext={d => next(currentStep.key, d)}
-            onBack={back}
-            isLast={isLastData}
-            loading={loading}
-          />
-        )}
-
-        {isThankyou && (
-          <ThankYou
-            nps={npsAnswer?.nps}
-            perfil={perfil}
-            nomeAluno={nomeAluno}
-            school={school}
-            tipo={tipo}
-            theme={survey.installation?.theme ?? survey.settings?.theme}
-            indicacaoLinks={survey.settings?.indicacao_links}
-          />
-        )}
+        {renderCurrentStep()}
       </div>
     </div>
   )
