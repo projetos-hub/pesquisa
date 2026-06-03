@@ -120,7 +120,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
         onda:      searchParams.get('onda')        || '1S2026',
         openDate:  searchParams.get('openDate')    || '',
         closeDate: searchParams.get('closeDate')   || '',
-        status:    (searchParams.get('status')     || 'aberta') as SurveyContext['status'],
+        status:    (searchParams.get('status')     || 'ativa') as SurveyContext['status'],
         school:    searchParams.get('school')      || '',
         tipo:      searchParams.get('tipo')        || 'escola',
         nome:       hubNome      || searchParams.get('nome') || searchParams.get('name') || '',
