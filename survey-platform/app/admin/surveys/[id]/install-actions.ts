@@ -59,7 +59,7 @@ export async function installCommunity(surveyId: string, formData: FormData) {
     if (error) return { error: 'Erro ao instalar: ' + error.message }
 
     revalidatePath(`/admin/surveys/${surveyId}`)
-    revalidateTag('survey-config')
+    revalidateTag('survey-config', 'default')
     return {}
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro desconhecido' }
@@ -77,7 +77,7 @@ export async function toggleCommunityActive(surveyId: string, communityId: strin
       .eq('community_id', communityId)
     if (error) return { error: error.message }
     revalidatePath(`/admin/surveys/${surveyId}`)
-    revalidateTag('survey-config')
+    revalidateTag('survey-config', 'default')
     return {}
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro desconhecido' }
@@ -95,7 +95,7 @@ export async function updateCommunityStatus(surveyId: string, communityId: strin
       .eq('community_id', communityId)
     if (error) return { error: error.message }
     revalidatePath(`/admin/surveys/${surveyId}`)
-    revalidateTag('survey-config')
+    revalidateTag('survey-config', 'default')
     return {}
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro desconhecido' }
