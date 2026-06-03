@@ -391,7 +391,7 @@ function buildAbaRespostasBrutas(
     ])
   }
 
-  ws.columns.forEach((col: ExcelJS.Column, i: number) => {
+  ws.columns.forEach((col: Partial<ExcelJS.Column>, i: number) => {
     if (!col.width) col.width = i < META_HEADERS_EXTENDED.length ? 24 : 32
   })
 }
