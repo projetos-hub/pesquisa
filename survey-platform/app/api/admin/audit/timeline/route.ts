@@ -8,6 +8,9 @@ export async function GET(req: Request) {
 
   const supabase = await createServerSupabaseClient()
 
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   // Respostas por hora (fuso BR)
   const { data: sessions } = await supabase
     .from('response_sessions')

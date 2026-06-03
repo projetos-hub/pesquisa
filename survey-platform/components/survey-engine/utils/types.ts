@@ -1,7 +1,7 @@
 // ─── Tipos de perfil e pesquisa ───────────────────────────────────────────────
 export type Perfil = 'responsavel' | 'aluno' | 'colaborador'
 export type TipoPesquisa = 'quantitativa' | 'qualitativa'
-export type SurveyStatus = 'aberta' | 'nao_aberta' | 'encerrada' | 'pausada'
+export type SurveyStatus = 'ativa' | 'nao_aberta' | 'encerrada' | 'pausada'
 
 // ─── Respostas ────────────────────────────────────────────────────────────────
 export type Answers = Record<string, unknown>
