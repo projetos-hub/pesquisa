@@ -31,15 +31,12 @@ export async function createDisparo(
 
   const supabase = createServiceClient()
 
-  // Monta targets para a Layers API
-  // community_ids vazio = todas; senão, um target por comunidade
-  const targets = communityIds.length > 0
-    ? communityIds.map(cId => ({
-        kind: 'group' as const,
-        alias: cId,
-        roles: targetRoles,
-      }))
-    : [{ kind: 'group' as const, alias: 'all', roles: targetRoles }]
+  // Monta targets para a Layers API — um target por comunidade
+  const targets = communityIds.map(cId => ({
+    kind: 'group' as const,
+    alias: cId,
+    roles: targetRoles,
+  }))
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://pesquisa-nu-sand.vercel.app'
   const surveyUrl = `${appUrl}/p/${surveySlug}`
