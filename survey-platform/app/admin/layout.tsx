@@ -71,7 +71,7 @@ export default async function AdminLayout({
           Relatórios
         </Link>
         <Link
-          href="/admin/audit"
+          href="/admin/auditoria"
           className="flex items-center gap-2 px-3 py-2 text-sm text-[#A0AEC0] rounded-lg hover:bg-[#2D3748] transition-colors"
         >
           <span>🔍</span>
