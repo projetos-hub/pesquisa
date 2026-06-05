@@ -87,7 +87,7 @@ const sections: SectionCard[] = [
     description: 'Temas e logos por comunidade/escola',
   },
   {
-    href: '/admin/audit',
+    href: '/admin/auditoria',
     icon: <IconBarChart2 />,
     title: 'Auditoria',
     description: 'Métricas, disparos e timeline',
