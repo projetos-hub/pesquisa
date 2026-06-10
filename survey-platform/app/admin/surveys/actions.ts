@@ -391,6 +391,7 @@ export async function toggleThankYouStep(
   if (!add) {
     await supabase.from('questions').delete().eq('survey_id', surveyId).eq('type', 'thankyou')
     revalidatePath(`/admin/surveys/${surveyId}`)
+    revalidateTag('survey-config', 'default')
     return {}
   }
 
@@ -415,6 +416,7 @@ export async function toggleThankYouStep(
   }).select('id').single()
 
   revalidatePath(`/admin/surveys/${surveyId}`)
+  revalidateTag('survey-config', 'default')
   return { id: inserted?.id }
 }
 

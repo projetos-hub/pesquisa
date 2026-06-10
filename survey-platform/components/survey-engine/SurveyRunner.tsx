@@ -227,7 +227,8 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const closeDate =  survey.installation?.close_date ?? ctx.closeDate
 
   // CSS vars de tema por comunidade — aplicadas no :root para afetar o fundo também
-  const theme = survey?.installation?.theme ?? survey?.settings?.theme
+  // Merge: settings.theme como base, installation.theme sobrescreve (por comunidade tem prioridade)
+  const theme = { ...(survey?.settings?.theme ?? {}), ...(survey?.installation?.theme ?? {}) }
   const themeVars = theme?.primaryColor
     ? {
         '--color-primary':   theme.primaryColor,
@@ -378,7 +379,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
           nomeAluno={nomeAluno}
           school={school}
           tipo={tipo}
-          theme={survey!.installation?.theme ?? survey!.settings?.theme}
+          theme={{ ...(survey!.settings?.theme ?? {}), ...(survey!.installation?.theme ?? {}) }}
           indicacaoLinks={survey!.settings?.indicacao_links}
         />
       )
@@ -390,7 +391,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
             step={currentStep}
             nome={nomeCompleto} nomeAluno={nomeAluno} serie={serie}
             perfil={perfil} tipo={tipo}
-            theme={survey!.installation?.theme ?? survey!.settings?.theme}
+            theme={{ ...(survey!.settings?.theme ?? {}), ...(survey!.installation?.theme ?? {}) }}
             onStart={() => {
               const nextStep = activeSteps[1]
               if (nextStep) setCurrentKey(stepId(nextStep))

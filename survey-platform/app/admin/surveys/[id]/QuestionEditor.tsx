@@ -37,8 +37,16 @@ const inputStyle: React.CSSProperties = {
   padding: '8px 10px', fontSize: '.875rem', boxSizing: 'border-box',
 }
 
-function typeLabel(type: string) { return QUESTION_TYPES.find(t => t.value === type)?.label ?? type }
-function typeIcon(type: string)  { return QUESTION_TYPES.find(t => t.value === type)?.icon  ?? '❓' }
+function typeLabel(type: string) {
+  if (type === 'thankyou') return 'Agradecimento'
+  if (type === 'welcome')  return 'Boas-vindas'
+  return QUESTION_TYPES.find(t => t.value === type)?.label ?? type
+}
+function typeIcon(type: string) {
+  if (type === 'thankyou') return '🙏'
+  if (type === 'welcome')  return '👋'
+  return QUESTION_TYPES.find(t => t.value === type)?.icon ?? '❓'
+}
 
 export default function QuestionEditor({ surveyId, questions: initialQuestions }: QuestionEditorProps) {
   const [questions, setQuestions] = useState<QuestionRow[]>(initialQuestions)
@@ -306,6 +314,22 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
     })
   }
 
+  const renderThankYouForm = () => (
+    <div style={{ border: '2px solid #667eea', borderRadius: 10, padding: 20, marginTop: 12, background: '#fff' }}>
+      <h4 style={{ fontWeight: 600, color: '#2d3748', marginBottom: 4, marginTop: 0 }}>🙏 Tela de agradecimento</h4>
+      <p style={{ fontSize: '.82rem', color: '#718096', marginTop: 0, marginBottom: 16 }}>
+        A mensagem de agradecimento padrão é configurada em <strong>Configurações da pesquisa</strong> (seção acima).
+        Para mensagens por escola, use <strong>Comunidades → Identidade Visual</strong>.
+      </p>
+      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <button onClick={resetForm}
+          style={{ background: '#f7fafc', color: '#4a5568', border: '1px solid #e2e8f0', borderRadius: 8, padding: '9px 20px', cursor: 'pointer', fontSize: '.875rem' }}>
+          Fechar
+        </button>
+      </div>
+    </div>
+  )
+
   const renderForm = (isEdit: boolean) => (
     <div style={{ border: `2px ${isEdit ? 'solid' : 'dashed'} #667eea`, borderRadius: 10, padding: 20, marginTop: 12, background: isEdit ? '#fff' : '#f8f9ff' }}>
       <h4 style={{ fontWeight: 600, color: '#2d3748', marginBottom: 16, marginTop: 0 }}>{isEdit ? 'Editar pergunta' : 'Nova pergunta'}</h4>
@@ -543,7 +567,7 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
         {sorted.map((q, idx) => (
           <div key={q.id}>
             {editingMetadataId === q.id ? (
-              renderForm(true)
+              q.type === 'thankyou' ? renderThankYouForm() : renderForm(true)
             ) : (
               <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: '14px 16px', background: '#fff' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>

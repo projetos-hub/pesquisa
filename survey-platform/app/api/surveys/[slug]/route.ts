@@ -85,19 +85,22 @@ const getCachedSurveyConfig = unstable_cache(
 
     // 2b. Sem communityId: monta instalação sintética a partir das datas da survey
     //     Garante que open_date/close_date salvos no admin reflitam para o respondente
-    if (!installation && (survey.open_date || survey.close_date)) {
+    //     Também propaga surveys.settings.theme para que thankyouMessage e outros overrides
+    //     cheguem ao respondente mesmo sem communityId.
+    if (!installation) {
       const now = new Date()
-      let respondentStatus = 'ativa'
+      let respondentStatus = survey.status ?? 'ativa'
       if (survey.close_date && new Date(survey.close_date) < now) {
         respondentStatus = 'encerrada'
       } else if (survey.open_date && new Date(survey.open_date) > now) {
         respondentStatus = 'nao_aberta'
       }
+      const surveyTheme = (survey.settings as { theme?: Record<string, unknown> })?.theme ?? {}
       installation = {
         status: respondentStatus,
         open_date: survey.open_date as string | null,
         close_date: survey.close_date as string | null,
-        theme: {},
+        theme: { ...surveyTheme },
         settings: {},
       } as InstallationRow
     }
