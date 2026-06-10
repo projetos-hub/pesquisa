@@ -301,6 +301,7 @@ export async function deleteQuestion(
   if (error) return { error: error.message }
 
   revalidatePath(`/admin/surveys/${surveyId}`)
+  revalidateTag('survey-config', 'default')
   return {}
 }
 

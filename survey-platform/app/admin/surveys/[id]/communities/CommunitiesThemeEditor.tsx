@@ -4,6 +4,14 @@ import { useState } from 'react'
 import { saveCommunityTheme, updateCommunityDates } from './actions'
 import { CommunityDisplay } from '@/lib/community-name'
 
+// Converte ISO UTC para formato datetime-local em horário de Brasília (UTC-3)
+// Evita exibir datas com diferença de 3h no admin
+function toDatetimeLocal(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(new Date(iso).getTime() - 3 * 60 * 60 * 1000)
+  return d.toISOString().slice(0, 16)
+}
+
 interface Community {
   id: string
   community_id: string
@@ -330,11 +338,7 @@ function ThemeEditForm({ surveyId, community, onClose }: FormProps) {
                   <input
                     type="datetime-local"
                     name="open_date"
-                    defaultValue={
-                      community.open_date
-                        ? community.open_date.slice(0, 16)
-                        : ''
-                    }
+                    defaultValue={toDatetimeLocal(community.open_date)}
                     className="w-full border border-gray-300 rounded-[4.8px] px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#F7941D] focus:border-[#F7941D]"
                   />
                 </div>
@@ -343,11 +347,7 @@ function ThemeEditForm({ surveyId, community, onClose }: FormProps) {
                   <input
                     type="datetime-local"
                     name="close_date"
-                    defaultValue={
-                      community.close_date
-                        ? community.close_date.slice(0, 16)
-                        : ''
-                    }
+                    defaultValue={toDatetimeLocal(community.close_date)}
                     className="w-full border border-gray-300 rounded-[4.8px] px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#F7941D] focus:border-[#F7941D]"
                   />
                 </div>

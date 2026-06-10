@@ -20,9 +20,11 @@ export default function ThankYou({ nps, perfil, nomeAluno, school, tipo, theme, 
   const isPromotor = score >= 9
   const isNeutro   = score >= 7 && score <= 8
   const isDetrator = score <= 6
+  // Usa || em vez de ?? para que string vazia ('') também acione o fallback
+  // (theme.indicacaoLink = '' significa "limpar" — deve usar indicacaoLinks[school] se disponível)
   const linkIndicacao = (theme as { indicacaoLink?: string } | undefined)?.indicacaoLink
-    ?? indicacaoLinks?.[school]
-    ?? null
+    || indicacaoLinks?.[school]
+    || null
 
   // Mensagem personalizada via admin (suporta {{nomeAluno}}, {{nomeEscola}}, etc.)
   if (theme?.thankyouMessage) {

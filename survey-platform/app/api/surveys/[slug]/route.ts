@@ -144,7 +144,12 @@ const getCachedSurveyConfig = unstable_cache(
 export async function GET(req: Request, { params }: RouteContext) {
   const { slug } = await params
   const { searchParams } = new URL(req.url)
-  const communityId = (searchParams.get('communityId') ?? '').replace('@', '')
+  // Sanitiza communityId: apenas alfanumérico + hífen + underscore, max 64 chars
+  // Evita cache poisoning via communityIds aleatórios acumulando memória no cache
+  const communityId = (searchParams.get('communityId') ?? '')
+    .replace('@', '')
+    .replace(/[^a-z0-9_\-]/gi, '')
+    .slice(0, 64)
   const email = searchParams.get('email')
 
   const result = await getCachedSurveyConfig(slug, communityId)

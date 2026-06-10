@@ -2,18 +2,8 @@
 
 import { useState, useTransition, useRef } from 'react'
 import { createQuestion, updateQuestion, saveQuestionOptions, deleteQuestion, moveQuestion, toggleWelcomeStep, toggleThankYouStep } from '../actions'
-
-interface QuestionRow {
-  id: string
-  order_index: number
-  type: string
-  key: string
-  title: string
-  description: string | null
-  required: boolean
-  settings: Record<string, unknown>
-  options: { id: string; order_index: number; label: string }[]
-}
+import { useQuestionForm } from './useQuestionForm'
+import type { QuestionRow } from './useQuestionForm'
 
 interface QuestionEditorProps {
   surveyId: string
@@ -29,8 +19,11 @@ const QUESTION_TYPES = [
   { value: 'file_upload', label: 'Envio de arquivo',    icon: '📎', desc: 'Upload de documento' },
 ]
 
-const HAS_OPTIONS  = ['radio', 'checkbox', 'scale']
-const HAS_PERGUNTA = ['radio', 'checkbox', 'text', 'file_upload']
+// Set para O(1) lookup — mais eficiente que Array.includes() e documenta intenção
+// NOTA: 'nps' NÃO está em HAS_OPTIONS — seus labels (0-10) são hardcoded em StepNPS,
+//        não gerenciados por question_options. Adicionar 'nps' aqui seria erro de design.
+const HAS_OPTIONS  = new Set(['radio', 'checkbox', 'scale'])
+const HAS_PERGUNTA = new Set(['radio', 'checkbox', 'text', 'file_upload'])
 
 const inputStyle: React.CSSProperties = {
   width: '100%', border: '1px solid #e2e8f0', borderRadius: 6,
@@ -57,21 +50,20 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
   const [isPending, startTransition]  = useTransition()
   const [error, setError]   = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-
-  // ── Formulário de pergunta (novo/editar) ────────────────────────────────────
-  const [formType, setFormType]           = useState('text')
-  const [formTitle, setFormTitle]         = useState('')
-  const [formKey, setFormKey]             = useState('')
-  const [keyEdited, setKeyEdited]       = useState(false)
-  const [formDesc, setFormDesc]           = useState('')
-  const [formPergunta, setFormPergunta]   = useState('')
-  const [formPlaceholder, setFormPlaceholder] = useState('')
-  const [formAccept, setFormAccept]       = useState('')
-  const [formRequired, setFormRequired]   = useState(true)
-  const [formOptions, setFormOptions]         = useState<string[]>(['', ''])
-  const [formCorrectAnswer, setFormCorrectAnswer] = useState<string>('')
-  const [formQuizMode, setFormQuizMode]       = useState(false)
   const optionRefs = useRef<(HTMLInputElement | null)[]>([])
+
+  // ── Formulário centralizado no hook (14 estados extraídos) ──────────────────
+  const form = useQuestionForm(() => {
+    setShowAdd(false)
+    setEditingId(null)
+  })
+
+  // Wrapper de resetForm que também fecha os painéis do editor
+  function resetForm() {
+    form.resetForm()
+    setShowAdd(false)
+    setEditingMetadataId(null)
+  }
 
   function notify(msg: string, isError = false) {
     if (isError) { setError(msg); setSuccess(null) }
@@ -79,41 +71,20 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
     setTimeout(() => { setError(null); setSuccess(null) }, 4000)
   }
 
-  function slugify(text: string) {
-    return text
-      .toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos
-      .replace(/[^a-z0-9]+/g, '_')
-      .replace(/^_+|_+$/g, '')
-      .slice(0, 40)
-  }
-
-  function handleTitleChange(val: string) {
-    setFormTitle(val)
-    if (!keyEdited) setFormKey(slugify(val))
-  }
-
-  function resetForm() {
-    setFormKey(''); setFormTitle(''); setFormDesc(''); setFormPergunta('')
-    setFormPlaceholder(''); setFormAccept(''); setFormOptions(['', ''])
-    setFormCorrectAnswer(''); setFormQuizMode(false); setFormRequired(true); setKeyEdited(false)
-    setShowAdd(false); setEditingMetadataId(null)
-  }
-
   function updateOption(idx: number, val: string) {
-    setFormOptions(prev => prev.map((o, i) => i === idx ? val : o))
+    form.setFormOptions(prev => prev.map((o, i) => i === idx ? val : o))
   }
 
   function removeOption(idx: number) {
-    setFormOptions(prev => {
+    form.setFormOptions(prev => {
       const removed = prev[idx]
-      if (removed && removed === formCorrectAnswer) setFormCorrectAnswer('')
+      if (removed && removed === form.formCorrectAnswer) form.setFormCorrectAnswer('')
       return prev.filter((_, i) => i !== idx)
     })
   }
 
   function addOptionRow(focusIdx?: number) {
-    setFormOptions(prev => {
+    form.setFormOptions(prev => {
       const next = [...prev, '']
       const idx = focusIdx ?? next.length - 1
       setTimeout(() => optionRefs.current[idx]?.focus(), 0)
@@ -124,35 +95,26 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
   function handleOptionKeyDown(e: React.KeyboardEvent<HTMLInputElement>, idx: number) {
     if (e.key !== 'Enter') return
     e.preventDefault()
-    if (idx < formOptions.length - 1) {
+    if (idx < form.formOptions.length - 1) {
       optionRefs.current[idx + 1]?.focus()
     } else {
-      addOptionRow(formOptions.length)
+      addOptionRow(form.formOptions.length)
     }
   }
 
   async function handleAdd() {
-    if (!formKey.trim()) { notify('Preencha a key da pergunta.', true); return }
-    if (!formTitle.trim()) { notify('Preencha o título da pergunta.', true); return }
+    if (!form.formKey.trim()) { notify('Preencha a key da pergunta.', true); return }
+    if (!form.formTitle.trim()) { notify('Preencha o título da pergunta.', true); return }
 
-    const fd = new FormData()
-    fd.set('type', formType)
-    fd.set('key', formKey)
-    fd.set('title', formTitle)
-    fd.set('description', formDesc)
-    fd.set('required', String(formRequired))
-    fd.set('pergunta', formPergunta)
-    fd.set('placeholder', formPlaceholder)
-    fd.set('accept', formAccept)
-    if (formCorrectAnswer) fd.set('correctAnswer', formCorrectAnswer)
+    const fd = form.buildFormData()
 
     startTransition(async () => {
       const res = await createQuestion(surveyId, fd)
       if (res.error) { notify(res.error, true); return }
 
       // Salva opções imediatamente se existirem
-      const labels = formOptions.map(o => o.trim()).filter(Boolean)
-      if (res.id && HAS_OPTIONS.includes(formType) && labels.length > 0) {
+      const labels = form.formOptions.map(o => o.trim()).filter(Boolean)
+      if (res.id && HAS_OPTIONS.has(form.formType) && labels.length > 0) {
         await saveQuestionOptions(res.id, surveyId, labels)
       }
 
@@ -163,18 +125,18 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
       const newQ: QuestionRow = {
         id:          res.id ?? Math.random().toString(),
         order_index: questions.length,
-        type:        formType,
-        key:         formKey,
-        title:       formTitle,
-        description: formDesc || null,
-        required:    formRequired,
+        type:        form.formType,
+        key:         form.formKey,
+        title:       form.formTitle,
+        description: form.formDesc || null,
+        required:    form.formRequired,
         settings:    {
-          pergunta: formPergunta,
-          placeholder: formPlaceholder,
-          accept: formAccept,
-          correctAnswer: formCorrectAnswer
+          pergunta:      form.formPergunta,
+          placeholder:   form.formPlaceholder,
+          accept:        form.formAccept,
+          correctAnswer: form.formCorrectAnswer,
         },
-        options:     labels.map((label, i) => ({ id: `${i}`, order_index: i, label })),
+        options: labels.map((label, i) => ({ id: `${i}`, order_index: i, label })),
       }
       setQuestions(prev => [...prev, newQ])
     })
@@ -182,40 +144,31 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
 
   async function handleUpdateMetadata() {
     if (!editingMetadataId) return
-    if (!formKey.trim()) { notify('Preencha a key da pergunta.', true); return }
-    if (!formTitle.trim()) { notify('Preencha o título da pergunta.', true); return }
+    if (!form.formKey.trim()) { notify('Preencha a key da pergunta.', true); return }
+    if (!form.formTitle.trim()) { notify('Preencha o título da pergunta.', true); return }
 
-    const fd = new FormData()
-    fd.set('type', formType)
-    fd.set('key', formKey)
-    fd.set('title', formTitle)
-    fd.set('description', formDesc)
-    fd.set('required', String(formRequired))
-    fd.set('pergunta', formPergunta)
-    fd.set('placeholder', formPlaceholder)
-    fd.set('accept', formAccept)
-    if (formCorrectAnswer) fd.set('correctAnswer', formCorrectAnswer)
+    const fd = form.buildFormData()
 
     startTransition(async () => {
       const res = await updateQuestion(editingMetadataId, surveyId, fd)
       if (res.error) { notify(res.error, true); return }
 
       notify('Pergunta atualizada!')
-      
+
       setQuestions(prev => prev.map(q => q.id === editingMetadataId ? {
         ...q,
-        type: formType,
-        key: formKey,
-        title: formTitle,
-        description: formDesc || null,
-        required: formRequired,
+        type:        form.formType,
+        key:         form.formKey,
+        title:       form.formTitle,
+        description: form.formDesc || null,
+        required:    form.formRequired,
         settings: {
           ...q.settings,
-          pergunta: formPergunta,
-          placeholder: formPlaceholder,
-          accept: formAccept,
-          correctAnswer: formCorrectAnswer
-        }
+          pergunta:      form.formPergunta,
+          placeholder:   form.formPlaceholder,
+          accept:        form.formAccept,
+          correctAnswer: form.formCorrectAnswer,
+        },
       } : q))
 
       resetForm()
@@ -224,20 +177,8 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
 
   function startEditMetadata(q: QuestionRow) {
     setEditingMetadataId(q.id)
-    setShowAdd(false)
     setEditingId(null)
-
-    setFormType(q.type)
-    setFormTitle(q.title)
-    setFormKey(q.key)
-    setFormDesc(q.description || '')
-    setFormRequired(q.required)
-    setFormPergunta((q.settings?.pergunta as string) || '')
-    setFormPlaceholder((q.settings?.placeholder as string) || '')
-    setFormAccept((q.settings?.accept as string) || '')
-    setFormCorrectAnswer((q.settings?.correctAnswer as string) || '')
-    setFormQuizMode(!!(q.settings?.correctAnswer as string))
-    setKeyEdited(true)
+    form.startEditMetadata(q)
   }
 
   async function handleDelete(questionId: string) {
@@ -340,17 +281,17 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
           <label style={{ fontSize: '.85rem', fontWeight: 500, color: '#4a5568', display: 'block', marginBottom: 6 }}>Tipo</label>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 6 }}>
             {QUESTION_TYPES.map(t => (
-              <button key={t.value} onClick={() => { setFormType(t.value); if (!isEdit) setFormOptions(['', '']) }}
+              <button key={t.value} onClick={() => { form.setFormType(t.value); if (!isEdit) form.setFormOptions(['', '']) }}
                 style={{
                   padding: '8px 12px', textAlign: 'left', cursor: 'pointer',
-                  border: `2px solid ${formType === t.value ? '#667eea' : '#e2e8f0'}`,
+                  border: `2px solid ${form.formType === t.value ? '#667eea' : '#e2e8f0'}`,
                   borderRadius: 8,
-                  background: formType === t.value ? '#667eea15' : '#fff',
-                  color: formType === t.value ? '#553c9a' : '#4a5568',
-                  fontWeight: formType === t.value ? 600 : 400,
+                  background: form.formType === t.value ? '#667eea15' : '#fff',
+                  color: form.formType === t.value ? '#553c9a' : '#4a5568',
+                  fontWeight: form.formType === t.value ? 600 : 400,
                 }}>
                 <div style={{ fontSize: '.85rem' }}>{t.icon} {t.label}</div>
-                <div style={{ fontSize: '.73rem', color: formType === t.value ? '#553c9a99' : '#a0aec0', marginTop: 2 }}>{t.desc}</div>
+                <div style={{ fontSize: '.73rem', color: form.formType === t.value ? '#553c9a99' : '#a0aec0', marginTop: 2 }}>{t.desc}</div>
               </button>
             ))}
           </div>
@@ -361,15 +302,15 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
           <label style={{ fontSize: '.85rem', fontWeight: 500, color: '#4a5568', display: 'block', marginBottom: 4 }}>
             Título <span style={{ color: '#e53e3e' }}>*</span>
           </label>
-          <input value={formTitle} onChange={e => handleTitleChange(e.target.value)}
+          <input value={form.formTitle} onChange={e => form.handleTitleChange(e.target.value)}
             placeholder="Ex: Satisfação geral" style={inputStyle} autoFocus />
-          {formKey && (
+          {form.formKey && (
             <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: '.75rem', color: '#a0aec0' }}>ID: </span>
               <input
-                value={formKey}
-                onChange={e => { setFormKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_')); setKeyEdited(true) }}
-                style={{ fontSize: '.75rem', color: '#718096', fontFamily: 'monospace', background: 'none', border: 'none', borderBottom: '1px dashed #cbd5e0', padding: '0 2px', width: `${Math.max(formKey.length, 10)}ch` }}
+                value={form.formKey}
+                onChange={e => { form.setFormKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_')); form.setKeyEdited(true) }}
+                style={{ fontSize: '.75rem', color: '#718096', fontFamily: 'monospace', background: 'none', border: 'none', borderBottom: '1px dashed #cbd5e0', padding: '0 2px', width: `${Math.max(form.formKey.length, 10)}ch` }}
                 title="Identificador técnico — gerado automaticamente"
               />
             </div>
@@ -381,57 +322,57 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
           <label style={{ fontSize: '.85rem', fontWeight: 500, color: '#4a5568', display: 'block', marginBottom: 4 }}>
             Descrição <span style={{ color: '#a0aec0', fontWeight: 400 }}>(opcional)</span>
           </label>
-          {formType === 'welcome' ? (
-            <textarea value={formDesc} onChange={e => setFormDesc(e.target.value)}
+          {form.formType === 'welcome' ? (
+            <textarea value={form.formDesc} onChange={e => form.setFormDesc(e.target.value)}
               placeholder="Texto de boas-vindas (suporta {{nome}}, {{nomeAluno}}, {{serie}}, {{nomeEscola}})"
               style={{ ...inputStyle, minHeight: '120px', fontFamily: 'inherit', resize: 'vertical' }} />
           ) : (
-            <input value={formDesc} onChange={e => setFormDesc(e.target.value)}
+            <input value={form.formDesc} onChange={e => form.setFormDesc(e.target.value)}
               placeholder="Instrução ou contexto para o respondente" style={inputStyle} />
           )}
         </div>
 
         {/* Texto da pergunta */}
-        {HAS_PERGUNTA.includes(formType) && (
+        {HAS_PERGUNTA.has(form.formType) && (
           <div>
             <label style={{ fontSize: '.85rem', fontWeight: 500, color: '#4a5568', display: 'block', marginBottom: 4 }}>
               Texto da pergunta <span style={{ color: '#a0aec0', fontWeight: 400 }}>— use {'{tipo}'} para substituir pelo tipo de unidade</span>
             </label>
-            <input value={formPergunta} onChange={e => setFormPergunta(e.target.value)}
+            <input value={form.formPergunta} onChange={e => form.setFormPergunta(e.target.value)}
               placeholder="Ex: Como você avalia a {tipo}?" style={inputStyle} />
           </div>
         )}
 
         {/* Placeholder (só texto) */}
-        {formType === 'text' && (
+        {form.formType === 'text' && (
           <div>
             <label style={{ fontSize: '.85rem', fontWeight: 500, color: '#4a5568', display: 'block', marginBottom: 4 }}>
               Placeholder <span style={{ color: '#a0aec0', fontWeight: 400 }}>(opcional)</span>
             </label>
-            <input value={formPlaceholder} onChange={e => setFormPlaceholder(e.target.value)}
+            <input value={form.formPlaceholder} onChange={e => form.setFormPlaceholder(e.target.value)}
               placeholder="Ex: Escreva sua sugestão aqui..." style={inputStyle} />
           </div>
         )}
 
         {/* Tipos de arquivo aceitos (só file_upload) */}
-        {formType === 'file_upload' && (
+        {form.formType === 'file_upload' && (
           <div>
             <label style={{ fontSize: '.85rem', fontWeight: 500, color: '#4a5568', display: 'block', marginBottom: 4 }}>
               Tipos de arquivo aceitos <span style={{ color: '#a0aec0', fontWeight: 400 }}>(opcional, ex: .pdf,.jpg,.png)</span>
             </label>
-            <input value={formAccept} onChange={e => setFormAccept(e.target.value)}
+            <input value={form.formAccept} onChange={e => form.setFormAccept(e.target.value)}
               placeholder=".pdf,.jpg,.png" style={inputStyle} />
           </div>
         )}
 
         {/* Opções (radio, checkbox, scale) - Apenas para NOVO. Para existente tem o editor de opções separado. */}
-        {!isEdit && HAS_OPTIONS.includes(formType) && (
+        {!isEdit && HAS_OPTIONS.has(form.formType) && (
           <div>
             <label style={{ fontSize: '.85rem', fontWeight: 500, color: '#4a5568', display: 'block', marginBottom: 6 }}>
               Opções de resposta <span style={{ color: '#e53e3e' }}>*</span>
             </label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {formOptions.map((opt, idx) => (
+              {form.formOptions.map((opt, idx) => (
                 <div key={idx} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                   <span style={{ color: '#a0aec0', fontSize: '.8rem', minWidth: 20, textAlign: 'right' }}>{idx + 1}.</span>
                   <input
@@ -442,7 +383,7 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
                     placeholder={`Opção ${idx + 1}`}
                     style={{ ...inputStyle, flex: 1 }}
                   />
-                  {formOptions.length > 1 && (
+                  {form.formOptions.length > 1 && (
                     <button onClick={() => removeOption(idx)}
                       style={{ background: 'none', border: 'none', color: '#e53e3e', cursor: 'pointer', fontSize: '1rem', padding: '0 4px', flexShrink: 0 }}
                       title="Remover opção">✕</button>
@@ -458,33 +399,33 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
         )}
 
         {/* Modo quiz — só múltipla escolha */}
-        {formType === 'radio' && (
+        {form.formType === 'radio' && (
           <div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '.875rem', color: '#4a5568' }}>
-              <input type="checkbox" checked={formQuizMode} onChange={e => { setFormQuizMode(e.target.checked); if (!e.target.checked) setFormCorrectAnswer('') }} />
+              <input type="checkbox" checked={form.formQuizMode} onChange={e => { form.setFormQuizMode(e.target.checked); if (!e.target.checked) form.setFormCorrectAnswer('') }} />
               Modo quiz — esta pergunta tem uma resposta certa
             </label>
           </div>
         )}
-        {formType === 'radio' && formQuizMode && (isEdit ? true : formOptions.some(o => o.trim())) && (
+        {form.formType === 'radio' && form.formQuizMode && (isEdit ? true : form.formOptions.some(o => o.trim())) && (
           <div style={{ marginTop: 4, padding: '10px 12px', background: '#fffbeb', border: '1px solid #fbd38d', borderRadius: 8 }}>
             <label style={{ fontSize: '.82rem', fontWeight: 500, color: '#744210', display: 'block', marginBottom: 6 }}>
               Qual é a resposta correta?
             </label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {(isEdit ? questions.find(q => q.id === editingMetadataId)?.options.map(o => o.label) || [] : formOptions.filter(o => o.trim())).map(opt => (
+              {(isEdit ? questions.find(q => q.id === editingMetadataId)?.options.map(o => o.label) || [] : form.formOptions.filter(o => o.trim())).map(opt => (
                 <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '.85rem', color: '#2d3748' }}>
                   <input
                     type="radio"
                     name="correctAnswer"
-                    checked={formCorrectAnswer === opt}
-                    onChange={() => setFormCorrectAnswer(opt)}
+                    checked={form.formCorrectAnswer === opt}
+                    onChange={() => form.setFormCorrectAnswer(opt)}
                   />
                   {opt}
                 </label>
               ))}
-              {formCorrectAnswer && (
-                <button onClick={() => setFormCorrectAnswer('')}
+              {form.formCorrectAnswer && (
+                <button onClick={() => form.setFormCorrectAnswer('')}
                   style={{ alignSelf: 'flex-start', marginTop: 4, fontSize: '.75rem', color: '#e53e3e', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                   Limpar seleção
                 </button>
@@ -496,7 +437,7 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
         {/* Obrigatório */}
         <div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '.875rem', color: '#4a5568' }}>
-            <input type="checkbox" checked={formRequired} onChange={e => setFormRequired(e.target.checked)} />
+            <input type="checkbox" checked={form.formRequired} onChange={e => form.setFormRequired(e.target.checked)} />
             Pergunta obrigatória
           </label>
         </div>
@@ -593,7 +534,7 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
                     {q.description && <p style={{ fontSize: '.82rem', color: '#718096', marginTop: 4, marginBottom: 0 }}>{q.description}</p>}
 
                     {/* Opções (editar) */}
-                    {HAS_OPTIONS.includes(q.type) && (
+                    {HAS_OPTIONS.has(q.type) && (
                       <div style={{ marginTop: 8 }}>
                         {editingId === q.id ? (
                           <div>
@@ -663,7 +604,7 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
       {showAdd ? (
         renderForm(false)
       ) : (
-        <button onClick={() => { setShowAdd(true); setEditingMetadataId(null); setEditingId(null); setFormType('text'); setFormTitle(''); setFormKey(''); setFormDesc(''); setFormRequired(true); setFormPergunta(''); setFormPlaceholder(''); setFormAccept(''); setFormCorrectAnswer(''); setKeyEdited(false); }}
+        <button onClick={() => { setShowAdd(true); setEditingMetadataId(null); setEditingId(null); form.resetForm(); form.setFormType('text'); }}
           style={{
             display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginTop: 12,
             padding: '10px 16px', border: '2px dashed #cbd5e0', borderRadius: 10,

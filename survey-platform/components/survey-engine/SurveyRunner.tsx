@@ -1,10 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { applyConditionals } from '@/lib/survey-config'
 import { buildActiveSteps, stepId } from './utils/buildActiveSteps'
-import type { Answers, SurveyConfig, SurveyContext, Perfil, NPSAnswer } from './utils/types'
+import type {
+  Answers, SurveyConfig, SurveyContext, Perfil, NPSAnswer,
+  WelcomeStepDef, NPSStepDef, ScaleStepDef, RadioStepDef,
+  TextStepDef, CheckboxStepDef, FileUploadStepDef,
+} from './utils/types'
 import WelcomeStep from './steps/WelcomeStep'
 import StepNPS from './steps/StepNPS'
 import StepEscala from './steps/StepEscala'
@@ -164,15 +168,24 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [surveySlug, ctx])
 
-  // ── Tema: injeta CSS vars no :root para afetar o fundo do layout ─────────────
+  // ── Theme mergeado: settings.theme como base, installation.theme sobrescreve ──
+  // Fonte única de verdade — usada tanto para CSS vars quanto para props dos steps.
+  // community-level (installation) tem prioridade máxima sobre survey-level (settings).
+  const theme = useMemo(() => ({
+    ...(survey?.settings?.theme   ?? {}),
+    ...(survey?.installation?.theme ?? {}),
+  }), [survey])
+
+  // ── Injeta CSS vars no :root para afetar o fundo do layout ───────────────────
   useEffect(() => {
-    const primary   = survey?.installation?.theme?.primaryColor   ?? survey?.settings?.theme?.primaryColor
-    const secondary = survey?.installation?.theme?.secondaryColor ?? survey?.settings?.theme?.secondaryColor
-    if (primary) {
-      document.documentElement.style.setProperty('--color-primary', primary)
-      document.documentElement.style.setProperty('--color-secondary', secondary ?? primary)
+    if (theme.primaryColor) {
+      document.documentElement.style.setProperty('--color-primary', theme.primaryColor as string)
+      document.documentElement.style.setProperty(
+        '--color-secondary',
+        (theme.secondaryColor as string | undefined) ?? (theme.primaryColor as string)
+      )
     }
-  }, [survey])
+  }, [theme])
 
   // ── Loading personalizado por comunidade ─────────────────────────────────────
   if (!ctx || (!survey && !surveyNotFound)) {
@@ -226,9 +239,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const openDate  =  survey.installation?.open_date  ?? ctx.openDate
   const closeDate =  survey.installation?.close_date ?? ctx.closeDate
 
-  // CSS vars de tema por comunidade — aplicadas no :root para afetar o fundo também
-  // Merge: settings.theme como base, installation.theme sobrescreve (por comunidade tem prioridade)
-  const theme = { ...(survey?.settings?.theme ?? {}), ...(survey?.installation?.theme ?? {}) }
+  // themeVars: CSS custom properties para o card container
   const themeVars = theme?.primaryColor
     ? {
         '--color-primary':   theme.primaryColor,
@@ -369,7 +380,50 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const npsKey     = activeSteps.find(s => s.type === 'nps')?.key ?? 'nps'
   const npsAnswer  = answers[npsKey] as NPSAnswer | undefined
 
-  // ── Render exclusivo — apenas 1 step montado por vez ─────────────────────────
+  // ── Lookup table de renderers por tipo de step ────────────────────────────────
+  // CC de renderCurrentStep cai de 11 para ~3 com esta abordagem.
+  // Adicionar novo tipo: inserir entry aqui, sem tocar no fluxo principal.
+  type StepRenderer = () => React.ReactElement | null
+  const STEP_RENDERERS: Record<string, StepRenderer> = {
+    welcome: () => (
+      <WelcomeStep
+        step={currentStep! as WelcomeStepDef}
+        nome={nomeCompleto} nomeAluno={nomeAluno} serie={serie}
+        perfil={perfil} tipo={tipo}
+        theme={theme}
+        onStart={() => {
+          const nextStep = activeSteps[1]
+          if (nextStep) setCurrentKey(stepId(nextStep))
+        }}
+      />
+    ),
+    nps: () => {
+      const s = currentStep! as NPSStepDef
+      return <StepNPS key={s.key} step={s} onNext={d => next(s.key, d)} onBack={back} tipo={tipo} />
+    },
+    scale: () => {
+      const s = currentStep! as ScaleStepDef
+      return <StepEscala key={s.key} step={s} tipo={tipo} onNext={d => next(s.key, d)} onBack={back} isLast={isLastData} loading={loading} />
+    },
+    radio: () => {
+      const s = currentStep! as RadioStepDef
+      return <StepRadio key={s.key} step={s} tipo={tipo} onNext={d => next(s.key, d)} onBack={back} isLast={isLastData} loading={loading} />
+    },
+    text: () => {
+      const s = currentStep! as TextStepDef
+      return <StepText key={s.key} step={s} tipo={tipo} onNext={d => next(s.key, d)} onBack={back} isLast={isLastData} loading={loading} />
+    },
+    checkbox: () => {
+      const s = currentStep! as CheckboxStepDef
+      return <StepCheckbox key={s.key} step={s} tipo={tipo} onNext={d => next(s.key, d)} onBack={back} isLast={isLastData} loading={loading} />
+    },
+    file_upload: () => {
+      const s = currentStep! as FileUploadStepDef
+      return <StepFileUpload key={s.key} step={s} tipo={tipo} onNext={d => next(s.key, d)} onBack={back} isLast={isLastData} loading={loading} />
+    },
+  }
+
+  // ── Render exclusivo — apenas 1 step montado por vez (CC = 3) ─────────────────
   function renderCurrentStep() {
     if (isThankyou) {
       return (
@@ -379,98 +433,13 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
           nomeAluno={nomeAluno}
           school={school}
           tipo={tipo}
-          theme={{ ...(survey!.settings?.theme ?? {}), ...(survey!.installation?.theme ?? {}) }}
+          theme={theme}
           indicacaoLinks={survey!.settings?.indicacao_links}
         />
       )
     }
-    switch (currentStep?.type) {
-      case 'welcome':
-        return (
-          <WelcomeStep
-            step={currentStep}
-            nome={nomeCompleto} nomeAluno={nomeAluno} serie={serie}
-            perfil={perfil} tipo={tipo}
-            theme={{ ...(survey!.settings?.theme ?? {}), ...(survey!.installation?.theme ?? {}) }}
-            onStart={() => {
-              const nextStep = activeSteps[1]
-              if (nextStep) setCurrentKey(stepId(nextStep))
-            }}
-          />
-        )
-      case 'nps':
-        return (
-          <StepNPS
-            key={currentStep.key}
-            step={currentStep}
-            onNext={d => next(currentStep!.key, d)}
-            onBack={back}
-            tipo={tipo}
-          />
-        )
-      case 'scale':
-        return (
-          <StepEscala
-            key={currentStep.key}
-            step={currentStep}
-            tipo={tipo}
-            onNext={d => next(currentStep!.key, d)}
-            onBack={back}
-            isLast={isLastData}
-            loading={loading}
-          />
-        )
-      case 'radio':
-        return (
-          <StepRadio
-            key={currentStep.key}
-            step={currentStep}
-            tipo={tipo}
-            onNext={d => next(currentStep!.key, d)}
-            onBack={back}
-            isLast={isLastData}
-            loading={loading}
-          />
-        )
-      case 'text':
-        return (
-          <StepText
-            key={currentStep.key}
-            step={currentStep}
-            tipo={tipo}
-            onNext={d => next(currentStep!.key, d)}
-            onBack={back}
-            isLast={isLastData}
-            loading={loading}
-          />
-        )
-      case 'checkbox':
-        return (
-          <StepCheckbox
-            key={currentStep.key}
-            step={currentStep}
-            tipo={tipo}
-            onNext={d => next(currentStep!.key, d)}
-            onBack={back}
-            isLast={isLastData}
-            loading={loading}
-          />
-        )
-      case 'file_upload':
-        return (
-          <StepFileUpload
-            key={currentStep.key}
-            step={currentStep}
-            tipo={tipo}
-            onNext={d => next(currentStep!.key, d)}
-            onBack={back}
-            isLast={isLastData}
-            loading={loading}
-          />
-        )
-      default:
-        return null
-    }
+    const renderer = currentStep?.type ? STEP_RENDERERS[currentStep.type] : null
+    return renderer?.() ?? null
   }
 
   const isWelcome = currentStep?.type === 'welcome' && !submitted

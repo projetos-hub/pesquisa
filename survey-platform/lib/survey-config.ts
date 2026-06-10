@@ -18,6 +18,7 @@ export interface SurveyRow {
   title: string
   survey_type: string
   target_roles: string[]
+  status?: string
   settings: Record<string, unknown>
 }
 
@@ -52,11 +53,139 @@ export interface OptionRow {
   section_title: string | null
 }
 
-// ─── DB rows → SurveyConfig (com conditional_on, sem condicional fn) ──────────
+// ─── Helpers internos ─────────────────────────────────────────────────────────
+
+/** Campos de base compartilhados por todos os steps */
+function baseFields(q: QuestionRow) {
+  return {
+    ...(q.conditional_on ? { conditional_on: q.conditional_on } : {}),
+    ...(q.only_for_roles?.[0] ? { somentePara: q.only_for_roles[0] as Perfil } : {}),
+  }
+}
+
+// ─── Strategy map: um builder por tipo de question ───────────────────────────
+// CC de rowsToConfig cai de 14 para ~4 com esta abordagem.
+
+type StepBuilder = (q: QuestionRow, opts: OptionRow[]) => StepDef
+
+const STEP_BUILDERS: Record<string, StepBuilder> = {
+  welcome: (q) => ({
+    type: 'welcome',
+    ...(q.title       ? { titulo: q.title }       : {}),
+    ...(q.description ? { desc:   q.description } : {}),
+    ...baseFields(q),
+  }),
+
+  nps: (q) => ({
+    type: 'nps',
+    key: q.key,
+    ...(q.title       ? { titulo: q.title }       : {}),
+    ...(q.description ? { desc:   q.description } : {}),
+    perguntaBilingue: (q.settings?.perguntaBilingue as boolean) ?? false,
+    ...baseFields(q),
+  }),
+
+  scale: (q, opts) => ({
+    type: 'scale',
+    key: q.key,
+    titulo: q.title,
+    ...(q.description ? { desc: q.description } : {}),
+    perguntas: opts.map(o => o.label),
+    ...baseFields(q),
+  }),
+
+  scale_sections: (q, opts) => {
+    // Monta seções respeitando a ordem de inserção das options
+    const sectionOrder: string[] = []
+    const sectionMap = new Map<string, { titulo: string; perguntas: string[] }>()
+    for (const opt of opts) {
+      if (!opt.section_key || !opt.section_title) continue
+      if (!sectionMap.has(opt.section_key)) {
+        sectionOrder.push(opt.section_key)
+        sectionMap.set(opt.section_key, { titulo: opt.section_title, perguntas: [] })
+      }
+      sectionMap.get(opt.section_key)!.perguntas.push(opt.label)
+    }
+    const secoes: StepSection[] = sectionOrder.map(key => ({
+      key,
+      titulo: sectionMap.get(key)!.titulo,
+      perguntas: sectionMap.get(key)!.perguntas,
+    }))
+    return {
+      type: 'scale',
+      key: q.key,
+      titulo: q.title,
+      ...(q.description ? { desc: q.description } : {}),
+      secoes,
+      ...baseFields(q),
+    }
+  },
+
+  radio: (q, opts) => ({
+    type: 'radio',
+    key: q.key,
+    titulo: q.title,
+    ...(q.description ? { desc: q.description } : {}),
+    pergunta: (q.settings?.pergunta as string) ?? '',
+    opcoes: opts.map(o => o.label),
+    obrigatorio: q.required,
+    ...baseFields(q),
+  }),
+
+  text: (q) => ({
+    type: 'text',
+    key: q.key,
+    titulo: q.title,
+    ...(q.description ? { desc: q.description } : {}),
+    pergunta: (q.settings?.pergunta as string) ?? '',
+    ...(q.settings?.placeholder ? { placeholder: q.settings.placeholder as string } : {}),
+    obrigatorio: q.required,
+    ...baseFields(q),
+  }),
+
+  checkbox: (q, opts) => ({
+    type: 'checkbox',
+    key: q.key,
+    titulo: q.title,
+    ...(q.description ? { desc: q.description } : {}),
+    pergunta: (q.settings?.pergunta as string) ?? '',
+    opcoes: opts.map(o => o.label),
+    obrigatorio: q.required,
+    ...(q.settings?.minSelecoes ? { minSelecoes: q.settings.minSelecoes as number } : {}),
+    ...(q.settings?.maxSelecoes ? { maxSelecoes: q.settings.maxSelecoes as number } : {}),
+    ...baseFields(q),
+  }),
+
+  file_upload: (q) => ({
+    type: 'file_upload',
+    key: q.key,
+    titulo: q.title,
+    ...(q.description ? { desc: q.description } : {}),
+    pergunta: (q.settings?.pergunta as string) ?? '',
+    ...(q.settings?.accept ? { accept: q.settings.accept as string } : {}),
+    obrigatorio: q.required,
+    ...baseFields(q),
+  }),
+
+  thankyou: (q) => ({
+    type: 'thankyou',
+    ...baseFields(q),
+  }),
+}
+
+/** Fallback para tipos desconhecidos: não quebra a engine */
+function buildDefaultStep(q: QuestionRow): StepDef {
+  return { type: 'text', key: q.key, titulo: q.title, pergunta: '', ...baseFields(q) }
+}
+
+// ─── DB rows → SurveyConfig ───────────────────────────────────────────────────
 //
-// condicional é uma função JS e não pode ser serializada em JSON.
-// rowsToConfig() monta o config com conditional_on (JSONB) em cada step.
-// applyConditionals() converte conditional_on → condicional function no cliente.
+// Ordem de precedência do theme (menor → maior prioridade):
+//   1. survey.settings.theme  (padrão global da pesquisa)
+//   2. installation.theme     (override por comunidade)
+//
+// O theme final é sempre propagado tanto em settings quanto em installation
+// para garantir que SurveyRunner acesse via qualquer dos dois caminhos.
 
 export function rowsToConfig(
   survey: SurveyRow,
@@ -64,6 +193,7 @@ export function rowsToConfig(
   options: OptionRow[],
   installation?: InstallationRow
 ): SurveyConfig {
+  // Converte cada question em StepDef usando o strategy map
   const steps: StepDef[] = [...questions]
     .sort((a, b) => a.order_index - b.order_index)
     .map((q): StepDef => {
@@ -71,132 +201,21 @@ export function rowsToConfig(
         .filter(o => o.question_id === q.id)
         .sort((a, b) => a.order_index - b.order_index)
 
-      const base = {
-        ...(q.conditional_on ? { conditional_on: q.conditional_on } : {}),
-        ...(q.only_for_roles?.[0] ? { somentePara: q.only_for_roles[0] as Perfil } : {}),
-      }
-
-      switch (q.type) {
-        case 'welcome':
-          return {
-            type: 'welcome',
-            ...(q.title ? { titulo: q.title } : {}),
-            ...(q.description ? { desc: q.description } : {}),
-            ...base,
-          }
-
-        case 'nps':
-          return {
-            type: 'nps',
-            key: q.key,
-            ...(q.title       ? { titulo: q.title }       : {}),
-            ...(q.description ? { desc:   q.description } : {}),
-            perguntaBilingue: (q.settings?.perguntaBilingue as boolean) ?? false,
-            ...base,
-          }
-
-        case 'scale':
-          return {
-            type: 'scale',
-            key: q.key,
-            titulo: q.title,
-            ...(q.description ? { desc: q.description } : {}),
-            perguntas: qOptions.map(o => o.label),
-            ...base,
-          }
-
-        case 'scale_sections': {
-          // Monta seções respeitando a ordem de inserção das options
-          const sectionOrder: string[] = []
-          const sectionMap = new Map<string, { titulo: string; perguntas: string[] }>()
-          for (const opt of qOptions) {
-            if (!opt.section_key || !opt.section_title) continue
-            if (!sectionMap.has(opt.section_key)) {
-              sectionOrder.push(opt.section_key)
-              sectionMap.set(opt.section_key, { titulo: opt.section_title, perguntas: [] })
-            }
-            sectionMap.get(opt.section_key)!.perguntas.push(opt.label)
-          }
-          const secoes: StepSection[] = sectionOrder.map(key => ({
-            key,
-            titulo: sectionMap.get(key)!.titulo,
-            perguntas: sectionMap.get(key)!.perguntas,
-          }))
-          return {
-            type: 'scale',
-            key: q.key,
-            titulo: q.title,
-            ...(q.description ? { desc: q.description } : {}),
-            secoes,
-            ...base,
-          }
-        }
-
-        case 'radio':
-          return {
-            type: 'radio',
-            key: q.key,
-            titulo: q.title,
-            ...(q.description ? { desc: q.description } : {}),
-            pergunta: (q.settings?.pergunta as string) ?? '',
-            opcoes: qOptions.map(o => o.label),
-            obrigatorio: q.required,
-            ...base,
-          }
-
-        case 'text':
-          return {
-            type: 'text',
-            key: q.key,
-            titulo: q.title,
-            ...(q.description ? { desc: q.description } : {}),
-            pergunta: (q.settings?.pergunta as string) ?? '',
-            ...(q.settings?.placeholder ? { placeholder: q.settings.placeholder as string } : {}),
-            obrigatorio: q.required,
-            ...base,
-          }
-
-        case 'checkbox':
-          return {
-            type: 'checkbox',
-            key: q.key,
-            titulo: q.title,
-            ...(q.description ? { desc: q.description } : {}),
-            pergunta: (q.settings?.pergunta as string) ?? '',
-            opcoes: qOptions.map(o => o.label),
-            obrigatorio: q.required,
-            ...(q.settings?.minSelecoes ? { minSelecoes: q.settings.minSelecoes as number } : {}),
-            ...(q.settings?.maxSelecoes ? { maxSelecoes: q.settings.maxSelecoes as number } : {}),
-            ...base,
-          }
-
-        case 'file_upload':
-          return {
-            type: 'file_upload',
-            key: q.key,
-            titulo: q.title,
-            ...(q.description ? { desc: q.description } : {}),
-            pergunta: (q.settings?.pergunta as string) ?? '',
-            ...(q.settings?.accept ? { accept: q.settings.accept as string } : {}),
-            obrigatorio: q.required,
-            ...base,
-          }
-
-        case 'thankyou':
-          return { type: 'thankyou', ...base }
-
-        default:
-          // Tipo desconhecido: retorna como text vazio para não quebrar a engine
-          return { type: 'text', key: q.key, titulo: q.title, pergunta: '', ...base }
-      }
+      const builder = STEP_BUILDERS[q.type] ?? buildDefaultStep
+      return builder(q, qOptions)
     })
+
+  // Merge de theme: surveyTheme é base, installationTheme sobrescreve
+  // Sempre propagado — nunca perdido por installation vazia ou ausente
+  const surveyTheme = (survey.settings as { theme?: Record<string, unknown> })?.theme ?? {}
+  const installTheme = installation?.theme ?? {}
+  const mergedTheme: Record<string, unknown> = { ...surveyTheme, ...installTheme }
 
   const mergedSettings: SurveySettings = {
     ...(survey.settings ?? {}),
     ...(installation?.settings ?? {}),
-    ...(installation?.theme && Object.keys(installation.theme).length > 0
-      ? { theme: installation.theme }
-      : {}),
+    // theme final com prioridade correta
+    ...(Object.keys(mergedTheme).length > 0 ? { theme: mergedTheme } : {}),
   } as SurveySettings
 
   const inst: SurveyInstallation | undefined = installation
@@ -204,9 +223,8 @@ export function rowsToConfig(
         status: installation.status as SurveyInstallation['status'],
         ...(installation.open_date  ? { open_date:  installation.open_date }  : {}),
         ...(installation.close_date ? { close_date: installation.close_date } : {}),
-        ...(installation.theme && Object.keys(installation.theme).length > 0
-          ? { theme: installation.theme as SurveyInstallation['theme'] }
-          : {}),
+        // Sempre inclui o theme mergeado — nunca retorna installation sem theme
+        theme: mergedTheme as SurveyInstallation['theme'],
       }
     : undefined
 
@@ -239,7 +257,8 @@ export function applyConditionals(config: SurveyConfig): SurveyConfig {
         return answer?.[spec.field] === spec.value
       }
     } else {
-      // Spec desconhecida: step sempre visível
+      // Spec desconhecida: step sempre visível (fail-open intencional)
+      // ATENÇÃO: adicionar novo case aqui ao criar novos tipos de conditional
       condicional = () => true
     }
 
