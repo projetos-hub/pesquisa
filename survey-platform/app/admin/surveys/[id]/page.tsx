@@ -17,7 +17,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
   // Busca survey
   const { data: survey } = await supabase
     .from('surveys')
-    .select('id, slug, title, status, survey_type, target_roles, open_date, close_date, description, access_control')
+    .select('id, slug, title, status, survey_type, target_roles, open_date, close_date, description, access_control, settings')
     .eq('id', id)
     .single()
 
@@ -198,7 +198,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
         {/* Formulário de edição */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Metadados</h3>
-          <SurveyEditForm survey={survey} />
+          <SurveyEditForm survey={survey} settings={survey.settings as Record<string, unknown> | null} />
         </div>
 
         {/* Editor de perguntas */}

@@ -73,9 +73,12 @@ const getCachedSurveyConfig = unstable_cache(
           secondaryColor: community.secondary_color,
           logo:           community.logo,
         }
+        // Survey-level theme (settings.theme) serve como fallback padrão
+        // Community-level theme (installation.theme) tem prioridade máxima
+        const surveyTheme = (survey.settings as { theme?: Record<string, unknown> })?.theme ?? {}
         installation = {
           ...installation,
-          theme: { ...baseTheme, ...(installation.theme ?? {}) }
+          theme: { ...baseTheme, ...surveyTheme, ...(installation.theme ?? {}) }
         }
       }
     }

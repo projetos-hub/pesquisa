@@ -20,6 +20,8 @@ export async function saveCommunityTheme(
     secondaryColor?: string
     logo?: string
     indicacaoLink?: string
+    welcomeMessage?: string
+    thankyouMessage?: string
   }
 ) {
   try {
@@ -41,13 +43,17 @@ export async function saveCommunityTheme(
 
     // Monta o objeto theme (remove campos undefined)
     const themeData: Record<string, unknown> = {}
-    if (theme.nomeEscola)    themeData.nomeEscola    = theme.nomeEscola
-    if (theme.primaryColor)  themeData.primaryColor  = theme.primaryColor
-    if (theme.secondaryColor)themeData.secondaryColor = theme.secondaryColor
-    if (theme.logo)          themeData.logo          = theme.logo
-    if (theme.indicacaoLink) themeData.indicacaoLink = theme.indicacaoLink
+    if (theme.nomeEscola)     themeData.nomeEscola     = theme.nomeEscola
+    if (theme.primaryColor)   themeData.primaryColor   = theme.primaryColor
+    if (theme.secondaryColor) themeData.secondaryColor = theme.secondaryColor
+    if (theme.logo)           themeData.logo           = theme.logo
+    if (theme.indicacaoLink)  themeData.indicacaoLink  = theme.indicacaoLink
     // Permitir limpar indicacaoLink (string vazia = remover)
     if (theme.indicacaoLink === '') delete themeData.indicacaoLink
+    if (theme.welcomeMessage)   themeData.welcomeMessage   = theme.welcomeMessage
+    if (theme.welcomeMessage === '') delete themeData.welcomeMessage
+    if (theme.thankyouMessage)  themeData.thankyouMessage  = theme.thankyouMessage
+    if (theme.thankyouMessage === '') delete themeData.thankyouMessage
 
     const { error } = await supabase
       .from('survey_communities')

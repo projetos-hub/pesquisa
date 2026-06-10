@@ -16,6 +16,8 @@ interface Community {
     primaryColor?: string
     secondaryColor?: string
     logo?: string
+    thankyouMessage?: string
+    welcomeMessage?: string
   }
 }
 
@@ -167,6 +169,8 @@ function ThemeEditForm({ surveyId, community, onClose }: FormProps) {
         secondaryColor: formData.get('secondaryColor') as string || undefined,
         logo: formData.get('logo') as string || undefined,
         indicacaoLink: (formData.get('indicacaoLink') as string) ?? undefined,
+        welcomeMessage: (formData.get('welcomeMessage') as string) ?? undefined,
+        thankyouMessage: (formData.get('thankyouMessage') as string) ?? undefined,
       }
     )
 
@@ -269,6 +273,36 @@ function ThemeEditForm({ surveyId, community, onClose }: FormProps) {
               />
               <p className="text-xs text-gray-500 mt-1">
                 Default: {community.logoUrl}
+              </p>
+            </div>
+
+            {/* Mensagem de boas-vindas */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">Mensagem de boas-vindas</label>
+              <textarea
+                name="welcomeMessage"
+                rows={3}
+                defaultValue={community.theme?.welcomeMessage || ''}
+                placeholder="Ex: Que bom ter você aqui! Sua opinião é muito importante."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D] resize-y"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Variáveis: {'{{nome}}'} | {'{{nomeAluno}}'} | {'{{serie}}'} | {'{{nomeEscola}}'}
+              </p>
+            </div>
+
+            {/* Mensagem de agradecimento */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">Mensagem de agradecimento</label>
+              <textarea
+                name="thankyouMessage"
+                rows={3}
+                defaultValue={community.theme?.thankyouMessage || ''}
+                placeholder="Ex: Obrigado por participar! Sua opinião faz a diferença."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D] resize-y"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Se preenchida, substitui o texto padrão. Variáveis: {'{{nomeAluno}}'} | {'{{nomeEscola}}'}
               </p>
             </div>
 

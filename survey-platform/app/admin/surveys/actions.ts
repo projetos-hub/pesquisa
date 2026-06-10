@@ -43,7 +43,32 @@ export async function updateSurvey(
     return { error: 'Data de abertura deve ser anterior ao encerramento' }
   }
 
+  const thankyouMessage = (formData.get('thankyouMessage') as string) || ''
+
   const supabase = createServiceClient()
+
+  // Lê settings existentes para merge
+  const { data: existingSurvey } = await supabase
+    .from('surveys')
+    .select('settings')
+    .eq('id', id)
+    .single()
+
+  const existingSettings = (existingSurvey?.settings ?? {}) as Record<string, unknown>
+  const existingTheme = (existingSettings.theme ?? {}) as Record<string, unknown>
+
+  const newTheme = { ...existingTheme }
+  if (thankyouMessage) {
+    newTheme.thankyouMessage = thankyouMessage
+  } else {
+    delete newTheme.thankyouMessage
+  }
+
+  const newSettings = {
+    ...existingSettings,
+    theme: Object.keys(newTheme).length > 0 ? newTheme : undefined,
+  }
+
   const { error } = await supabase
     .from('surveys')
     .update({ 
@@ -52,7 +77,8 @@ export async function updateSurvey(
       access_control,
       ...(survey_type ? { survey_type } : {}), 
       open_date, 
-      close_date 
+      close_date,
+      settings: newSettings,
     })
     .eq('id', id)
 
