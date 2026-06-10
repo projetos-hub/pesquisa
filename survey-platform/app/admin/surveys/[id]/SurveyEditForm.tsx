@@ -13,6 +13,12 @@ interface Survey {
   access_control?: string
 }
 
+interface SurveySettings {
+  theme?: {
+    thankyouMessage?: string
+  }
+}
+
 const SURVEY_TYPES = [
   { value: 'quantitativa',  label: 'Quantitativa (escala + NPS)' },
   { value: 'qualitativa',   label: 'Qualitativa (perguntas abertas)' },
@@ -43,7 +49,9 @@ function toDatetimeLocal(iso: string | null): string {
   return d.toISOString().slice(0, 16)
 }
 
-export default function SurveyEditForm({ survey }: { survey: Survey }) {
+export default function SurveyEditForm({ survey, settings }: { survey: Survey; settings?: Record<string, unknown> | null }) {
+  const surveySettings = (settings ?? {}) as SurveySettings
+  const defaultThankyou = surveySettings.theme?.thankyouMessage ?? ''
   const [state, formAction, isPending] = useActionState(
     async (_prev: State, formData: FormData): Promise<State> => {
       const result = await updateSurvey(survey.id, formData)
@@ -154,6 +162,23 @@ export default function SurveyEditForm({ survey }: { survey: Survey }) {
       <p className="text-xs text-gray-400 -mt-2">
         Se preenchidas, a pesquisa abrirá e encerrará automaticamente. O status manual prevalece sobre as datas.
       </p>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Mensagem de agradecimento padrão
+        </label>
+        <textarea
+          name="thankyouMessage"
+          rows={3}
+          defaultValue={defaultThankyou}
+          placeholder="Deixe em branco para usar o texto padrão (baseado no perfil + NPS)"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D] resize-y"
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Substitui o texto de agradecimento para <strong>todas</strong> as comunidades
+          que não tiverem uma mensagem personalizada. Variáveis: {'{{nomeAluno}}'} | {'{{nomeEscola}}'}
+        </p>
+      </div>
 
       <div className="pt-1">
         <button
