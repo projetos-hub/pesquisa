@@ -9,7 +9,7 @@
 
 ---
 
-## Estado atual: Fase 7 concluída (Deploy Vercel) → Fase 8 em planejamento
+## Estado atual: PRs #1–#74 mergeados em main → ⚠️ PARADO: aplicar migration `028_audit_broadcasts.sql` via MCP Supabase
 
 ---
 
@@ -270,7 +270,11 @@ WHERE email = 'seu@email.com';
 | 3-fix | ERR_TOO_MANY_REDIRECTS no login | ✅ Corrigido (commit 107ccd1) |
 | 4 | Google Sheets espelho + retry + cron | ✅ Concluída (commit fcae9e6) |
 | 5 | Polimento e remoção de hardcodes | ✅ Concluída (commit ddd8180) |
-| 6 | Segmentação amostral por escola | ✅ Concluída (commit 20a08a8) — amostra Excel, acesso por email, disparo amostral personalizado |
+| 6 | Segmentação amostral por escola | ✅ Concluída (commit 20a08a8) |
+| 7 | Deploy Vercel | ✅ Concluída |
+| 8 | Cron Supabase + Audit Logs + Sample Scope | ✅ Concluída |
+| PRs #9–#73 | Features e fixes incrementais (disparos, analytics, relatórios, home admin, auditoria…) | ✅ Todos mergeados em main |
+| PR #74 | Thank-you editável + Code Review (QA) | ✅ Mergeado em main |
 
 ---
 
@@ -441,72 +445,180 @@ Ver `docs/roadmap-melhorias.md` — 13 itens priorizados P0→P3.
 
 ---
 
-## Próximos passos
+## Histórico de fases completo
 
 ### Fase 7 — Deploy na Vercel ✅ (commit dab4774 - 2026-04-16)
 
-**Completado:**
-- ✅ Repositório GitHub conectado à Vercel (`survey-platform/` como root)
-- ✅ Variáveis de ambiente configuradas (SUPABASE_*, LAYERS_API_TOKEN, CRON_SECRET)
-- ✅ Todas as migrations rodadas em produção (001-010)
 - ✅ App ao vivo em: https://pesquisa-nu-sand.vercel.app
-
-**Bugs corrigidos durante deploy:**
-- ✅ Next.js 16 async params issue em `sample/route.ts`
-- ✅ Admin redirect loop (logout → login)
-- ✅ Dispatch tab visibility (sidebar)
+- ✅ Variáveis de ambiente configuradas (SUPABASE_*, LAYERS_API_TOKEN, CRON_SECRET)
+- ✅ Bugs de deploy corrigidos (async params, redirect loop, dispatch tab)
 
 ---
 
-### Fase 8 — Cron Supabase + Audit Logs + Sample Scope ✅ (commits e18106b..2d3e3b0)
+### Fase 8 — Cron Supabase + Audit Logs + Sample Scope ✅ (PR #8)
 
-**PR #8:** https://github.com/projetos-hub/pesquisa/pull/8  
-**Branch:** `feat/phase-8-cron-audit-sample`
-
-**Implementado:**
-- ✅ Migration 011 — pg_cron `*/5 * * * *` via `trigger_dispatch_processor` + pg_net
+- ✅ pg_cron `*/5 * * * *` via pg_net → endpoint `/api/cron/process-dispatches`
 - ✅ `notification_audit_logs` — rastreia sent/failed por email
-- ✅ `target_scope = 'sample'` — constraint estendido, valida personalized=true
-- ✅ `executePersonalizedJobSample()` — audit log + fix offset (não loopa em falhas)
-- ✅ DispatchForm — radio "📊 Amostra" + info box
-- ✅ GET /dispatch-audit — endpoint de audit logs
-- ✅ ManualDispatch — disparo rápido por email (max 50)
-- ✅ **Fix segurança**: POST /submit agora re-valida amostra (bypasse bloqueado)
-
-**Bateria de testes (Sprint 8 + 9):**
-- Unit: `submit-sample-gate.test.ts` (5), `audit-log.test.ts` (5), `sample-dispatch.test.ts` (7)
-- E2E: `sample-gate.spec.ts` (7), `admin-sample.spec.ts` (7), `dispatch-execution.spec.ts` (6)
-
-**🔴 BLOQUEADOR — fazer ANTES de mergear o PR:**
-
-1. Abrir [Supabase SQL Editor](https://supabase.com/dashboard/project/qnpvlhfjknnvfiyxrhhl/sql/new)
-2. Rodar primeiro (valor do CRON_SECRET está em `.env.local`):
-   ```sql
-   ALTER DATABASE postgres SET "app.cron_secret" = '<valor de CRON_SECRET do .env.local>';
-   SELECT pg_reload_conf();
-   ```
-3. Depois rodar o restante de `supabase/migrations/011_phase8_dispatch_audit.sql`
-4. Verificar: `SELECT * FROM cron.job WHERE jobname = 'dispatch-processor';`
-5. Mergear PR #8 → deploy automático
-
-**Após merge:**
-- Verificar [Vercel dashboard](https://vercel.com) que deploy passou
-- Testar: acessar survey com email fora da amostra → deve bloquear (403)
-- Testar: criar dispatch scope=sample → audit logs em /dispatch-audit
+- ✅ `target_scope = 'sample'` — dispatch amostral seguro
+- ✅ Bateria de testes unitários e E2E
 
 ---
 
-### Ajustes visuais e dados — 2026-05-04 (commits 2edd60f, 1ff5045)
+### Sessões 2026-04 a 2026-05 — Features e fixes
 
-**Código — `survey-platform/`:**
-- `StepNPS.tsx` — `titulo` exibido como pergunta principal (`step-title`), `desc` como subtítulo
-- `StepNPS.tsx` — labels "Nada provável" (ao lado do 0) e "Extremamente provável" (ao lado do 10) embutidos na linha dos botões; removido `nps-hint` separado
-- `ScaleRow.tsx` — labels "1 - Muito Insatisfeito" e "6 - Muito Satisfeito" ao lado dos botões 1 e 6
-- `survey.css` — `.scale-btns` com `flex-wrap: nowrap` e `.scale-btn` com `flex: 1` para 6 botões caberem em uma linha
-- `StepEscala.tsx` — texto fallback atualizado de "1 a 5" para "1 a 6"
-- `SurveyEditForm.tsx` — campos de data voltaram para `type="date"` (sem horário), labels atualizados
+| PR | O que entregou |
+|----|----------------|
+| #9 | Apagar pesquisa com confirmação |
+| #10 | Remove `survey_type='misto'` inválido |
+| #11 | `mapRole` explícito com roles reais da Layers API |
+| #12 | Amostra rápida — colar emails sem Excel |
+| #13 | Export XLSX no padrão Metabase |
+| #14 | `allow_all_roles` — surveys abertos a qualquer role Layers |
+| #15 | NPS e Welcome com textos customizáveis por survey |
+| #16 | Loading personalizado por comunidade |
+| #17 | Resolver todos os placeholders no disparo via amostra |
+| #18 | `formatFirstName` — primeiro nome capitalizado |
+| #19–#20 | Placeholders no Disparo Rápido + filtro de comunidades |
+| #21 | Grupos de segmentação com curadoria manual |
+| #22–#28 | Escala 1-6, indicacaoLink por comunidade, sample gate seguro, tema global |
+| #29–#31 | Communities como base de tema, auto-criar question_options, scale cards |
+| #32–#33 | Régua de disparos por canal + placeholders visíveis |
+| #34 | Fix exportação Excel (respostas em branco) |
+| #35 | **Fix crítico cron**: `executePersonalizedJobSample` para dispatches de amostra |
+| #36–#39 | Pesquisa Dia da Família, welcome personalization, radio sort |
+| #40 | Fix UUID em `toggleWelcomeStep`/`toggleThankYouStep` |
+| #41 | Cache TTL survey 300s → 60s + endpoint revalidate |
+| #42 | Expõe erro Supabase em detail + guard `sequence_steps` |
+| #43–#46 | Mapeamento Global Tree (aliases, RECREIO, RIO 2) |
+| #47–#48 | Fix mapping + `open_date`/`close_date` para calcular status |
+| #49 | Bugs P0/P1 + dashboard auditoria + rebranding Raiz |
+| #50 | Sistema de disparos com Layers API (push/email segmentado por turma) |
+| #51 | Datas por comunidade + zombie dispatches resolvidos |
+| #52–#56 | Admin escola: nome/community_id, datas por comunidade, layout datas |
+| #57–#60 | `use client` community-name, portal filtros, 5 bugs pente-fino, invalidar cache |
 
-**Banco de dados (Supabase — pesquisa CSAT):**
-- `surveys.open_date` → `2026-05-04`
-- `surveys.close_date` → `2026-05-17`
-- `questions.description` das 3 escalas (pedagógico, administrativo, infraestrutura) → "Avalie de 1 a 6 os seguintes aspectos:"
+---
+
+### Sessão 2026-06-03 — Pente-fino residual + 3 features paralelas
+
+**Contexto:** Ciclo de bug-fix batch + 3 agents em paralelo.
+
+| PR | O que entregou |
+|----|----------------|
+| #61 | Fix ThankYou sobreposto + navegação corrompida (Arte Total) |
+| #62 | Agendamento automático de surveys (cron) |
+| #63 | Fix dispatch: CHECK constraint sample + channels + multi-role |
+| #64 | Relatórios avançados com filtros e XLSX multi-aba |
+| #65 | Analytics dashboard — KPIs, temporal, comunidades, perfil, funil |
+| #67 | Endpoint provider comunicados `@layers:Posts:getUpdatedAfter` |
+| #68 | Fixes residuais pente-fino: SurveyStatus `'aberta'`→`'ativa'`, auth check audit routes, dead code disparos |
+| #69 | Home hub admin minimalista (Conceito C) — 5 cards, grid 3+2, sem queries |
+| #70 | Dashboard de auditoria — correlação disparos × respostas, timeline |
+| #71–#72 | Hotfix Vercel Hobby plan: remover cron `advance-survey-status` do `vercel.json` |
+| #73 | Dead code cleanup — audit legado, migration conflict, nav fix |
+
+**Migration pendente (rodar no Supabase SQL Editor):**
+```sql
+-- Ativa o dashboard /admin/auditoria
+-- Arquivo: survey-platform/supabase/migrations/028_audit_broadcasts.sql
+```
+
+---
+
+### Sessão 2026-06-11 — Thank-you message editável + Code Review / Agente QA
+
+**Branch atual:** `feat/thankyou-message-editable`  
+**Commits:** `24d9ce0`, `55b4473`, `1f621e0`
+
+#### Features entregues
+
+| PR equivalente | O que fez |
+|---|---|
+| `24d9ce0` | Thank-you message editável por survey e por comunidade (admin) |
+| `55b4473` | Fix 3 bugs que impediam mensagem customizada de aparecer |
+| `1f621e0` | Code review — 8 fixes + 4 refatorações de CC e manutenibilidade |
+
+#### Detalhes do code review aplicado (commit `1f621e0`)
+
+| Tipo | Arquivo | O que mudou |
+|---|---|---|
+| CRÍTICO | `communities/actions.ts` | READ-MERGE-WRITE no theme; `requireAuth` consistente; validação URL logo |
+| CRÍTICO | `lib/survey-config.ts` | Strategy map `STEP_BUILDERS`; merge centralizado; CC 14→4 |
+| MÉDIO | `actions.ts` | `deleteQuestion` + `toggleThankYouStep` invalidam cache |
+| MÉDIO | `SurveyRunner.tsx` | `useMemo` para theme; `STEP_RENDERERS`; useEffect usa memo |
+| MÉDIO | `ThankYou.tsx` | `\|\|` → `??` para `indicacaoLink` vazio |
+| MÉDIO | `route.ts` | Sanitização de `communityId` como cache key |
+| MÉDIO | `CommunitiesThemeEditor.tsx` | `toDatetimeLocal()` para datas em Brasília |
+| REFACTOR | `QuestionEditor.tsx` | 14 useState → `useQuestionForm` hook; Set para lookups |
+| REFACTOR | `SurveyRunner.tsx` | CC `renderCurrentStep` 11→3 via lookup table |
+| REFACTOR | `survey-config.ts` | CC `rowsToConfig` 14→4 via strategy map |
+
+**Score pós-revisão:** Qualidade 8/10 | Segurança 8/10 | Manutenibilidade 8/10
+
+#### Agente QA criado
+
+Arquivo: `docs/qa-action-plan.md` — plano de revisão em 4 sprints.
+
+---
+
+## Roadmap completo atualizado
+
+| Fase | Descrição | Status |
+|---|---|---|
+| 0 | Setup Next.js + Supabase clients + schema | ✅ Concluída |
+| 1 | Engine migrada (frontend respondente) | ✅ Concluída |
+| 2A | Leitura de pesquisa via Supabase | ✅ Concluída |
+| 2B | Submit real para Supabase | ✅ Concluída |
+| 3 | Área admin | ✅ Concluída |
+| 4 | Google Sheets espelho + retry + cron | ✅ Concluída |
+| 5 | Polimento e remoção de hardcodes | ✅ Concluída |
+| 6 | Segmentação amostral por escola | ✅ Concluída |
+| 7 | Deploy Vercel | ✅ Concluída |
+| 8 | Cron Supabase + Audit Logs + Sample Scope | ✅ Concluída |
+| — | Features incrementais (PRs #9–#73) | ✅ Todas mergeadas em main |
+| — | Thank-you editável + Code Review | ✅ Concluída (PR #74) |
+| — | Duplicar template de pesquisa | ⏳ Draft PR #75 — merge pendente |
+
+---
+
+## Próximos passos
+
+### ⚠️ PARADO AQUI — retomar neste ponto ao reabrir
+
+**Tarefa:** Aplicar `028_audit_broadcasts.sql` no banco de produção.
+
+**Contexto:** A migration cria a tabela `audit_broadcasts` e a coluna `expected_responses` em `survey_communities`. O dashboard `/admin/auditoria` (PR #70) já está no ar mas depende dessas estruturas para funcionar.
+
+**Verificação feita:** A tabela `audit_broadcasts` **NÃO existe** no banco — REST API retornou 404 ao tentar acessá-la.
+
+**Como aplicar (MCP Supabase):**
+1. Ao reabrir, o MCP do Supabase estará disponível
+2. Usar `supabase__execute_sql` com `project_id="qnpvlhfjknnvfiyxrhhl"`
+3. Rodar o conteúdo de `survey-platform/supabase/migrations/028_audit_broadcasts.sql`
+4. Verificar: `SELECT table_name FROM information_schema.tables WHERE table_name = 'audit_broadcasts'`
+5. Verificar: `SELECT column_name FROM information_schema.columns WHERE table_name = 'survey_communities' AND column_name = 'expected_responses'`
+
+**Arquivo da migration:** `survey-platform/supabase/migrations/028_audit_broadcasts.sql`
+
+### 🔄 PR #75 — Duplicar template de pesquisa
+
+**Branch:** `feat/duplicate-survey-template`  
+**Status:** Draft — merge + testar em produção pendente
+
+**O que faz:** Botão "Duplicar" na listagem e no detail da pesquisa. Cria cópia exata com:
+- Slug único (`slug-copia`, `slug-copia-1`, etc.)
+- Status `rascunho`, datas limpas
+- Todas as perguntas + opções copiadas
+- Community installations **não** copiadas (admin reinstala manualmente)
+
+**Arquivos:** `actions.ts` (+duplicateSurvey), `DuplicateSurveyButton.tsx` (novo), `page.tsx`, `[id]/page.tsx`
+
+### QA Action Plan — sprints pendentes (`docs/qa-action-plan.md`)
+
+| Sprint | Prioridade | O que revisar |
+|---|---|---|
+| S0-1 | BLOQUEANTE | `communities/actions.ts` — `saveCommunityTheme` UPDATE silencioso se row não existe |
+| S1 | P0 CRÍTICO | Submit endpoint (`submit/route.ts`), `applyConditionals`, `buildActiveSteps` |
+| S2 | P0 CRÍTICO | Cron/dispatch (`process-dispatches/route.ts`, `DispatchForm.tsx` 46KB) |
+| S3 | P1 ALTA | Testes unitários: `rowsToConfig`, `useQuestionForm`, `ThankYou` fallback |
+| S4 | P2 MÉDIA | Sample upload, analytics queries, `ReportsClient.tsx` |

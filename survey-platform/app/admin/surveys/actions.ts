@@ -421,6 +421,106 @@ export async function toggleThankYouStep(
   return { id: inserted?.id }
 }
 
+async function nextAvailableSlug(supabase: ReturnType<typeof createServiceClient>, originalSlug: string): Promise<string> {
+  const cleanBase = originalSlug.replace(/-(?:copia(?:-\d+)?)$/, '')
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const candidate = attempt === 0 ? `${cleanBase}-copia` : `${cleanBase}-copia-${attempt}`
+    const { count } = await supabase.from('surveys').select('*', { count: 'exact', head: true }).eq('slug', candidate)
+    if (count === 0) return candidate
+  }
+  return `${cleanBase}-copia-${Date.now()}`
+}
+
+// ── Duplica template de pesquisa ───────────────────────────────────────────────
+export async function duplicateSurvey(
+  surveyId: string
+): Promise<{ error?: string; surveyId?: string }> {
+  try { await requireAuth() } catch { return { error: 'Não autorizado' } }
+
+  const supabase = createServiceClient()
+
+  const { data: original, error: fetchErr } = await supabase
+    .from('surveys')
+    .select('*')
+    .eq('id', surveyId)
+    .single()
+
+  if (fetchErr || !original) return { error: 'Pesquisa não encontrada' }
+
+  const newSlug = await nextAvailableSlug(supabase, original.slug)
+
+  // 3. Cria nova pesquisa
+  const { data: created, error: createErr } = await supabase
+    .from('surveys')
+    .insert({
+      title: `${original.title} (cópia)`,
+      slug: newSlug,
+      description: original.description,
+      survey_type: original.survey_type,
+      target_roles: original.target_roles,
+      access_control: original.access_control ?? 'aberta',
+      settings: original.settings ?? {},
+      status: 'rascunho',
+    })
+    .select('id')
+    .single()
+
+  if (createErr || !created) return { error: createErr?.message || 'Erro ao criar cópia' }
+
+  // 4. Copia perguntas com opções
+  const { data: questions } = await supabase
+    .from('questions')
+    .select('*')
+    .eq('survey_id', surveyId)
+    .order('order_index', { ascending: true })
+
+  for (const q of questions ?? []) {
+    const { data: newQ } = await supabase
+      .from('questions')
+      .insert({
+        survey_id: created.id,
+        order_index: q.order_index,
+        type: q.type,
+        key: q.key,
+        title: q.title,
+        description: q.description,
+        required: q.required,
+        only_for_roles: q.only_for_roles,
+        conditional_on: q.conditional_on,
+        settings: q.settings ?? {},
+      })
+      .select('id')
+      .single()
+
+    if (!newQ) continue
+
+    const { data: options } = await supabase
+      .from('question_options')
+      .select('*')
+      .eq('question_id', q.id)
+      .order('order_index', { ascending: true })
+
+    if (options && options.length > 0) {
+      await supabase.from('question_options').insert(
+        options.map(o => ({
+          question_id: newQ.id,
+          order_index: o.order_index,
+          label: o.label,
+          value: o.value,
+          section_key: o.section_key,
+          section_title: o.section_title,
+        }))
+      )
+    }
+  }
+
+  revalidatePath('/admin/surveys')
+  revalidatePath(`/admin/surveys/${created.id}`)
+  revalidateTag('survey-config', 'default')
+
+  return { surveyId: created.id }
+}
+
 // ── Deleta pesquisa (e todos os dados relacionados) ───────────────────────────
 export async function deleteSurvey(surveyId: string): Promise<{ error?: string }> {
   try { await requireAuth() } catch { return { error: 'Não autorizado' } }
