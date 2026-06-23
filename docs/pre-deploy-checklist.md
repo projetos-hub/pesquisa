@@ -2,6 +2,25 @@
 
 Use este checklist antes de promover qualquer release para producao.
 
+## Ultima release validada
+
+| Data | Commit | Resultado |
+|---|---|---|
+| 2026-06-23 | `64995e4a25bee1e9e5444d295db9ef436b4b0ea8` | Deploy Vercel `success`; smoke test `/`, `/p/csat` e `/api/health` com `200 OK` |
+
+Checks executados antes do push:
+
+```bash
+cd survey-platform
+npm run test:ci   # passou
+npm run test:e2e  # passou: 37 passed, 1 skipped
+```
+
+Observacao pos-release:
+
+- `/api/health` retornou `ok=true` com aviso opcional: `SHEETS_WEBHOOK_SECRET` ausente.
+- Se a service role removida de `survey-platform/scripts/check-data.ps1` era real/ativa, rotacionar a chave no Supabase.
+
 ## 1. Codigo
 
 - [ ] `npm run typecheck`

@@ -213,3 +213,57 @@ Elevar a qualidade geral do projeto de aproximadamente 5.8/10 para 8.5-9+ por me
 - Observabilidade suficiente para diagnosticar falhas sem inspecao manual do banco.
 - CI bloqueia regressao de lint, typecheck, testes e build.
 - Runbook de producao cobre incidentes principais.
+
+## Release Status - 2026-06-23
+
+Status final do plano:
+
+```text
+Plano 0-10: concluido
+Merge em main: concluido
+Deploy producao: concluido
+Vercel: success
+```
+
+Commits:
+
+- `c71abd7469db7b50dedc8a4ca12c761280b512d5` - fechamento de qualidade na branch `feat/duplicate-survey-template`.
+- `64995e4a25bee1e9e5444d295db9ef436b4b0ea8` - merge final em `main` publicado em producao.
+
+Gates finais executados depois do merge e antes do push:
+
+```bash
+cd survey-platform
+npm run test:ci
+npm run test:e2e
+```
+
+Resultado:
+
+```text
+test:ci: passou
+test:e2e: 37 passed, 1 skipped
+```
+
+Coverage final:
+
+```text
+Statements: 59.25%
+Branches:   47.64%
+Functions:  70.28%
+Lines:      60.27%
+```
+
+Smoke test em producao:
+
+```text
+GET /api/health -> 200 OK, ok=true
+GET /           -> 200 OK
+GET /p/csat     -> 200 OK
+```
+
+Pendencias operacionais pos-release:
+
+- Revisar `SHEETS_WEBHOOK_SECRET`, que aparece como env opcional ausente no health check.
+- Rotacionar a Supabase service role se o JWT removido de `survey-platform/scripts/check-data.ps1` era real/ativo no ambiente.
+- Manter foco futuro nos hotspots restantes acima de 300 linhas: auditoria, sample upload, reports client, submit route e `layers-hub.ts`.
