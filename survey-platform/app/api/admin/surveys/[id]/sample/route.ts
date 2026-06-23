@@ -28,7 +28,7 @@ export async function POST(
     const buffer = await file.arrayBuffer()
     const workbook = read(buffer)
     const sheet = workbook.Sheets[workbook.SheetNames[0]]
-    const rows = utils.sheet_to_json(sheet) as Record<string, any>[]
+    const rows = utils.sheet_to_json(sheet) as Record<string, unknown>[]
 
     if (rows.length === 0) {
       return Response.json({ error: 'Empty sheet' }, { status: 400 })

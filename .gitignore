@@ -1,0 +1,30 @@
+# Dependencies and generated caches
+node_modules/
+.vite/
+__pycache__/
+*.pyc
+
+# Local environment and runtime state
+.env*
+!.env.example
+*.log
+.DS_Store
+
+# Local assistant/session state
+.claude/scheduled_tasks.lock
+.claude/worktrees/
+.claude/skills/supabase/
+.claude/skills/supabase-postgres-best-practices/
+
+# Ad-hoc local media and Office temp files
+*.mp4
+~$*
+docs/bugs/*.jpeg
+docs/bugs/*.jpg
+docs/bugs/*.png
+skills-lock.json
+scripts/fix-cover.py
+scripts/rebuild-playbook-pages.py
+scripts/restyle-playbook.py
+scripts/screenshot-playbook.js
+scripts/show-structure.py

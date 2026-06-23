@@ -9,7 +9,7 @@
 
 ---
 
-## Estado atual: Fase 7 concluída (Deploy Vercel) → Fase 8 em planejamento
+## Estado atual: PRs #1–#74 mergeados em main → ⚠️ PARADO: aplicar migration `028_audit_broadcasts.sql` via MCP Supabase
 
 ---
 
@@ -270,7 +270,11 @@ WHERE email = 'seu@email.com';
 | 3-fix | ERR_TOO_MANY_REDIRECTS no login | ✅ Corrigido (commit 107ccd1) |
 | 4 | Google Sheets espelho + retry + cron | ✅ Concluída (commit fcae9e6) |
 | 5 | Polimento e remoção de hardcodes | ✅ Concluída (commit ddd8180) |
-| 6 | Segmentação amostral por escola | ✅ Concluída (commit 20a08a8) — amostra Excel, acesso por email, disparo amostral personalizado |
+| 6 | Segmentação amostral por escola | ✅ Concluída (commit 20a08a8) |
+| 7 | Deploy Vercel | ✅ Concluída |
+| 8 | Cron Supabase + Audit Logs + Sample Scope | ✅ Concluída |
+| PRs #9–#73 | Features e fixes incrementais (disparos, analytics, relatórios, home admin, auditoria…) | ✅ Todos mergeados em main |
+| PR #74 | Thank-you editável + Code Review (QA) | ✅ Mergeado em main |
 
 ---
 
@@ -441,72 +445,948 @@ Ver `docs/roadmap-melhorias.md` — 13 itens priorizados P0→P3.
 
 ---
 
-## Próximos passos
+## Histórico de fases completo
 
 ### Fase 7 — Deploy na Vercel ✅ (commit dab4774 - 2026-04-16)
 
-**Completado:**
-- ✅ Repositório GitHub conectado à Vercel (`survey-platform/` como root)
-- ✅ Variáveis de ambiente configuradas (SUPABASE_*, LAYERS_API_TOKEN, CRON_SECRET)
-- ✅ Todas as migrations rodadas em produção (001-010)
 - ✅ App ao vivo em: https://pesquisa-nu-sand.vercel.app
-
-**Bugs corrigidos durante deploy:**
-- ✅ Next.js 16 async params issue em `sample/route.ts`
-- ✅ Admin redirect loop (logout → login)
-- ✅ Dispatch tab visibility (sidebar)
+- ✅ Variáveis de ambiente configuradas (SUPABASE_*, LAYERS_API_TOKEN, CRON_SECRET)
+- ✅ Bugs de deploy corrigidos (async params, redirect loop, dispatch tab)
 
 ---
 
-### Fase 8 — Cron Supabase + Audit Logs + Sample Scope ✅ (commits e18106b..2d3e3b0)
+### Fase 8 — Cron Supabase + Audit Logs + Sample Scope ✅ (PR #8)
 
-**PR #8:** https://github.com/projetos-hub/pesquisa/pull/8  
-**Branch:** `feat/phase-8-cron-audit-sample`
-
-**Implementado:**
-- ✅ Migration 011 — pg_cron `*/5 * * * *` via `trigger_dispatch_processor` + pg_net
+- ✅ pg_cron `*/5 * * * *` via pg_net → endpoint `/api/cron/process-dispatches`
 - ✅ `notification_audit_logs` — rastreia sent/failed por email
-- ✅ `target_scope = 'sample'` — constraint estendido, valida personalized=true
-- ✅ `executePersonalizedJobSample()` — audit log + fix offset (não loopa em falhas)
-- ✅ DispatchForm — radio "📊 Amostra" + info box
-- ✅ GET /dispatch-audit — endpoint de audit logs
-- ✅ ManualDispatch — disparo rápido por email (max 50)
-- ✅ **Fix segurança**: POST /submit agora re-valida amostra (bypasse bloqueado)
-
-**Bateria de testes (Sprint 8 + 9):**
-- Unit: `submit-sample-gate.test.ts` (5), `audit-log.test.ts` (5), `sample-dispatch.test.ts` (7)
-- E2E: `sample-gate.spec.ts` (7), `admin-sample.spec.ts` (7), `dispatch-execution.spec.ts` (6)
-
-**🔴 BLOQUEADOR — fazer ANTES de mergear o PR:**
-
-1. Abrir [Supabase SQL Editor](https://supabase.com/dashboard/project/qnpvlhfjknnvfiyxrhhl/sql/new)
-2. Rodar primeiro (valor do CRON_SECRET está em `.env.local`):
-   ```sql
-   ALTER DATABASE postgres SET "app.cron_secret" = '<valor de CRON_SECRET do .env.local>';
-   SELECT pg_reload_conf();
-   ```
-3. Depois rodar o restante de `supabase/migrations/011_phase8_dispatch_audit.sql`
-4. Verificar: `SELECT * FROM cron.job WHERE jobname = 'dispatch-processor';`
-5. Mergear PR #8 → deploy automático
-
-**Após merge:**
-- Verificar [Vercel dashboard](https://vercel.com) que deploy passou
-- Testar: acessar survey com email fora da amostra → deve bloquear (403)
-- Testar: criar dispatch scope=sample → audit logs em /dispatch-audit
+- ✅ `target_scope = 'sample'` — dispatch amostral seguro
+- ✅ Bateria de testes unitários e E2E
 
 ---
 
-### Ajustes visuais e dados — 2026-05-04 (commits 2edd60f, 1ff5045)
+### Sessões 2026-04 a 2026-05 — Features e fixes
 
-**Código — `survey-platform/`:**
-- `StepNPS.tsx` — `titulo` exibido como pergunta principal (`step-title`), `desc` como subtítulo
-- `StepNPS.tsx` — labels "Nada provável" (ao lado do 0) e "Extremamente provável" (ao lado do 10) embutidos na linha dos botões; removido `nps-hint` separado
-- `ScaleRow.tsx` — labels "1 - Muito Insatisfeito" e "6 - Muito Satisfeito" ao lado dos botões 1 e 6
-- `survey.css` — `.scale-btns` com `flex-wrap: nowrap` e `.scale-btn` com `flex: 1` para 6 botões caberem em uma linha
-- `StepEscala.tsx` — texto fallback atualizado de "1 a 5" para "1 a 6"
-- `SurveyEditForm.tsx` — campos de data voltaram para `type="date"` (sem horário), labels atualizados
+| PR | O que entregou |
+|----|----------------|
+| #9 | Apagar pesquisa com confirmação |
+| #10 | Remove `survey_type='misto'` inválido |
+| #11 | `mapRole` explícito com roles reais da Layers API |
+| #12 | Amostra rápida — colar emails sem Excel |
+| #13 | Export XLSX no padrão Metabase |
+| #14 | `allow_all_roles` — surveys abertos a qualquer role Layers |
+| #15 | NPS e Welcome com textos customizáveis por survey |
+| #16 | Loading personalizado por comunidade |
+| #17 | Resolver todos os placeholders no disparo via amostra |
+| #18 | `formatFirstName` — primeiro nome capitalizado |
+| #19–#20 | Placeholders no Disparo Rápido + filtro de comunidades |
+| #21 | Grupos de segmentação com curadoria manual |
+| #22–#28 | Escala 1-6, indicacaoLink por comunidade, sample gate seguro, tema global |
+| #29–#31 | Communities como base de tema, auto-criar question_options, scale cards |
+| #32–#33 | Régua de disparos por canal + placeholders visíveis |
+| #34 | Fix exportação Excel (respostas em branco) |
+| #35 | **Fix crítico cron**: `executePersonalizedJobSample` para dispatches de amostra |
+| #36–#39 | Pesquisa Dia da Família, welcome personalization, radio sort |
+| #40 | Fix UUID em `toggleWelcomeStep`/`toggleThankYouStep` |
+| #41 | Cache TTL survey 300s → 60s + endpoint revalidate |
+| #42 | Expõe erro Supabase em detail + guard `sequence_steps` |
+| #43–#46 | Mapeamento Global Tree (aliases, RECREIO, RIO 2) |
+| #47–#48 | Fix mapping + `open_date`/`close_date` para calcular status |
+| #49 | Bugs P0/P1 + dashboard auditoria + rebranding Raiz |
+| #50 | Sistema de disparos com Layers API (push/email segmentado por turma) |
+| #51 | Datas por comunidade + zombie dispatches resolvidos |
+| #52–#56 | Admin escola: nome/community_id, datas por comunidade, layout datas |
+| #57–#60 | `use client` community-name, portal filtros, 5 bugs pente-fino, invalidar cache |
 
-**Banco de dados (Supabase — pesquisa CSAT):**
-- `surveys.open_date` → `2026-05-04`
-- `surveys.close_date` → `2026-05-17`
-- `questions.description` das 3 escalas (pedagógico, administrativo, infraestrutura) → "Avalie de 1 a 6 os seguintes aspectos:"
+---
+
+### Sessão 2026-06-03 — Pente-fino residual + 3 features paralelas
+
+**Contexto:** Ciclo de bug-fix batch + 3 agents em paralelo.
+
+| PR | O que entregou |
+|----|----------------|
+| #61 | Fix ThankYou sobreposto + navegação corrompida (Arte Total) |
+| #62 | Agendamento automático de surveys (cron) |
+| #63 | Fix dispatch: CHECK constraint sample + channels + multi-role |
+| #64 | Relatórios avançados com filtros e XLSX multi-aba |
+| #65 | Analytics dashboard — KPIs, temporal, comunidades, perfil, funil |
+| #67 | Endpoint provider comunicados `@layers:Posts:getUpdatedAfter` |
+| #68 | Fixes residuais pente-fino: SurveyStatus `'aberta'`→`'ativa'`, auth check audit routes, dead code disparos |
+| #69 | Home hub admin minimalista (Conceito C) — 5 cards, grid 3+2, sem queries |
+| #70 | Dashboard de auditoria — correlação disparos × respostas, timeline |
+| #71–#72 | Hotfix Vercel Hobby plan: remover cron `advance-survey-status` do `vercel.json` |
+| #73 | Dead code cleanup — audit legado, migration conflict, nav fix |
+
+**Migration pendente (rodar no Supabase SQL Editor):**
+```sql
+-- Ativa o dashboard /admin/auditoria
+-- Arquivo: survey-platform/supabase/migrations/028_audit_broadcasts.sql
+```
+
+---
+
+### Sessão 2026-06-11 — Thank-you message editável + Code Review / Agente QA
+
+**Branch atual:** `feat/thankyou-message-editable`  
+**Commits:** `24d9ce0`, `55b4473`, `1f621e0`
+
+#### Features entregues
+
+| PR equivalente | O que fez |
+|---|---|
+| `24d9ce0` | Thank-you message editável por survey e por comunidade (admin) |
+| `55b4473` | Fix 3 bugs que impediam mensagem customizada de aparecer |
+| `1f621e0` | Code review — 8 fixes + 4 refatorações de CC e manutenibilidade |
+
+#### Detalhes do code review aplicado (commit `1f621e0`)
+
+| Tipo | Arquivo | O que mudou |
+|---|---|---|
+| CRÍTICO | `communities/actions.ts` | READ-MERGE-WRITE no theme; `requireAuth` consistente; validação URL logo |
+| CRÍTICO | `lib/survey-config.ts` | Strategy map `STEP_BUILDERS`; merge centralizado; CC 14→4 |
+| MÉDIO | `actions.ts` | `deleteQuestion` + `toggleThankYouStep` invalidam cache |
+| MÉDIO | `SurveyRunner.tsx` | `useMemo` para theme; `STEP_RENDERERS`; useEffect usa memo |
+| MÉDIO | `ThankYou.tsx` | `\|\|` → `??` para `indicacaoLink` vazio |
+| MÉDIO | `route.ts` | Sanitização de `communityId` como cache key |
+| MÉDIO | `CommunitiesThemeEditor.tsx` | `toDatetimeLocal()` para datas em Brasília |
+| REFACTOR | `QuestionEditor.tsx` | 14 useState → `useQuestionForm` hook; Set para lookups |
+| REFACTOR | `SurveyRunner.tsx` | CC `renderCurrentStep` 11→3 via lookup table |
+| REFACTOR | `survey-config.ts` | CC `rowsToConfig` 14→4 via strategy map |
+
+**Score pós-revisão:** Qualidade 8/10 | Segurança 8/10 | Manutenibilidade 8/10
+
+#### Agente QA criado
+
+Arquivo: `docs/qa-action-plan.md` — plano de revisão em 4 sprints.
+
+---
+
+### Sessão 2026-06-22 — QA hardening: plano 8.5-9+, gates e segurança admin/Supabase
+
+**Objetivo:** iniciar o plano para elevar a qualidade geral do app de ~5.8/10 para 8.5-9+.
+
+#### Documentos criados/atualizados
+
+| Arquivo | O que faz |
+|---|---|
+| `docs/plan/quality-8-5-9-plan.md` | Plano completo por fases, milestones, scorecard alvo, DoD para 8.5+ e 9+ |
+| `docs/qa-baseline.md` | Baseline dos gates locais e estado atual de lint/test/build |
+| `docs/supabase-security-advisors-2026-06-22.md` | Resultado do `supabase db advisors --linked` e remediações planejadas |
+
+#### Phase 0 concluída — ambiente/gates
+
+| Item | Status |
+|---|---|
+| Scripts `test:unit`, `test:integration`, `test:ci` criados | ✅ |
+| `vitest.config.ts` agora roda só unit tests puros | ✅ |
+| `vitest.integration.config.ts` preserva testes dependentes de Supabase/app | ✅ |
+| `next.config.ts` com `turbopack.root = __dirname` | ✅ |
+| `lint` restaurado; agora executa análise real | ✅ |
+| Build sem warning de workspace root/lockfile | ✅ |
+
+#### Testes unitários puros adicionados
+
+| Arquivo | Cobertura |
+|---|---|
+| `survey-platform/__tests__/unit/survey-config.test.ts` | `rowsToConfig`, merge de theme, installation, tipos de step, fallback, `applyConditionals` |
+| `survey-platform/__tests__/unit/build-active-steps.test.ts` | `stepId`, filtro por perfil, condicionais e thankyou/welcome |
+
+**Resultado:** `npm run test:unit` passa com **2 arquivos / 11 testes**.
+
+#### Phase 1 concluída no repositório — segurança Supabase/Admin
+
+| Item | O que mudou |
+|---|---|
+| Admin iframe | `/admin/*` mudou de `frame-ancestors *` para `frame-ancestors 'self'` |
+| Auth real de admin | Novo `lib/admin-auth.ts` com `requireAdmin()` checando `admin_profiles` |
+| APIs sensíveis endurecidas | Reports, compare, export e analytics agora exigem `admin_profiles` antes de usar service role |
+| RPC reports | Migration nova revoga execução de `rpc_nps_breakdown` e `rpc_scale_averages` para `PUBLIC`, `anon`, `authenticated`; concede a `service_role` |
+| Comunicados | Migration nova habilita RLS em `comunicados` e permite SELECT público apenas de `status='published' AND approved=true` |
+| Cron RPC | Migration nova revoga execução pública de `trigger_dispatch_processor()` e fixa `search_path` |
+
+#### Migrations novas criadas
+
+| Migration | Status | Observação |
+|---|---|---|
+| `20260622203022_harden_report_rpc_grants.sql` | ⏳ Pendente aplicar no Supabase remoto | Corrige advisor das RPCs `SECURITY DEFINER` de relatórios |
+| `20260622210319_harden_comunicados_and_cron_rpc.sql` | ⏳ Pendente aplicar no Supabase remoto | Corrige RLS de `comunicados`, grants do cron RPC e `search_path` |
+
+#### Gates validados após as mudanças
+
+```bash
+cd survey-platform
+npm run typecheck  # passou
+npm run lint       # passou com 17 warnings
+npm run test:unit  # passou: 2 files, 11 tests
+npm run build      # passou
+```
+
+#### Continuação da Phase 2 — testes unitários puros para regras críticas
+
+| Item | Status | O que mudou |
+|---|---|---|
+| `buildActiveSteps` | concluído | Cobertura ampliada para ordem de navegação quando step condicional aparece/desaparece |
+| Submit mapping | concluído | Novo `lib/submit-responses.ts` extrai mapeamento de answers para rows de insert |
+| Submit tests | concluído | Cobertura para respostas válidas, answers vazias, keys desconhecidas e mistura de keys válidas/desconhecidas |
+| Dispatch payload | parcial | Testes para `buildNotificationPayload`: scope `all`, scope `group`, push, email e fallbacks |
+| Placeholders | parcial | Teste para interpolação e fallbacks de placeholders de disparo |
+| ThankYou link | parcial | Novo helper `resolveReferralLink()` cobre preferência do theme, fallback por escola e ausência de link |
+
+Arquivos adicionados:
+- `survey-platform/lib/submit-responses.ts`
+- `survey-platform/components/survey-engine/steps/thankYouLogic.ts`
+- `survey-platform/__tests__/unit/submit-responses.test.ts`
+- `survey-platform/__tests__/unit/layers-notifications.test.ts`
+- `survey-platform/__tests__/unit/thank-you-logic.test.ts`
+
+Gates validados após a continuação:
+
+```bash
+cd survey-platform
+npm run test:unit  # passou: 5 files, 23 tests
+npm run typecheck  # passou
+npm run lint       # passou com 17 warnings
+npm run build      # passou
+```
+
+Pendências técnicas imediatas:
+- Seguir para Phase 3: hardening do submit server-side (`communityId`, `userId`, `accountId`, `email` e schema de `answers`).
+
+#### Fechamento da Phase 2 e início da Phase 3
+
+| Item | Status | O que mudou |
+|---|---|---|
+| Dispatch `sample`/personalizado | concluído | Novo `buildSamplePersonalizedPayload()` exportado e usado pelo fluxo real de amostra |
+| Dispatch tests | concluído | Cobertura para target de usuário Layers resolvido, interpolação e canais push/email personalizados |
+| ThankYou renderizado | concluído | Testes com `react-dom/server` para promotor, neutro, detrator, aluno e mensagem customizada |
+| Submit validation | iniciado/concluído para schema | Novo `lib/submit-validation.ts` valida body, campos de identidade, email, `layersMeta` e `answers` |
+| Submit route | endurecida | `app/api/surveys/[slug]/submit/route.ts` agora rejeita payload inválido antes de abrir client Supabase |
+
+Arquivos adicionados nesta continuação:
+- `survey-platform/lib/submit-validation.ts`
+- `survey-platform/__tests__/unit/submit-validation.test.ts`
+- `survey-platform/__tests__/unit/thank-you-render.test.ts`
+
+Arquivos alterados nesta continuação:
+- `survey-platform/lib/layers-notifications.ts`
+- `survey-platform/app/api/surveys/[slug]/submit/route.ts`
+- `survey-platform/__tests__/unit/layers-notifications.test.ts`
+- `docs/plan/quality-8-5-9-plan.md`
+- `PROGRESSO.md`
+
+Gates validados:
+
+```bash
+cd survey-platform
+npm run test:unit  # passou: 7 files, 35 tests
+npm run typecheck  # passou
+npm run lint       # passou com 17 warnings
+npm run build      # passou
+```
+
+Status do plano:
+- Phase 2: concluída.
+- Phase 3: em andamento.
+- `3.3 Validar shape de answers`: concluído.
+- `3.2 Validar identity fields`: parcial; falta validar `communityId`/`userId`/`accountId`/`email` contra fonte confiável, não apenas tipo/tamanho/email.
+
+Próximo passo técnico:
+- Definir o modelo confiável de identidade do respondente (`3.1`) e implementar a verificação server-side do submit (`3.2`) sem depender apenas do body enviado pelo iframe.
+
+#### Continuação da Phase 3 — identidade confiável e amostra server-side
+
+Decisão de identidade:
+- Survey aberta: aceita fallback anônimo quando não existe contexto Layers, preservando links/testes públicos.
+- Survey com `access_control='amostra'`: exige `communityId` e `userId` ou `accountId` Layers.
+- Quando há identidade Layers, o submit busca o perfil via Layers Hub no servidor e usa `email`, `perfil`, `nome`, `nomeAluno`, `serie` e `meta` retornados pela API como fonte preferencial.
+- A amostra agora é validada por `survey_id + community_id + email` confiável.
+- Se `survey_sample_lists.layers_user_id` já estiver preenchido, ele precisa corresponder ao `userId/accountId` do respondente.
+
+O que mudou:
+| Arquivo | Mudança |
+|---|---|
+| `survey-platform/lib/submit-access.ts` | Regras puras de acesso para role, survey amostral e match de `layers_user_id` |
+| `survey-platform/__tests__/unit/submit-access.test.ts` | Testes das regras puras de acesso |
+| `survey-platform/app/api/surveys/[slug]/submit/route.ts` | Submit valida instalação ativa da comunidade, role permitida, identidade Layers em amostra e grava dados confiáveis da Layers Hub |
+| `survey-platform/app/api/surveys/[slug]/route.ts` | GET de survey amostral agora exige `communityId` e valida amostra por comunidade |
+| `docs/plan/quality-8-5-9-plan.md` | `3.1` e `3.2` marcados como concluídos |
+
+Gates validados:
+
+```bash
+cd survey-platform
+npm run test:unit  # passou: 8 files, 39 tests
+npm run typecheck  # passou
+npm run lint       # passou com 17 warnings
+npm run build      # passou
+```
+
+Status atualizado:
+- `3.1 Definir modelo de identidade confiável`: concluído.
+- `3.2 Validar identity fields server-side`: concluído.
+- Próximo passo Phase 3: `3.4` idempotência/retry e `3.5` testes de integração controlados para submit.
+
+#### Fechamento da Phase 3 — idempotência/retry e testes controlados
+
+| Item | Status | O que mudou |
+|---|---|---|
+| Retry legítimo | concluído | Submit detecta sessão existente sem respostas, apaga a sessão órfã e tenta criar a sessão novamente no mesmo request |
+| Duplicate completo | concluído | Sessão existente com respostas continua retornando `{ duplicate: true }` |
+| Compensação de falha parcial | concluído | Falha no insert de `responses` continua deletando a sessão criada |
+| Teste controlado da rota | concluído | `submit-route-controlled.test.ts` importa `POST` e mocka Supabase/Layers/rate limit sem banco real |
+| Classificação idempotente | concluído | Novo `classifyExistingSubmission()` testado para duplicata completa, retry incompleto e estado sem evidência |
+
+Arquivos adicionados nesta continuação:
+- `survey-platform/lib/submit-idempotency.ts`
+- `survey-platform/__tests__/unit/submit-idempotency.test.ts`
+- `survey-platform/__tests__/unit/submit-route-controlled.test.ts`
+
+Arquivo alterado:
+- `survey-platform/app/api/surveys/[slug]/submit/route.ts`
+
+Gates validados:
+
+```bash
+cd survey-platform
+npm run test:unit  # passou: 10 files, 47 tests
+npm run typecheck  # passou
+npm run lint       # passou com 17 warnings
+npm run build      # passou
+```
+
+Status atualizado:
+- Phase 3: concluída.
+- Próximo passo: Phase 4, começando por mapear estados/transições de dispatch/job e implementar claim atômico para evitar processamento duplicado por cron concorrente.
+
+#### Início da Phase 4 — cron, dispatch e concorrência
+
+| Item | Status | O que mudou |
+|---|---|---|
+| Máquina de estados | concluído | Novo `docs/dispatch-state-machine.md` documenta statuses, terminais e invariantes |
+| Claim atômico | concluído no repositório | Migration `20260623003237_add_dispatch_job_claims.sql` adiciona lock e RPC `claim_sending_dispatch_jobs()` com `FOR UPDATE SKIP LOCKED` |
+| Cron personalizado | concluído | `/api/cron/process-dispatches` usa a RPC para reclamar jobs antes de processar lote personalizado |
+| Fechamento de dispatch | concluído | Novo `lib/dispatch-state.ts` centraliza decisão de `sent`/`failed`/`partial_failure` |
+| Locks de job | concluído | `executePersonalizedJob` e `executePersonalizedJobSample` limpam `lock_token`/`locked_until` ao terminar lote controlado |
+
+Arquivos adicionados:
+- `docs/dispatch-state-machine.md`
+- `survey-platform/lib/dispatch-state.ts`
+- `survey-platform/__tests__/unit/dispatch-state.test.ts`
+- `survey-platform/supabase/migrations/20260623003237_add_dispatch_job_claims.sql`
+
+Arquivos alterados:
+- `survey-platform/app/api/cron/process-dispatches/route.ts`
+- `survey-platform/lib/layers-notifications.ts`
+- `docs/plan/quality-8-5-9-plan.md`
+- `PROGRESSO.md`
+
+Gates validados:
+
+```bash
+cd survey-platform
+npm run test:unit  # passou: 11 files, 52 tests
+npm run typecheck  # passou
+npm run lint       # passou com 17 warnings
+npm run build      # passou
+```
+
+Status atualizado:
+- `4.1` concluído.
+- `4.2` concluído no código/migration, pendente aplicar migration no Supabase remoto antes de deploy.
+- `4.3` concluído.
+- Próximo passo Phase 4: `4.4` retry/rate limit/falha parcial e `4.5` padronização de audit log.
+
+#### Fechamento da Phase 4 — retry, rate limit e audit log
+
+| Item | Status | O que mudou |
+|---|---|---|
+| Retry de dispatch | concluído | `MAX_DISPATCH_RETRY_COUNT` centralizado em `lib/dispatch-state.ts` e usado no endpoint de retry |
+| Rate limit/falha Layers | concluído | Testes de `sendToOneCommunity()` cobrem token ausente, sucesso e HTTP 429/rate limit |
+| Falha parcial/zombie prevention | concluído | `decideDispatchClose()` cobre `sent`, `failed`, `partial_failure` e mantém aberto quando há `pending/sending` |
+| Audit log padronizado | concluído | Novo `buildNotificationAuditLog()` usado em amostra e envio personalizado não-amostral |
+
+Arquivos alterados nesta continuação:
+- `survey-platform/lib/dispatch-state.ts`
+- `survey-platform/app/api/admin/dispatch/[dispatchId]/retry/route.ts`
+- `survey-platform/lib/layers-notifications.ts`
+- `survey-platform/__tests__/unit/dispatch-state.test.ts`
+- `survey-platform/__tests__/unit/layers-notifications.test.ts`
+- `docs/plan/quality-8-5-9-plan.md`
+- `PROGRESSO.md`
+
+Gates validados:
+
+```bash
+cd survey-platform
+npm run test:unit  # passou: 11 files, 59 tests
+npm run typecheck  # passou
+npm run lint       # passou com 17 warnings
+npm run build      # passou
+```
+
+Status atualizado:
+- Phase 4: concluída no repositório.
+- Atenção antes de deploy: aplicar `survey-platform/supabase/migrations/20260623003237_add_dispatch_job_claims.sql` no Supabase remoto junto das migrations pendentes anteriores.
+- Próximo passo do plano completo: Phase 5, refatoração SOLID dos hotspots (`DispatchForm.tsx`, `layers-notifications.ts`, `actions.ts`, `SurveyRunner.tsx`).
+
+#### Início da Phase 5 — limite de hotspots
+
+Novo script:
+- `survey-platform/scripts/check-hotspots.mjs`
+- `npm run quality:hotspots`
+- Limite padrão: `300` linhas por arquivo (`HOTSPOT_MAX_LINES` permite override)
+
+Baseline atual de hotspots acima de 300 linhas:
+
+```text
+  920  app\admin\surveys\[id]\dispatch\DispatchForm.tsx
+  917  lib\layers-notifications.ts
+  619  app\admin\surveys\[id]\QuestionEditor.tsx
+  566  app\admin\surveys\actions.ts
+  468  components\survey-engine\SurveyRunner.tsx
+  462  lib\report-xlsx.ts
+  445  app\admin\surveys\[id]\communities\CommunitiesThemeEditor.tsx
+  443  app\admin\auditoria\[surveyId]\page.tsx
+  387  app\admin\surveys\[id]\sample\SampleGroups.tsx
+  360  app\admin\surveys\[id]\sample\SampleUpload.tsx
+  343  app\admin\reports\ReportsClient.tsx
+  313  lib\layers-hub.ts
+  313  lib\report-queries.ts
+```
+
+Gates validados após o script:
+
+```bash
+cd survey-platform
+npm run quality:hotspots  # passou e reportou baseline
+npm run test:unit         # passou: 11 files, 59 tests
+npm run typecheck         # passou
+```
+
+Status atualizado:
+- `5.5` concluído.
+- Phase 5 em andamento.
+- Próximo passo: iniciar refatoração real dos maiores hotspots, começando por `DispatchForm.tsx` ou `lib/layers-notifications.ts`.
+
+#### Continuação da Phase 5 — conclusão de `layers-notifications`
+
+| Item | Status | O que mudou |
+|---|---|---|
+| Payload builders | parcial/concluído | Novo `lib/layers-notification-payloads.ts` concentra tipos, payload de grupo, payload personalizado, payload de amostra e interpolação |
+| Audit logger | parcial/concluído | `buildNotificationAuditLog()` saiu de `layers-notifications.ts` e passou a ser reexportado pelo módulo de payloads |
+| API client | parcial/concluído | Novo `lib/layers-notification-client.ts` concentra `sendToOneCommunity()` e mantém reexport compatível |
+| Users client | parcial/concluído | Novo `lib/layers-notification-users.ts` concentra paginação/deduplicação da Layers Hub por role |
+| Job processors | concluído | Novo `lib/layers-notification-jobs.ts` concentra `executePersonalizedJob()` e `executePersonalizedJobSample()` |
+| Hotspot | resolvido | `lib/layers-notifications.ts` saiu da lista de arquivos acima de 300 linhas no `quality:hotspots` |
+| Lint | melhorou | Warnings caíram de 17 para 16; nenhum erro novo |
+
+Arquivos adicionados/alterados:
+- `survey-platform/lib/layers-notification-payloads.ts`
+- `survey-platform/lib/layers-notification-client.ts`
+- `survey-platform/lib/layers-notification-users.ts`
+- `survey-platform/lib/layers-notification-jobs.ts`
+- `survey-platform/lib/layers-notifications.ts`
+- `survey-platform/__tests__/unit/layers-notifications.test.ts`
+- `docs/plan/quality-8-5-9-plan.md`
+
+Gates validados:
+
+```bash
+cd survey-platform
+npm run test:unit         # passou: 11 files, 59 tests
+npm run typecheck         # passou
+npm run lint              # passou com 16 warnings
+npm run build             # passou
+npm run quality:hotspots  # passou; layers-notifications.ts saiu dos hotspots >300 linhas
+```
+
+Status atualizado:
+- `5.2` concluído.
+- Próximo alvo recomendado da Phase 5: iniciar `5.1` (`DispatchForm.tsx`, 920 linhas) ou `5.3` (`actions.ts`, 566 linhas).
+
+#### Continuação da Phase 5 — conclusão de `DispatchForm`
+
+| Item | Status | O que mudou |
+|---|---|---|
+| Tipos e payloads | concluído | Novo `dispatch-form-utils.ts` concentra tipos, constantes, steps padrão, payload base e payload de régua |
+| Submit handler | concluído | Novo `dispatch-submit-handler.ts` concentra validação, envio único e envio em régua |
+| Seções UI | concluído | Novos componentes para targeting, mensagem, régua, feedback, template, canais e opções finais |
+| Testes | concluído | Novo `dispatch-form-utils.test.ts` cobre payload base, sample/community targeting, canal customizado, payload de régua e schedule |
+| Hotspot | resolvido | `DispatchForm.tsx` saiu da lista de arquivos acima de 300 linhas no `quality:hotspots` |
+
+Arquivos adicionados/alterados:
+- `survey-platform/app/admin/surveys/[id]/dispatch/dispatch-form-utils.ts`
+- `survey-platform/app/admin/surveys/[id]/dispatch/dispatch-form-parts.tsx`
+- `survey-platform/app/admin/surveys/[id]/dispatch/dispatch-targeting-section.tsx`
+- `survey-platform/app/admin/surveys/[id]/dispatch/dispatch-message-section.tsx`
+- `survey-platform/app/admin/surveys/[id]/dispatch/dispatch-sequence-section.tsx`
+- `survey-platform/app/admin/surveys/[id]/dispatch/dispatch-submit-handler.ts`
+- `survey-platform/app/admin/surveys/[id]/dispatch/DispatchForm.tsx`
+- `survey-platform/__tests__/unit/dispatch-form-utils.test.ts`
+
+Gates validados:
+
+```bash
+cd survey-platform
+npm run test:unit         # passou: 12 files, 64 tests
+npm run typecheck         # passou
+npm run lint              # passou com 16 warnings
+npm run build             # passou
+npm run quality:hotspots  # passou; DispatchForm.tsx saiu dos hotspots >300 linhas
+```
+
+Status atualizado:
+- `5.1` concluído.
+- Phase 5 em andamento.
+- Próximo alvo recomendado: `5.3` (`app/admin/surveys/actions.ts`, 566 linhas) ou `5.4` (`SurveyRunner.tsx`, 468 linhas).
+
+#### Continuação da Phase 5 — conclusão de `actions.ts`
+
+| Item | Status | O que mudou |
+|---|---|---|
+| Helpers | concluído | Novo `actions-helpers.ts` concentra autenticação e conversão de datetime-local para UTC |
+| Survey meta | concluído | Novo `survey-meta-actions.ts` concentra `createSurvey()` e `updateSurvey()` |
+| Questions | concluído | Novo `question-actions.ts` concentra CRUD, ordenação e steps welcome/thankyou |
+| Copy/delete | concluído | Novo `survey-copy-delete-actions.ts` concentra `duplicateSurvey()` e `deleteSurvey()` |
+| Fachada | concluído | `actions.ts` mantém wrappers async compatíveis com imports existentes |
+| Hotspot | resolvido | `actions.ts` saiu da lista de arquivos acima de 300 linhas no `quality:hotspots` |
+
+Arquivos adicionados/alterados:
+- `survey-platform/app/admin/surveys/actions-helpers.ts`
+- `survey-platform/app/admin/surveys/survey-meta-actions.ts`
+- `survey-platform/app/admin/surveys/question-actions.ts`
+- `survey-platform/app/admin/surveys/survey-copy-delete-actions.ts`
+- `survey-platform/app/admin/surveys/actions.ts`
+
+Gates validados:
+
+```bash
+cd survey-platform
+npm run test:unit         # passou: 12 files, 64 tests
+npm run typecheck         # passou
+npm run lint              # passou com 16 warnings
+npm run build             # passou
+npm run quality:hotspots  # passou; actions.ts saiu dos hotspots >300 linhas
+```
+
+Status atualizado:
+- `5.3` concluído.
+- Resta na Phase 5: `5.4` (`SurveyRunner.tsx`, 468 linhas).
+
+#### Fechamento da Phase 5 — conclusão de `SurveyRunner`
+
+| Item | Status | O que mudou |
+|---|---|---|
+| Bootstrap do respondente | concluído | Novo `useSurveyBootstrap()` concentra contexto Layers/URL, busca de perfil Hub, busca de survey, merge de theme e CSS vars |
+| Telas de estado | concluído | Novo `SurveyRunnerStates.tsx` concentra loading, acesso negado, survey inexistente, perfil negado, não aberta, encerrada e pausada |
+| Hotspot | resolvido | `SurveyRunner.tsx` saiu da lista de arquivos acima de 300 linhas no `quality:hotspots` |
+
+Arquivos adicionados/alterados:
+- `survey-platform/components/survey-engine/hooks/useSurveyBootstrap.ts`
+- `survey-platform/components/survey-engine/SurveyRunnerStates.tsx`
+- `survey-platform/components/survey-engine/SurveyRunner.tsx`
+- `docs/plan/quality-8-5-9-plan.md`
+
+Gates validados:
+
+```bash
+cd survey-platform
+npm run test:unit         # passou: 12 files, 64 tests
+npm run typecheck         # passou
+npm run lint              # passou com 15 warnings
+npm run build             # passou
+npm run quality:hotspots  # passou; SurveyRunner.tsx saiu dos hotspots >300 linhas
+```
+
+Status atualizado:
+- `5.4` concluído.
+- Phase 5 concluída.
+- Próxima fase do plano: Phase 6 — transações e consistência de dados.
+
+#### Advisors Supabase rodados
+
+Comando:
+```bash
+npx supabase db advisors --linked --type security --level warn --fail-on none --output-format json
+```
+
+Achados principais:
+- `rpc_nps_breakdown` e `rpc_scale_averages` executáveis por `anon/authenticated` → migration criada.
+- `trigger_dispatch_processor()` executável por `anon/authenticated` → migration criada.
+- `comunicados` sem RLS → migration criada.
+- `response_sessions_public_insert` e `responses_public_insert` permissivas → diferido para Phase 3, junto do hardening do submit.
+- leaked password protection desativado → configuração de dashboard, não via migration.
+
+---
+
+## Roadmap completo atualizado
+
+| Fase | Descrição | Status |
+|---|---|---|
+| 0 | Setup Next.js + Supabase clients + schema | ✅ Concluída |
+| 1 | Engine migrada (frontend respondente) | ✅ Concluída |
+| 2A | Leitura de pesquisa via Supabase | ✅ Concluída |
+| 2B | Submit real para Supabase | ✅ Concluída |
+| 3 | Área admin | ✅ Concluída |
+| 4 | Google Sheets espelho + retry + cron | ✅ Concluída |
+| 5 | Polimento e remoção de hardcodes | ✅ Concluída |
+| 6 | Segmentação amostral por escola | ✅ Concluída |
+| 7 | Deploy Vercel | ✅ Concluída |
+| 8 | Cron Supabase + Audit Logs + Sample Scope | ✅ Concluída |
+| — | Features incrementais (PRs #9–#73) | ✅ Todas mergeadas em main |
+| — | Thank-you editável + Code Review | ✅ Concluída (PR #74) |
+| — | Duplicar template de pesquisa | ⏳ Draft PR #75 — merge pendente |
+
+---
+
+## Próximos passos
+
+### ⚠️ PARADO AQUI — retomada atualizada em 2026-06-22
+
+**Tarefa imediata:** aplicar migrations pendentes no Supabase remoto e re-rodar advisors.
+
+**Project ID:** `qnpvlhfjknnvfiyxrhhl`
+
+#### Migrations pendentes para aplicar
+
+1. `survey-platform/supabase/migrations/028_audit_broadcasts.sql`
+   - Cria `audit_broadcasts`
+   - Adiciona `survey_communities.expected_responses`
+   - Necessária para dashboard `/admin/auditoria`
+
+2. `survey-platform/supabase/migrations/20260622203022_harden_report_rpc_grants.sql`
+   - Revoga execução pública das RPCs `rpc_nps_breakdown` e `rpc_scale_averages`
+   - Mantém execução via `service_role`
+
+3. `survey-platform/supabase/migrations/20260622210319_harden_comunicados_and_cron_rpc.sql`
+   - Habilita RLS em `comunicados`
+   - Cria policy pública somente para comunicados publicados/aprovados
+   - Revoga execução pública de `trigger_dispatch_processor()`
+   - Fixa `search_path` de funções apontadas pelo advisor
+
+#### Como aplicar
+
+Preferencialmente via MCP Supabase:
+1. Usar `supabase__execute_sql` com `project_id="qnpvlhfjknnvfiyxrhhl"`
+2. Rodar o conteúdo das 3 migrations acima, na ordem listada
+3. Verificar `audit_broadcasts` e `survey_communities.expected_responses`
+4. Re-rodar:
+
+```bash
+cd survey-platform
+npx supabase db advisors --linked --type security --level warn --fail-on none --output-format json
+```
+
+#### Depois das migrations
+
+Continuar pelo plano `docs/plan/quality-8-5-9-plan.md`:
+- Próxima fase técnica: **Phase 2 / Phase 3**
+- Prioridade: hardening do submit (`app/api/surveys/[slug]/submit/route.ts`)
+- Motivo: advisors ainda apontam `response_sessions_public_insert` e `responses_public_insert` permissivas; isso deve ser tratado junto da validação server-side de identidade/answers.
+
+> Observação: o bloco antigo abaixo sobre `028_audit_broadcasts.sql` fica mantido como histórico, mas a retomada atualizada é esta seção de 2026-06-22.
+
+### ⚠️ PARADO AQUI — retomar neste ponto ao reabrir
+
+**Tarefa:** Aplicar `028_audit_broadcasts.sql` no banco de produção.
+
+**Contexto:** A migration cria a tabela `audit_broadcasts` e a coluna `expected_responses` em `survey_communities`. O dashboard `/admin/auditoria` (PR #70) já está no ar mas depende dessas estruturas para funcionar.
+
+**Verificação feita:** A tabela `audit_broadcasts` **NÃO existe** no banco — REST API retornou 404 ao tentar acessá-la.
+
+**Como aplicar (MCP Supabase):**
+1. Ao reabrir, o MCP do Supabase estará disponível
+2. Usar `supabase__execute_sql` com `project_id="qnpvlhfjknnvfiyxrhhl"`
+3. Rodar o conteúdo de `survey-platform/supabase/migrations/028_audit_broadcasts.sql`
+4. Verificar: `SELECT table_name FROM information_schema.tables WHERE table_name = 'audit_broadcasts'`
+5. Verificar: `SELECT column_name FROM information_schema.columns WHERE table_name = 'survey_communities' AND column_name = 'expected_responses'`
+
+**Arquivo da migration:** `survey-platform/supabase/migrations/028_audit_broadcasts.sql`
+
+### 🔄 PR #75 — Duplicar template de pesquisa
+
+**Branch:** `feat/duplicate-survey-template`  
+**Status:** Draft — merge + testar em produção pendente
+
+**O que faz:** Botão "Duplicar" na listagem e no detail da pesquisa. Cria cópia exata com:
+- Slug único (`slug-copia`, `slug-copia-1`, etc.)
+- Status `rascunho`, datas limpas
+- Todas as perguntas + opções copiadas
+- Community installations **não** copiadas (admin reinstala manualmente)
+
+**Arquivos:** `actions.ts` (+duplicateSurvey), `DuplicateSurveyButton.tsx` (novo), `page.tsx`, `[id]/page.tsx`
+
+### QA Action Plan — sprints pendentes (`docs/qa-action-plan.md`)
+
+| Sprint | Prioridade | O que revisar |
+|---|---|---|
+| S0-1 | BLOQUEANTE | `communities/actions.ts` — `saveCommunityTheme` UPDATE silencioso se row não existe |
+| S1 | P0 CRÍTICO | Submit endpoint (`submit/route.ts`), `applyConditionals`, `buildActiveSteps` |
+| S2 | P0 CRÍTICO | Cron/dispatch (`process-dispatches/route.ts`, `DispatchForm.tsx` 46KB) |
+| S3 | P1 ALTA | Testes unitários: `rowsToConfig`, `useQuestionForm`, `ThankYou` fallback |
+| S4 | P2 MÉDIA | Sample upload, analytics queries, `ReportsClient.tsx` |
+
+---
+
+### Sessao 2026-06-23 - Fechamento da Phase 6: transacoes e consistencia
+
+| Item | Status | O que mudou |
+|---|---|---|
+| Operacoes multi-step | concluido | Auditoria registrada em `docs/phase-6-consistency-audit.md`, cobrindo duplicate, delete, save options, submit compensation e dispatch creation |
+| RPCs transacionais admin | concluido | Nova migration `20260623120000_admin_transactional_consistency.sql` cria `admin_duplicate_survey_template`, `admin_delete_survey_cascade` e `admin_replace_question_options` |
+| Actions admin | concluido | `duplicateSurvey`, `deleteSurvey` e `saveQuestionOptions` passaram a chamar RPCs transacionais via service role |
+| Migrations remotas pendentes | concluido | Aplicadas `028_audit_broadcasts.sql`, hardening das RPCs de report, hardening de comunicados/cron, claim atomico de jobs e a nova migration de consistencia |
+| Historico de migrations | concluido | `migration repair` marcou `028`, `20260622203022`, `20260622210319`, `20260623003237` e `20260623120000` como aplicadas no remoto |
+| Verificacao remota | concluido | Confirmados `audit_broadcasts`, `survey_communities.expected_responses`, `survey_dispatch_jobs.lock_token` e as 3 RPCs admin no Supabase remoto |
+| Advisors Supabase | concluido | Restaram apenas policies publicas historicas do submit (`response_sessions`/`responses`) e leaked password protection no dashboard |
+
+Arquivos adicionados/alterados:
+- `docs/phase-6-consistency-audit.md`
+- `survey-platform/supabase/migrations/20260623120000_admin_transactional_consistency.sql`
+- `survey-platform/app/admin/surveys/question-actions.ts`
+- `survey-platform/app/admin/surveys/survey-copy-delete-actions.ts`
+- `docs/plan/quality-8-5-9-plan.md`
+- `PROGRESSO.md`
+
+Gates validados:
+
+```bash
+cd survey-platform
+npm run typecheck  # passou
+npm run test:unit  # passou: 12 files, 64 tests
+npm run lint       # passou com 15 warnings conhecidos
+npm run build      # passou
+npm run quality:hotspots  # passou
+npx supabase db advisors --linked --type security --level warn --fail-on none --output-format json
+```
+
+Status atualizado:
+- Phase 6: concluida.
+- Proxima fase do plano: Phase 7 - E2E confiavel e cobertura de fluxos.
+
+---
+
+### Sessao 2026-06-23 - Fechamento da Phase 7: E2E confiavel
+
+| Item | Status | O que mudou |
+|---|---|---|
+| Seed deterministico | concluido | Novo helper `tests/e2e/helpers/e2e-data.ts` centraliza Supabase service client, seed e cleanup por slug |
+| Playwright config | concluido | `playwright.config.ts` agora usa `webServer`, `workers: 1` e reporter HTML/list |
+| Respondente | concluido | `respondente.spec.ts` cobre welcome, NPS, pergunta bilingue, escala, submit real, ThankYou, idempotencia e payload invalido |
+| Sample gate | concluido | `sample-gate.spec.ts` cobre email dentro/fora da amostra, bloqueio no GET, bloqueio no POST e UI de acesso negado |
+| Admin essencial | concluido | `admin-essential.spec.ts` cobre login, criacao/edicao de survey pela UI, instalacao de comunidade e tema |
+| Sample admin | concluido | `admin-sample.spec.ts` gera XLSX em runtime, testa upload/listagem/delete sem arquivo manual |
+| Dispatch sem envio externo | concluido | `dispatch-execution.spec.ts` usa dispatch agendado e audit seedado, sem chamar Layers nem processar cron real |
+| Bug corrigido | concluido | `SurveyRunner` nao fica mais preso no loading quando `/api/surveys/[slug]` retorna 403; `email` da URL e propagado ao sample gate |
+
+Arquivos adicionados/alterados principais:
+- `docs/e2e-report-2026-06-23.md`
+- `survey-platform/tests/e2e/helpers/e2e-data.ts`
+- `survey-platform/tests/e2e/respondente.spec.ts`
+- `survey-platform/tests/e2e/sample-gate.spec.ts`
+- `survey-platform/tests/e2e/admin-essential.spec.ts`
+- `survey-platform/tests/e2e/admin-dispatch.spec.ts`
+- `survey-platform/tests/e2e/admin-sample.spec.ts`
+- `survey-platform/tests/e2e/admin-surveys.spec.ts`
+- `survey-platform/tests/e2e/dispatch-audit.spec.ts`
+- `survey-platform/tests/e2e/dispatch-execution.spec.ts`
+- `survey-platform/tests/e2e/cron-endpoint.spec.ts`
+- `survey-platform/components/survey-engine/SurveyRunner.tsx`
+- `survey-platform/components/survey-engine/hooks/useSurveyBootstrap.ts`
+- `survey-platform/playwright.config.ts`
+- `docs/plan/quality-8-5-9-plan.md`
+
+Gates validados:
+
+```bash
+cd survey-platform
+npm run test:e2e   # passou: 33 passed, 1 skipped
+npm run test:unit  # passou: 12 files, 64 tests
+npm run typecheck  # passou
+npm run lint       # passou com 13 warnings conhecidos
+npm run build      # passou
+```
+
+Status atualizado:
+- Phase 7: concluida.
+- Proxima fase do plano: Phase 8 - Observabilidade e Operacao.
+
+---
+
+### Sessao 2026-06-23 - Fechamento da Phase 8: Observabilidade e Operacao
+
+| Item | Status | O que mudou |
+|---|---|---|
+| Logs estruturados | concluido | Novo helper `survey-platform/lib/observability.ts` padroniza logs JSON com `route`, `correlationId`, `surveyId`/`dispatchId` quando aplicavel e redacao de PII |
+| Submit/dispatch/cron | concluido | `submit`, `dispatch`, `dispatch retry` e `cron/process-dispatches` agora registram eventos operacionais e retornam `x-correlation-id` |
+| Health check | concluido | Novo endpoint `GET /api/health` valida env vars obrigatorias, Supabase, fila de dispatch e fila de sync Sheets |
+| Dispatch health admin | concluido | Novo endpoint `GET /api/admin/operations/dispatch-health` identifica dispatches zumbis, jobs sem progresso, jobs falhos e agendamentos vencidos |
+| Runbooks | concluido | Criados `docs/operations/observability.md` e `docs/operations/runbooks.md` com diagnostico e mitigacao para submit quebrado, cron parado, Layers 429, migration pendente e rollback |
+| Flaky E2E | concluido | `tests/e2e/admin-export.spec.ts` deixou de depender de `networkidle` e agora espera o link de export e o evento real de download |
+
+Arquivos adicionados/alterados principais:
+- `survey-platform/lib/observability.ts`
+- `survey-platform/app/api/health/route.ts`
+- `survey-platform/app/api/admin/operations/dispatch-health/route.ts`
+- `survey-platform/app/api/surveys/[slug]/submit/route.ts`
+- `survey-platform/app/api/admin/surveys/[id]/dispatch/route.ts`
+- `survey-platform/app/api/admin/dispatch/[dispatchId]/retry/route.ts`
+- `survey-platform/app/api/cron/process-dispatches/route.ts`
+- `survey-platform/tests/e2e/admin-export.spec.ts`
+- `docs/operations/observability.md`
+- `docs/operations/runbooks.md`
+- `docs/plan/quality-8-5-9-plan.md`
+
+Gates validados:
+
+```bash
+cd survey-platform
+npm run typecheck  # passou
+npm run lint       # passou com 13 warnings conhecidos
+npm run test:unit  # passou: 12 files, 64 tests
+npm run build      # passou
+npm run test:e2e   # passou: 33 passed, 1 skipped
+```
+
+Status atualizado:
+- Phase 8: concluida.
+- Proxima fase do plano: Phase 9 - UX, Acessibilidade e Erros.
+
+---
+
+### Sessao 2026-06-23 - Fechamento das Phases 9 e 10
+
+| Fase | Status | O que mudou |
+|---|---|---|
+| Phase 9 - UX, acessibilidade e erros | concluida | Submit do respondente ganhou alerta acessivel com retry; foco visivel, `aria-pressed`, `aria-label`, `role=alert`, `type=button`, suporte a teclado no upload e `prefers-reduced-motion` foram aplicados |
+| E2E de retry | concluido | `respondente.spec.ts` cobre falha temporaria no primeiro submit e sucesso no retry sem perder respostas |
+| E2E visual | concluido | `respondente-visual.spec.ts` cobre mobile/desktop; `admin-visual.spec.ts` cobre desktop/tablet; ambos anexam screenshots e checam overflow horizontal |
+| Flakies removidos | concluido | Specs de export/dispatch/visual deixaram de depender de `networkidle` e passaram a esperar sinais reais de UI/download |
+| Phase 10 - CI/CD e release gate | concluida | Workflow `.github/workflows/quality.yml` criado com quality gate para PR/push e jobs manuais para integration/E2E |
+| Coverage progressivo | concluido | `npm run test:coverage` usa V8, gera report e aplica threshold inicial baseado no baseline atual |
+| Pre-deploy | concluido | `docs/pre-deploy-checklist.md` cobre gates, migrations, env, smoke test e rollback |
+
+Arquivos adicionados/alterados principais:
+- `.github/workflows/quality.yml`
+- `docs/pre-deploy-checklist.md`
+- `survey-platform/components/survey-engine/SubmitErrorAlert.tsx`
+- `survey-platform/components/survey-engine/SurveyRunner.tsx`
+- `survey-platform/components/survey-engine/SurveyRunnerStates.tsx`
+- `survey-platform/components/survey-engine/steps/StepNPS.tsx`
+- `survey-platform/components/survey-engine/steps/StepEscala.tsx`
+- `survey-platform/components/survey-engine/steps/StepRadio.tsx`
+- `survey-platform/components/survey-engine/steps/StepText.tsx`
+- `survey-platform/components/survey-engine/steps/StepCheckbox.tsx`
+- `survey-platform/components/survey-engine/steps/StepFileUpload.tsx`
+- `survey-platform/components/ui/OptionBtn.tsx`
+- `survey-platform/components/ui/ScaleRow.tsx`
+- `survey-platform/app/(respondente)/survey.css`
+- `survey-platform/tests/e2e/respondente.spec.ts`
+- `survey-platform/tests/e2e/respondente-visual.spec.ts`
+- `survey-platform/tests/e2e/admin-visual.spec.ts`
+- `survey-platform/tests/e2e/admin-dispatch.spec.ts`
+- `survey-platform/tests/e2e/admin-export.spec.ts`
+- `survey-platform/package.json`
+- `survey-platform/package-lock.json`
+- `survey-platform/vitest.config.ts`
+- `survey-platform/eslint.config.mjs`
+- `docs/plan/quality-8-5-9-plan.md`
+
+Gates validados:
+
+```bash
+cd survey-platform
+npm run test:ci   # passou: typecheck, lint, coverage e build
+npm run test:e2e  # passou: 36 passed, 1 skipped
+```
+
+Baseline de coverage atual:
+
+```text
+Statements: 46.17%
+Branches:   43.56%
+Functions:  58.92%
+Lines:      47.59%
+```
+
+Notas:
+- `npm run lint` ainda passa com 13 warnings conhecidos preexistentes.
+- `npm audit` reportou vulnerabilidades transitivas; nao foi aplicado `npm audit fix --force` para evitar atualizacoes amplas sem revisao.
+
+Status atualizado:
+- Phase 9: concluida.
+- Phase 10: concluida.
+- Plano completo 0-10: concluido e validado localmente.
+
+---
+
+### Sessao 2026-06-23 - Rodada focada: cobertura e complexidade ciclomática
+
+| Item | Antes | Depois | Status |
+|---|---:|---:|---|
+| `QuestionEditor.tsx` | 619 linhas | 268 linhas | saiu dos hotspots |
+| `lib/report-xlsx.ts` | 462 linhas | 60 linhas | saiu dos hotspots |
+| `CommunitiesThemeEditor.tsx` | 445 linhas | 138 linhas | saiu dos hotspots |
+| `SampleGroups.tsx` | 387 linhas | 294 linhas | saiu dos hotspots |
+| Coverage statements | 46.17% | 51.51% | threshold subiu para 50% |
+| Coverage branches | 43.56% | 47.58% | threshold subiu para 45% |
+| Coverage functions | 58.92% | 64.38% | threshold subiu para 60% |
+| Coverage lines | 47.59% | 52.40% | threshold subiu para 50% |
+
+O que mudou:
+- `QuestionEditor` dividido em `QuestionEditorView`, `QuestionEditorForm`, `QuestionCard` e `question-editor-utils`.
+- `report-xlsx` dividido em fachada, schema puro, formatacao e builders de abas.
+- `CommunitiesThemeEditor` dividido com `ThemeEditForm` e helpers de payload/datas.
+- `SampleGroups` dividido com painel de criacao, lista e helpers puros.
+- Novos testes unitarios para schema XLSX, tema de comunidade, grupos de amostra e helpers do editor de perguntas.
+- `vitest.config.ts` agora exige thresholds 50/45/60/50.
+
+Gates validados:
+
+```bash
+cd survey-platform
+npm run test:unit      # passou: 16 files, 79 tests
+npm run test:coverage  # passou: 51.51 / 47.58 / 64.38 / 52.40
+npm run test:ci        # passou: typecheck, lint, coverage e build
+npm run quality:hotspots
+```
+
+Hotspots restantes acima de 300 linhas:
+- `app/admin/auditoria/[surveyId]/page.tsx` - 443
+- `app/admin/surveys/[id]/sample/SampleUpload.tsx` - 360
+- `app/admin/reports/ReportsClient.tsx` - 343
+- `app/api/surveys/[slug]/submit/route.ts` - 321
+- `lib/layers-hub.ts` - 313
+
+#### Mitigacao pre-merge adicionada
+
+| Risco | Mitigacao | Status |
+|---|---|---|
+| Microfluxos do editor de perguntas apos refactor | Novo E2E `tests/e2e/admin-question-editor.spec.ts` cobre adicionar, editar metadados, editar opcoes, mover pergunta e alternar welcome/thankyou | validado |
+| Download XLSX sem validar conteudo interno | Novo unitario `__tests__/unit/report-xlsx-workbook.test.ts` carrega o workbook gerado e valida abas, headers e valores essenciais | validado |
+| `report-queries.ts` entrando inteiro no denominador de coverage por causa do XLSX | Novo `lib/report-metrics.ts` isola `calcNPS`/`npsCategoria` e `report-queries.ts` reexporta para compatibilidade | validado |
+
+Coverage final apos mitigacao:
+
+```text
+Statements: 59.25%
+Branches:   47.64%
+Functions:  70.28%
+Lines:      60.27%
+```
+
+Gates finais validados:
+
+```bash
+cd survey-platform
+npm run test:ci   # passou: typecheck, lint, coverage e build
+npm run test:e2e  # passou: 37 passed, 1 skipped
+npm run quality:hotspots
+```
+
+Hotspots finais acima de 300 linhas:
+- `app/admin/auditoria/[surveyId]/page.tsx` - 443
+- `app/admin/surveys/[id]/sample/SampleUpload.tsx` - 360
+- `app/admin/reports/ReportsClient.tsx` - 343
+- `app/api/surveys/[slug]/submit/route.ts` - 321
+- `lib/layers-hub.ts` - 313

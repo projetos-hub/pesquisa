@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test'
+import { defineConfig } from '@playwright/test'
 import dotenv from 'dotenv'
 import path from 'path'
 
@@ -7,8 +7,10 @@ dotenv.config({ path: path.resolve(__dirname, '.env.local') })
 export default defineConfig({
   testDir:    './tests/e2e',
   fullyParallel: false,
+  workers:    1,
   retries:    1,
   timeout:    30_000,
+  reporter:   [['html', { open: 'never' }], ['list']],
 
   use: {
     baseURL:       process.env.BASE_URL ?? 'http://localhost:3000',
@@ -27,7 +29,7 @@ export default defineConfig({
     // Testes públicos (sem auth) — respondente + sample gate
     {
       name:         'public',
-      testMatch:    ['**/respondente.spec.ts', '**/sample-gate.spec.ts'],
+      testMatch:    ['**/respondente.spec.ts', '**/respondente-visual.spec.ts', '**/sample-gate.spec.ts'],
     },
 
     // Testes admin (reutiliza cookie salvo pelo setup)
@@ -41,6 +43,10 @@ export default defineConfig({
     },
   ],
 
-  // Dev server gerenciado externamente (script PowerShell)
-  // webServer removido para evitar conflito de lock
+  webServer: {
+    command:             'npm run dev',
+    url:                 process.env.BASE_URL ?? 'http://localhost:3000',
+    reuseExistingServer: true,
+    timeout:             60_000,
+  },
 })

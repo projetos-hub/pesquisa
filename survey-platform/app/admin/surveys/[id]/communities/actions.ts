@@ -23,57 +23,70 @@ export async function saveCommunityTheme(
     welcomeMessage?: string
     thankyouMessage?: string
   }
-) {
+): Promise<{ error?: string }> {
   try {
     await requireAuth()
-
-    if (!surveyId || !communityId) {
-      return { error: 'Parâmetros inválidos' }
-    }
-
-    // Valida cores (hex format básico)
-    if (theme.primaryColor && !/^#[0-9A-F]{6}$/i.test(theme.primaryColor)) {
-      return { error: 'Cor primária inválida' }
-    }
-    if (theme.secondaryColor && !/^#[0-9A-F]{6}$/i.test(theme.secondaryColor)) {
-      return { error: 'Cor secundária inválida' }
-    }
-
-    const supabase = createServiceClient()
-
-    // Monta o objeto theme (remove campos undefined)
-    const themeData: Record<string, unknown> = {}
-    if (theme.nomeEscola)     themeData.nomeEscola     = theme.nomeEscola
-    if (theme.primaryColor)   themeData.primaryColor   = theme.primaryColor
-    if (theme.secondaryColor) themeData.secondaryColor = theme.secondaryColor
-    if (theme.logo)           themeData.logo           = theme.logo
-    if (theme.indicacaoLink)  themeData.indicacaoLink  = theme.indicacaoLink
-    // Permitir limpar indicacaoLink (string vazia = remover)
-    if (theme.indicacaoLink === '') delete themeData.indicacaoLink
-    if (theme.welcomeMessage)   themeData.welcomeMessage   = theme.welcomeMessage
-    if (theme.welcomeMessage === '') delete themeData.welcomeMessage
-    if (theme.thankyouMessage)  themeData.thankyouMessage  = theme.thankyouMessage
-    if (theme.thankyouMessage === '') delete themeData.thankyouMessage
-
-    const { error } = await supabase
-      .from('survey_communities')
-      .update({ theme: themeData })
-      .eq('survey_id', surveyId)
-      .eq('community_id', communityId)
-
-    if (error) {
-      console.error('[saveCommunityTheme] update error:', error)
-      return { error: 'Erro ao salvar tema' }
-    }
-
-    revalidatePath(`/admin/surveys/${surveyId}/communities`)
-    revalidateTag('survey-config', 'default')
-    return {}
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Erro desconhecido'
-    console.error('[saveCommunityTheme]', msg)
-    return { error: msg }
+  } catch {
+    return { error: 'Não autorizado' }
   }
+
+  if (!surveyId || !communityId) {
+    return { error: 'Parâmetros inválidos' }
+  }
+
+  // Valida URL da logo (deve ser http/https ou vazia para limpar)
+  if (theme.logo && !/^https?:\/\//i.test(theme.logo)) {
+    return { error: 'URL da logo deve começar com https://' }
+  }
+
+  // Valida cores (hex format #RRGGBB)
+  if (theme.primaryColor && !/^#[0-9A-F]{6}$/i.test(theme.primaryColor)) {
+    return { error: 'Cor primária inválida' }
+  }
+  if (theme.secondaryColor && !/^#[0-9A-F]{6}$/i.test(theme.secondaryColor)) {
+    return { error: 'Cor secundária inválida' }
+  }
+
+  const supabase = createServiceClient()
+
+  // Lê o tema atual para fazer MERGE — evita sobrescrever campos não enviados
+  // (ex: salvar cor primária não deve apagar indicacaoLink já cadastrado)
+  const { data: current } = await supabase
+    .from('survey_communities')
+    .select('theme')
+    .eq('survey_id', surveyId)
+    .eq('community_id', communityId)
+    .single()
+
+  const existingTheme = (current?.theme ?? {}) as Record<string, unknown>
+
+  // Aplica campos enviados sobre o tema existente
+  const merged: Record<string, unknown> = { ...existingTheme }
+
+  // Campos com valor: atualiza. Campo com '' explícito: remove (limpar).
+  const fields = ['nomeEscola', 'primaryColor', 'secondaryColor', 'logo',
+    'indicacaoLink', 'welcomeMessage', 'thankyouMessage'] as const
+  for (const field of fields) {
+    const val = theme[field]
+    if (val === undefined) continue          // não enviado → preserva existente
+    if (val === '') delete merged[field]     // string vazia → remove o campo
+    else merged[field] = val                 // valor presente → atualiza
+  }
+
+  const { error } = await supabase
+    .from('survey_communities')
+    .update({ theme: merged })
+    .eq('survey_id', surveyId)
+    .eq('community_id', communityId)
+
+  if (error) {
+    console.error('[saveCommunityTheme] update error:', error)
+    return { error: 'Erro ao salvar tema' }
+  }
+
+  revalidatePath(`/admin/surveys/${surveyId}/communities`)
+  revalidateTag('survey-config', 'default')
+  return {}
 }
 
 function calcStatus(open: string | null, close: string | null): string {

@@ -5,6 +5,7 @@ import SurveyEditForm from './SurveyEditForm'
 import QuestionEditor from './QuestionEditor'
 import CommunityInstallManager from './CommunityInstallManager'
 import { formatCommunityId } from '@/lib/community-name'
+import DuplicateSurveyButton from '../DuplicateSurveyButton'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -78,6 +79,9 @@ export default async function SurveyDetailPage({ params }: PageProps) {
         </Link>
         <span className="text-gray-300">/</span>
         <h2 className="text-lg font-semibold text-gray-900 truncate">{survey.title}</h2>
+        <span className="ml-auto">
+          <DuplicateSurveyButton surveyId={id} surveyTitle={survey.title} />
+        </span>
       </div>
 
       <div className="grid gap-6">

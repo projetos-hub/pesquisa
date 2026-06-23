@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import DeleteSurveyButton from './DeleteSurveyButton'
+import DuplicateSurveyButton from './DuplicateSurveyButton'
 
 function schedulingHint(
   openDate: string | null,
@@ -126,6 +127,10 @@ export default async function SurveysPage() {
                       >
                         Editar →
                       </Link>
+                      <DuplicateSurveyButton
+                        surveyId={s.id}
+                        surveyTitle={s.title}
+                      />
                       <DeleteSurveyButton
                         surveyId={s.id}
                         surveyTitle={s.title}

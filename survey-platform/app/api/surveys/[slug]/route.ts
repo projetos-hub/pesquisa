@@ -85,19 +85,22 @@ const getCachedSurveyConfig = unstable_cache(
 
     // 2b. Sem communityId: monta instalação sintética a partir das datas da survey
     //     Garante que open_date/close_date salvos no admin reflitam para o respondente
-    if (!installation && (survey.open_date || survey.close_date)) {
+    //     Também propaga surveys.settings.theme para que thankyouMessage e outros overrides
+    //     cheguem ao respondente mesmo sem communityId.
+    if (!installation) {
       const now = new Date()
-      let respondentStatus = 'ativa'
+      let respondentStatus = survey.status ?? 'ativa'
       if (survey.close_date && new Date(survey.close_date) < now) {
         respondentStatus = 'encerrada'
       } else if (survey.open_date && new Date(survey.open_date) > now) {
         respondentStatus = 'nao_aberta'
       }
+      const surveyTheme = (survey.settings as { theme?: Record<string, unknown> })?.theme ?? {}
       installation = {
         status: respondentStatus,
         open_date: survey.open_date as string | null,
         close_date: survey.close_date as string | null,
-        theme: {},
+        theme: { ...surveyTheme },
         settings: {},
       } as InstallationRow
     }
@@ -141,7 +144,12 @@ const getCachedSurveyConfig = unstable_cache(
 export async function GET(req: Request, { params }: RouteContext) {
   const { slug } = await params
   const { searchParams } = new URL(req.url)
-  const communityId = (searchParams.get('communityId') ?? '').replace('@', '')
+  // Sanitiza communityId: apenas alfanumérico + hífen + underscore, max 64 chars
+  // Evita cache poisoning via communityIds aleatórios acumulando memória no cache
+  const communityId = (searchParams.get('communityId') ?? '')
+    .replace('@', '')
+    .replace(/[^a-z0-9_\-]/gi, '')
+    .slice(0, 64)
   const email = searchParams.get('email')
 
   const result = await getCachedSurveyConfig(slug, communityId)
@@ -154,6 +162,13 @@ export async function GET(req: Request, { params }: RouteContext) {
   if (result.accessControl === 'amostra') {
     const supabase = createServiceClient()
 
+    if (!communityId) {
+      return NextResponse.json(
+        { error: 'community_required', message: 'Comunidade obrigatoria para pesquisa segmentada' },
+        { status: 403 }
+      )
+    }
+
     if (!email) {
       return NextResponse.json(
         { error: 'not_in_sample', message: 'Email não fornecido para pesquisa segmentada' },
@@ -165,6 +180,7 @@ export async function GET(req: Request, { params }: RouteContext) {
       .from('survey_sample_lists')
       .select('id')
       .eq('survey_id', result.surveyId!)
+      .eq('community_id', communityId)
       .eq('email', email.toLowerCase())
       .limit(1)
 

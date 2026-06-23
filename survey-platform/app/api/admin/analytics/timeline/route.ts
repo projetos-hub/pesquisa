@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-service'
+import { adminAuthErrorResponse, requireAdmin } from '@/lib/admin-auth'
 
 type Granularity = 'day' | 'week'
 
@@ -12,10 +12,13 @@ export async function GET(req: Request) {
   const rawGranularity = searchParams.get('granularity') ?? 'day'
   const granularity: Granularity = rawGranularity === 'week' ? 'week' : 'day'
 
-  // Auth check
-  const authClient = await createServerSupabaseClient()
-  const { data: { user } } = await authClient.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    await requireAdmin()
+  } catch (error) {
+    const authResponse = adminAuthErrorResponse(error)
+    if (authResponse) return authResponse
+    throw error
+  }
 
   const db = createServiceClient()
 

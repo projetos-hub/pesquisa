@@ -7,7 +7,7 @@
  *   format     "xlsx" | "json"  (default: xlsx)
  */
 
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { adminAuthErrorResponse, requireAdmin } from '@/lib/admin-auth'
 import {
   fetchSurveyMeta,
   fetchNpsBreakdown,
@@ -20,12 +20,7 @@ export const maxDuration = 60
 
 export async function GET(request: Request) {
   try {
-    // Auth
-    const supabase = await createServerSupabaseClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    await requireAdmin()
 
     const url = new URL(request.url)
     const surveyIdsParam = url.searchParams.get('surveyIds')
@@ -91,6 +86,9 @@ export async function GET(request: Request) {
       },
     })
   } catch (err) {
+    const authResponse = adminAuthErrorResponse(err)
+    if (authResponse) return authResponse
+
     console.error('[reports/compare] error:', err)
     const message = err instanceof Error ? err.message : 'Internal server error'
     return Response.json({ error: message }, { status: 500 })

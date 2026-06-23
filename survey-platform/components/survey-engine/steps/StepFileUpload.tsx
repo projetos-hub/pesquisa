@@ -55,6 +55,9 @@ export default function StepFileUpload({ step, tipo, onNext, onBack, isLast, loa
       <div className="q-group">
         <p className="question-label">{resolve(step.pergunta)}</p>
         <div
+          role="button"
+          tabIndex={0}
+          aria-label={file ? `Arquivo selecionado: ${file.name}` : 'Selecionar arquivo'}
           style={{
             border: '2px dashed #cbd5e0',
             borderRadius: 12,
@@ -65,6 +68,12 @@ export default function StepFileUpload({ step, tipo, onNext, onBack, isLast, loa
             transition: 'border-color .2s',
           }}
           onClick={() => inputRef.current?.click()}
+          onKeyDown={event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              inputRef.current?.click()
+            }
+          }}
         >
           {file ? (
             <div>
@@ -72,6 +81,7 @@ export default function StepFileUpload({ step, tipo, onNext, onBack, isLast, loa
               <p style={{ fontWeight: 600, color: '#2d3748', marginBottom: 4 }}>{file.name}</p>
               <p style={{ fontSize: '.85rem', color: '#718096' }}>{formatSize(file.size)}</p>
               <button
+                type="button"
                 onClick={e => { e.stopPropagation(); setFile(null) }}
                 style={{ marginTop: 8, fontSize: '.8rem', color: '#e53e3e', background: 'none', border: 'none', cursor: 'pointer' }}
               >
@@ -99,17 +109,18 @@ export default function StepFileUpload({ step, tipo, onNext, onBack, isLast, loa
           }}
         />
         {tentou && !ok && (
-          <p style={{ fontSize: '.85rem', color: '#e53e3e', marginTop: 8 }}>
+          <p role="alert" style={{ fontSize: '.85rem', color: '#e53e3e', marginTop: 8 }}>
             ⚠️ Este campo é obrigatório.
           </p>
         )}
         {uploadError && (
-          <p style={{ fontSize: '.85rem', color: '#e53e3e', marginTop: 8 }}>⚠️ {uploadError}</p>
+          <p role="alert" style={{ fontSize: '.85rem', color: '#e53e3e', marginTop: 8 }}>⚠️ {uploadError}</p>
         )}
       </div>
       <div className="btn-row">
-        <button className="btn btn-secondary" onClick={onBack}>← Voltar</button>
+        <button type="button" className="btn btn-secondary" onClick={onBack}>← Voltar</button>
         <button
+          type="button"
           className="btn btn-primary"
           disabled={loading || uploading}
           style={!ok && !loading ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}

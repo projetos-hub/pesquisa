@@ -53,8 +53,10 @@ export default function StepCheckbox({ step, tipo, onNext, onBack, isLast, loadi
             return (
               <button
                 key={op}
+                type="button"
                 onClick={() => toggle(op)}
                 disabled={disabled}
+                aria-pressed={sel}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -72,7 +74,7 @@ export default function StepCheckbox({ step, tipo, onNext, onBack, isLast, loadi
                   transition: 'all .15s',
                 }}
               >
-                <span style={{
+                <span aria-hidden="true" style={{
                   width: 18, height: 18, minWidth: 18,
                   border: `2px solid ${sel ? 'var(--color-primary, #667eea)' : '#cbd5e0'}`,
                   borderRadius: 4,
@@ -89,13 +91,14 @@ export default function StepCheckbox({ step, tipo, onNext, onBack, isLast, loadi
         </div>
       </div>
       {tentou && !ok && (
-        <p style={{ color: '#e53e3e', fontSize: '.85rem', marginBottom: 8, textAlign: 'right' }}>
+        <p role="alert" style={{ color: '#e53e3e', fontSize: '.85rem', marginBottom: 8, textAlign: 'right' }}>
           ⚠️ Selecione ao menos {min} {min === 1 ? 'opção' : 'opções'} para continuar.
         </p>
       )}
       <div className="btn-row">
-        <button className="btn btn-secondary" onClick={onBack}>← Voltar</button>
+        <button type="button" className="btn btn-secondary" onClick={onBack}>← Voltar</button>
         <button
+          type="button"
           className="btn btn-primary"
           disabled={loading}
           style={!ok && !loading ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}

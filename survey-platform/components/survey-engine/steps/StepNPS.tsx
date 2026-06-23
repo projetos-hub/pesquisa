@@ -31,7 +31,10 @@ export default function StepNPS({ step, tipo, onNext, onBack }: StepNPSProps) {
         {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0].map(n => (
           <button
             key={n}
+            type="button"
             className={`nps-btn${nps === n ? ' sel' : ''}`}
+            aria-pressed={nps === n}
+            aria-label={`Nota ${n}`}
             onClick={() => setNps(n)}
           >
             {n}
@@ -53,13 +56,14 @@ export default function StepNPS({ step, tipo, onNext, onBack }: StepNPSProps) {
         </div>
       )}
       {tentou && !ok && (
-        <p style={{ color: '#e53e3e', fontSize: '.85rem', marginBottom: 8, textAlign: 'right' }}>
+        <p role="alert" style={{ color: '#e53e3e', fontSize: '.85rem', marginBottom: 8, textAlign: 'right' }}>
           ⚠️ Responda todas as perguntas para continuar.
         </p>
       )}
       <div className="btn-row">
-        <button className="btn btn-secondary" onClick={onBack}>← Voltar</button>
+        <button type="button" className="btn btn-secondary" onClick={onBack}>← Voltar</button>
         <button
+          type="button"
           className="btn btn-primary"
           disabled={false}
           style={!ok ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}

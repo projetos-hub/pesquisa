@@ -53,7 +53,7 @@ export function CommunityTable({ data }: CommunityTableProps) {
       : (vb as number) - (va as number)
   })
 
-  function SortIcon({ col }: { col: SortKey }) {
+  function sortIcon(col: SortKey) {
     if (sortKey !== col) return <span className="ml-1 text-gray-300">↕</span>
     return <span className="ml-1 text-blue-500">{sortDir === 'asc' ? '↑' : '↓'}</span>
   }
@@ -75,19 +75,19 @@ export function CommunityTable({ data }: CommunityTableProps) {
               className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3 cursor-pointer select-none hover:text-gray-700"
               onClick={() => handleSort('nome_escola')}
             >
-              Escola <SortIcon col="nome_escola" />
+              Escola {sortIcon('nome_escola')}
             </th>
             <th
               className="text-right text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3 cursor-pointer select-none hover:text-gray-700"
               onClick={() => handleSort('total_sessions')}
             >
-              Respostas <SortIcon col="total_sessions" />
+              Respostas {sortIcon('total_sessions')}
             </th>
             <th
               className="text-right text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3 cursor-pointer select-none hover:text-gray-700"
               onClick={() => handleSort('nps_score')}
             >
-              NPS <SortIcon col="nps_score" />
+              NPS {sortIcon('nps_score')}
             </th>
             <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">
               P / N / D

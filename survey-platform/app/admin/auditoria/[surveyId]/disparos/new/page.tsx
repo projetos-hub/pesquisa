@@ -49,7 +49,8 @@ export default async function NovoDisparoPage({ params }: PageProps) {
   })
 
   // Default = agora no fuso de Brasília (servidor roda em UTC, enviamos UTC-3)
-  const nowBR = new Date(Date.now() - 3 * 60 * 60 * 1000)
+  const nowBR = new Date()
+  nowBR.setHours(nowBR.getHours() - 3)
   const defaultFiredAt = toDatetimeLocalString(nowBR)
 
   return (

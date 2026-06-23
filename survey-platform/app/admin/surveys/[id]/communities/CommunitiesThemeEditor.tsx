@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { saveCommunityTheme, updateCommunityDates } from './actions'
-import { CommunityDisplay } from '@/lib/community-name'
 
-interface Community {
+import { CommunityDisplay } from '@/lib/community-name'
+import { ThemeEditForm } from './ThemeEditForm'
+
+export interface Community {
   id: string
   community_id: string
   logoUrl: string
@@ -44,13 +45,11 @@ export default function CommunitiesThemeEditor({ surveyId, communities }: Props)
         <tbody className="divide-y divide-gray-100">
           {communities.map(community => {
             const isExpanded = expandedId === community.id
-            const hasTheme = community.theme && Object.keys(community.theme).length > 0
 
             return (
               <tr key={community.id} className={isExpanded ? 'bg-blue-50' : 'hover:bg-gray-50'}>
                 {!isExpanded ? (
                   <>
-                    {/* Logo preview */}
                     <td className="px-4 py-3">
                       <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden border border-gray-200">
                         {community.theme?.logo ? (
@@ -68,7 +67,6 @@ export default function CommunitiesThemeEditor({ surveyId, communities }: Props)
                       </div>
                     </td>
 
-                    {/* Community ID + Nome */}
                     <td className="px-4 py-3">
                       <CommunityDisplay
                         communityId={community.community_id}
@@ -76,14 +74,12 @@ export default function CommunitiesThemeEditor({ surveyId, communities }: Props)
                       />
                     </td>
 
-                    {/* Nome escola */}
                     <td className="px-4 py-3">
                       <div className="text-sm text-gray-600">
                         {community.theme?.nomeEscola || '—'}
                       </div>
                     </td>
 
-                    {/* Color preview */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         {community.theme?.primaryColor && (
@@ -106,7 +102,6 @@ export default function CommunitiesThemeEditor({ surveyId, communities }: Props)
                       </div>
                     </td>
 
-                    {/* Edit button */}
                     <td className="px-4 py-3 text-right">
                       <button
                         onClick={() => setExpandedId(community.id)}
@@ -138,307 +133,6 @@ export default function CommunitiesThemeEditor({ surveyId, communities }: Props)
           )}
         </tbody>
       </table>
-    </div>
-  )
-}
-
-interface FormProps {
-  surveyId: string
-  community: Community
-  onClose: () => void
-}
-
-function ThemeEditForm({ surveyId, community, onClose }: FormProps) {
-  const [primaryColor, setPrimaryColor] = useState(community.theme?.primaryColor || '#000000')
-  const [secondaryColor, setSecondaryColor] = useState(community.theme?.secondaryColor || '#ffffff')
-  const [isPending, setIsPending] = useState(false)
-  const [error, setError] = useState<string | undefined>()
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setIsPending(true)
-    setError(undefined)
-
-    const formData = new FormData(e.currentTarget)
-    const result = await saveCommunityTheme(
-      surveyId,
-      community.community_id,
-      {
-        nomeEscola: formData.get('nomeEscola') as string || undefined,
-        primaryColor: formData.get('primaryColor') as string || undefined,
-        secondaryColor: formData.get('secondaryColor') as string || undefined,
-        logo: formData.get('logo') as string || undefined,
-        indicacaoLink: (formData.get('indicacaoLink') as string) ?? undefined,
-        welcomeMessage: (formData.get('welcomeMessage') as string) ?? undefined,
-        thankyouMessage: (formData.get('thankyouMessage') as string) ?? undefined,
-      }
-    )
-
-    if (result.error) {
-      setIsPending(false)
-      setError(result.error)
-      return
-    }
-
-    // Salva datas de abertura/encerramento
-    const openDate  = (formData.get('open_date')  as string) || null
-    const closeDate = (formData.get('close_date') as string) || null
-    const datesResult = await updateCommunityDates(
-      surveyId,
-      community.community_id,
-      openDate,
-      closeDate,
-    )
-
-    setIsPending(false)
-
-    if (datesResult.error) {
-      setError(datesResult.error)
-    } else {
-      onClose()
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-6">
-        {/* Formulário */}
-        <div className="space-y-4">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Nome Escola */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Nome da Escola</label>
-              <input
-                type="text"
-                name="nomeEscola"
-                defaultValue={community.theme?.nomeEscola || ''}
-                placeholder="Ex: Escola Raiz"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
-              />
-            </div>
-
-            {/* Cor Primária */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Cor Primária</label>
-              <div className="flex gap-2">
-                <input
-                  type="color"
-                  name="primaryColor"
-                  value={primaryColor}
-                  onChange={e => setPrimaryColor(e.target.value)}
-                  className="w-12 h-10 rounded border border-gray-300 cursor-pointer"
-                />
-                <input
-                  type="text"
-                  value={primaryColor}
-                  onChange={e => setPrimaryColor(e.target.value)}
-                  placeholder="#000000"
-                  pattern="^#[0-9A-Fa-f]{6}$"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D] font-mono"
-                />
-              </div>
-            </div>
-
-            {/* Cor Secundária */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Cor Secundária</label>
-              <div className="flex gap-2">
-                <input
-                  type="color"
-                  name="secondaryColor"
-                  value={secondaryColor}
-                  onChange={e => setSecondaryColor(e.target.value)}
-                  className="w-12 h-10 rounded border border-gray-300 cursor-pointer"
-                />
-                <input
-                  type="text"
-                  value={secondaryColor}
-                  onChange={e => setSecondaryColor(e.target.value)}
-                  placeholder="#ffffff"
-                  pattern="^#[0-9A-Fa-f]{6}$"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D] font-mono"
-                />
-              </div>
-            </div>
-
-            {/* URL da Logo */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">URL da Logo</label>
-              <input
-                type="url"
-                name="logo"
-                defaultValue={community.theme?.logo || community.logoUrl}
-                placeholder={community.logoUrl}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D] font-mono text-xs"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Default: {community.logoUrl}
-              </p>
-            </div>
-
-            {/* Mensagem de boas-vindas */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Mensagem de boas-vindas</label>
-              <textarea
-                name="welcomeMessage"
-                rows={3}
-                defaultValue={community.theme?.welcomeMessage || ''}
-                placeholder="Ex: Que bom ter você aqui! Sua opinião é muito importante."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D] resize-y"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Variáveis: {'{{nome}}'} | {'{{nomeAluno}}'} | {'{{serie}}'} | {'{{nomeEscola}}'}
-              </p>
-            </div>
-
-            {/* Mensagem de agradecimento */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Mensagem de agradecimento</label>
-              <textarea
-                name="thankyouMessage"
-                rows={3}
-                defaultValue={community.theme?.thankyouMessage || ''}
-                placeholder="Ex: Obrigado por participar! Sua opinião faz a diferença."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D] resize-y"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Se preenchida, substitui o texto padrão. Variáveis: {'{{nomeAluno}}'} | {'{{nomeEscola}}'}
-              </p>
-            </div>
-
-            {/* Link de indicação (quem confia) */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Link de indicação</label>
-              <input
-                type="url"
-                name="indicacaoLink"
-                defaultValue={(community.theme as { indicacaoLink?: string } | undefined)?.indicacaoLink || ''}
-                placeholder="https://quemconfia.com.br/escola"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D] font-mono text-xs"
-              />
-              <p className="text-xs text-gray-500 mt-1">Exibido no ThankYou para promotores (NPS 9-10)</p>
-            </div>
-
-            {/* Datas de abertura e encerramento */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                Datas desta comunidade
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Abertura</label>
-                  <input
-                    type="datetime-local"
-                    name="open_date"
-                    defaultValue={
-                      community.open_date
-                        ? community.open_date.slice(0, 16)
-                        : ''
-                    }
-                    className="w-full border border-gray-300 rounded-[4.8px] px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#F7941D] focus:border-[#F7941D]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Encerramento</label>
-                  <input
-                    type="datetime-local"
-                    name="close_date"
-                    defaultValue={
-                      community.close_date
-                        ? community.close_date.slice(0, 16)
-                        : ''
-                    }
-                    className="w-full border border-gray-300 rounded-[4.8px] px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#F7941D] focus:border-[#F7941D]"
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-gray-400 mt-1">
-                {community.status === 'encerrada'
-                  ? 'Encerrada'
-                  : community.status === 'nao_aberta'
-                  ? 'Ainda nao aberta'
-                  : community.status === 'ativa'
-                  ? 'Ativa'
-                  : 'Deixe em branco para usar as datas globais da pesquisa.'}
-              </p>
-            </div>
-
-            {/* Error */}
-            {error && (
-              <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
-                {error}
-              </div>
-            )}
-
-            {/* Buttons */}
-            <div className="flex gap-2 pt-2">
-              <button
-                type="submit"
-                disabled={isPending}
-                className="flex-1 px-3 py-2 bg-[#F7941D] text-white rounded-lg text-sm font-medium hover:bg-[#D97B10] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isPending ? 'Salvando...' : 'Salvar'}
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={isPending}
-                className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Cancelar
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {/* Preview */}
-        <div className="flex flex-col gap-3">
-          <div className="text-xs font-medium text-gray-600">Preview ao vivo</div>
-          <div
-            className="p-4 rounded-lg text-white flex items-center gap-3"
-            style={{
-              background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})`,
-            }}
-          >
-            {community.theme?.logo && (
-              <img
-                src={community.theme.logo}
-                alt="Logo"
-                className="w-8 h-8 object-contain"
-                onError={e => {
-                  (e.target as HTMLImageElement).style.display = 'none'
-                }}
-              />
-            )}
-            <div className="text-sm">
-              <div className="font-semibold">
-                {community.theme?.nomeEscola || community.community_id}
-              </div>
-              <div className="text-xs opacity-80">Raiz Educação</div>
-            </div>
-          </div>
-
-          {/* Color swatches */}
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="border border-gray-300 rounded-lg p-2">
-              <div className="text-gray-600 mb-1.5">Primária</div>
-              <div
-                className="w-full h-8 rounded border border-gray-300"
-                style={{ backgroundColor: primaryColor }}
-              />
-              <div className="text-gray-600 mt-1.5 font-mono text-xs">{primaryColor}</div>
-            </div>
-            <div className="border border-gray-300 rounded-lg p-2">
-              <div className="text-gray-600 mb-1.5">Secundária</div>
-              <div
-                className="w-full h-8 rounded border border-gray-300"
-                style={{ backgroundColor: secondaryColor }}
-              />
-              <div className="text-gray-600 mt-1.5 font-mono text-xs">{secondaryColor}</div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }

@@ -2,6 +2,7 @@
 
 import type { SurveyTheme } from '@/components/survey-engine/utils/types'
 import { interpolate } from '@/lib/interpolate'
+import { resolveReferralLink } from './thankYouLogic'
 
 interface ThankYouProps {
   nps: number | undefined
@@ -20,9 +21,7 @@ export default function ThankYou({ nps, perfil, nomeAluno, school, tipo, theme, 
   const isPromotor = score >= 9
   const isNeutro   = score >= 7 && score <= 8
   const isDetrator = score <= 6
-  const linkIndicacao = (theme as { indicacaoLink?: string } | undefined)?.indicacaoLink
-    ?? indicacaoLinks?.[school]
-    ?? null
+  const linkIndicacao = resolveReferralLink(theme, indicacaoLinks, school)
 
   // Mensagem personalizada via admin (suporta {{nomeAluno}}, {{nomeEscola}}, etc.)
   if (theme?.thankyouMessage) {

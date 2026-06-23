@@ -63,13 +63,14 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
           </div>
         ))}
         {tentou && !allOk && (
-          <p style={{ color: '#e53e3e', fontSize: '.85rem', marginBottom: 8 }}>
+          <p role="alert" style={{ color: '#e53e3e', fontSize: '.85rem', marginBottom: 8 }}>
             ⚠️ Avalie {pendentes === 1 ? 'o item marcado' : `os ${pendentes} itens marcados`} em vermelho para continuar.
           </p>
         )}
         <div className="btn-row">
-          <button className="btn btn-secondary" onClick={onBack}>← Voltar</button>
+          <button type="button" className="btn btn-secondary" onClick={onBack}>← Voltar</button>
           <button
+            type="button"
             className="btn btn-primary"
             disabled={loading}
             style={!allOk && !loading ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
@@ -108,13 +109,14 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
         />
       ))}
       {tentou && !ok && (
-        <p style={{ color: '#e53e3e', fontSize: '.85rem', marginBottom: 8, textAlign: 'right' }}>
+        <p role="alert" style={{ color: '#e53e3e', fontSize: '.85rem', marginBottom: 8, textAlign: 'right' }}>
           ⚠️ Avalie {pendentesSimples === 1 ? 'o item marcado' : `os ${pendentesSimples} itens marcados`} em vermelho para continuar.
         </p>
       )}
       <div className="btn-row">
-        <button className="btn btn-secondary" onClick={onBack}>← Voltar</button>
+        <button type="button" className="btn btn-secondary" onClick={onBack}>← Voltar</button>
         <button
+          type="button"
           className="btn btn-primary"
           disabled={loading}
           style={!ok && !loading ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}

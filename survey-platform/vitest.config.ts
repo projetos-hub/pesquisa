@@ -6,9 +6,20 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     setupFiles: ['./__tests__/setup.ts'],
-    include: ['__tests__/**/*.test.ts'],
+    include: ['__tests__/unit/**/*.test.ts'],
     testTimeout: 30_000,
     hookTimeout: 30_000,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json-summary', 'html'],
+      reportsDirectory: './coverage',
+      thresholds: {
+        statements: 50,
+        branches: 45,
+        functions: 60,
+        lines: 50,
+      },
+    },
   },
   resolve: {
     alias: {

@@ -7,12 +7,17 @@ interface OptionBtnProps {
 }
 
 function Radio() {
-  return <span className="radio" />
+  return <span className="radio" aria-hidden="true" />
 }
 
 export default function OptionBtn({ label, selected, onClick }: OptionBtnProps) {
   return (
-    <button className={`option-btn${selected ? ' sel' : ''}`} onClick={onClick}>
+    <button
+      type="button"
+      className={`option-btn${selected ? ' sel' : ''}`}
+      aria-pressed={selected}
+      onClick={onClick}
+    >
       <Radio />
       {label}
     </button>

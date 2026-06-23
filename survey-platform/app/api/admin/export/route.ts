@@ -1,28 +1,14 @@
 'use server'
 
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { adminAuthErrorResponse, requireAdmin } from '@/lib/admin-auth'
 import { createServiceClient } from '@/lib/supabase-service'
 import ExcelJS from 'exceljs'
 import { buildColumnSchema, META_HEADERS, getMetaValues } from '@/lib/report-xlsx'
 import type { SessionRow, QuestionRow, OptionRow } from '@/lib/report-queries'
 
-interface ResponseRow {
-  id: string
-  question_key: string
-  value: unknown
-}
-
 export async function GET(request: Request) {
   try {
-    // Auth check
-    const supabase = await createServerSupabaseClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }
+    await requireAdmin()
 
     // Get surveyId from query params
     const url = new URL(request.url)
@@ -141,6 +127,9 @@ export async function GET(request: Request) {
       },
     })
   } catch (error) {
+    const authResponse = adminAuthErrorResponse(error)
+    if (authResponse) return authResponse
+
     console.error('[export] error:', error)
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
