@@ -4,6 +4,8 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-service'
 import { executeDispatch } from '@/lib/layers-notifications'
+import { MAX_DISPATCH_RETRY_COUNT } from '@/lib/dispatch-state'
+import { getCorrelationId, jsonWithCorrelation, logError, logInfo, logWarn } from '@/lib/observability'
 
 async function requireAuth() {
   const supabase = await createServerSupabaseClient()
@@ -13,12 +15,17 @@ async function requireAuth() {
 }
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ dispatchId: string }> },
 ) {
+  const correlationId = getCorrelationId(request)
+  const baseLogContext = { route: 'POST /api/admin/dispatch/[dispatchId]/retry', correlationId }
+  const json = (body: unknown, init?: ResponseInit) => jsonWithCorrelation(body, init, correlationId)
+
   try {
     await requireAuth()
     const { dispatchId } = await params
+    const logContext = { ...baseLogContext, dispatchId }
     const supabase = createServiceClient()
 
     // Verifica que o dispatch existe
@@ -29,11 +36,13 @@ export async function POST(
       .single()
 
     if (!dispatch) {
-      return Response.json({ error: 'Dispatch não encontrado' }, { status: 404 })
+      logWarn('dispatch_retry.not_found', logContext)
+      return json({ error: 'Dispatch não encontrado' }, { status: 404 })
     }
 
     if (dispatch.failed_jobs === 0) {
-      return Response.json({ error: 'Nenhum job falho para reprocessar' }, { status: 422 })
+      logWarn('dispatch_retry.no_failed_jobs', logContext)
+      return json({ error: 'Nenhum job falho para reprocessar' }, { status: 422 })
     }
 
     // Reseta jobs falhos com retry_count < 3 para 'pending'
@@ -42,13 +51,14 @@ export async function POST(
       .update({ status: 'pending', error: null })
       .eq('dispatch_id', dispatchId)
       .eq('status', 'failed')
-      .lt('retry_count', 3)
+      .lt('retry_count', MAX_DISPATCH_RETRY_COUNT)
       .select('id')
 
     const resetCount = resetJobs?.length ?? 0
 
     if (resetCount === 0) {
-      return Response.json(
+      logWarn('dispatch_retry.retry_limit_reached', logContext)
+      return json(
         { error: 'Todos os jobs falhos já atingiram o limite de 3 tentativas' },
         { status: 422 },
       )
@@ -68,8 +78,13 @@ export async function POST(
 
     // Executa
     const result = await executeDispatch(dispatchId)
+    logInfo('dispatch_retry.completed', logContext, {
+      retried: resetCount,
+      sent: result.sent,
+      failed: result.failed,
+    })
 
-    return Response.json({
+    return json({
       ok:          true,
       retried:     resetCount,
       sent:        result.sent,
@@ -77,9 +92,10 @@ export async function POST(
     })
   } catch (err) {
     if (err instanceof Error && err.message === 'Não autorizado') {
-      return Response.json({ error: 'Não autorizado' }, { status: 401 })
+      logWarn('dispatch_retry.unauthorized', baseLogContext)
+      return json({ error: 'Não autorizado' }, { status: 401 })
     }
-    console.error('[dispatch retry] error:', err)
-    return Response.json({ error: 'Erro interno' }, { status: 500 })
+    logError('dispatch_retry.unhandled_error', baseLogContext, err)
+    return json({ error: 'Erro interno' }, { status: 500 })
   }
 }

@@ -11,6 +11,7 @@ import {
   type TargetRole,
   type TargetScope,
 } from '@/lib/layers-notifications'
+import { getCorrelationId, jsonWithCorrelation, logError, logInfo, logWarn } from '@/lib/observability'
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
@@ -64,14 +65,20 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const correlationId = getCorrelationId(request)
+  const logContext = { route: 'POST /api/admin/surveys/[id]/dispatch', correlationId }
+  const json = (body: unknown, init?: ResponseInit) => jsonWithCorrelation(body, init, correlationId)
+
   try {
     const user = await requireAuth()
     const { id: surveyId } = await params
+    const surveyLogContext = { ...logContext, surveyId }
 
     const raw = await request.json() as unknown
     const parsed = DispatchSchema.safeParse(raw)
     if (!parsed.success) {
-      return Response.json(
+      logWarn('dispatch.invalid_body', surveyLogContext, { issues: parsed.error.issues.length })
+      return json(
         { error: 'Dados inválidos', details: parsed.error.flatten() },
         { status: 400 },
       )
@@ -88,13 +95,15 @@ export async function POST(
       .single()
 
     if (!survey) {
-      return Response.json({ error: 'Survey não encontrada' }, { status: 404 })
+      logWarn('dispatch.survey_not_found', surveyLogContext)
+      return json({ error: 'Survey não encontrada' }, { status: 404 })
     }
 
     // Validação específica para scope 'sample'
     if (body.target_scope === 'sample') {
       if (!body.personalized) {
-        return Response.json(
+        logWarn('dispatch.sample_requires_personalized', surveyLogContext)
+        return json(
           { error: 'Disparos para amostra requerem modo Personalizado ativado' },
           { status: 422 },
         )
@@ -106,7 +115,8 @@ export async function POST(
         .not('layers_user_id', 'is', null)
 
       if (!count || count === 0) {
-        return Response.json(
+        logWarn('dispatch.sample_without_resolved_users', surveyLogContext)
+        return json(
           { error: 'Nenhum email resolvido na amostra. Faça upload da lista antes de disparar.' },
           { status: 422 },
         )
@@ -121,7 +131,8 @@ export async function POST(
     )
 
     if (targetCommunities.length === 0) {
-      return Response.json(
+      logWarn('dispatch.no_target_communities', surveyLogContext, { targetScope: body.target_scope })
+      return json(
         { error: 'Nenhuma comunidade encontrada para os critérios selecionados' },
         { status: 422 },
       )
@@ -166,8 +177,8 @@ export async function POST(
       .single()
 
     if (dispatchErr || !dispatch) {
-      console.error('[dispatch] insert error:', dispatchErr)
-      return Response.json(
+      logError('dispatch.insert_failed', surveyLogContext, dispatchErr ?? new Error('Dispatch insert returned no row'))
+      return json(
         { error: 'Erro ao criar dispatch', detail: dispatchErr?.message ?? 'unknown' },
         { status: 500 },
       )
@@ -185,9 +196,11 @@ export async function POST(
       )
 
     if (jobsErr) {
-      console.error('[dispatch] jobs insert error:', jobsErr)
+      logError('dispatch.jobs_insert_failed', { ...surveyLogContext, dispatchId: dispatch.id }, jobsErr, {
+        targetCommunities: targetCommunities.length,
+      })
       await supabase.from('survey_dispatches').delete().eq('id', dispatch.id)
-      return Response.json(
+      return json(
         { error: 'Erro ao criar jobs de dispatch', detail: jobsErr.message },
         { status: 500 },
       )
@@ -195,7 +208,10 @@ export async function POST(
 
     // Disparo agendado: retorna imediatamente
     if (isScheduled) {
-      return Response.json({
+      logInfo('dispatch.scheduled_created', { ...surveyLogContext, dispatchId: dispatch.id }, {
+        totalJobs: targetCommunities.length,
+      })
+      return json({
         ok:         true,
         dispatch,
         scheduled:  true,
@@ -205,8 +221,13 @@ export async function POST(
 
     // Disparo imediato: executa agora
     const result = await executeDispatch(dispatch.id)
+    logInfo('dispatch.immediate_completed', { ...surveyLogContext, dispatchId: dispatch.id }, {
+      sent: result.sent,
+      failed: result.failed,
+      totalJobs: targetCommunities.length,
+    })
 
-    return Response.json({
+    return json({
       ok:         true,
       dispatch_id: dispatch.id,
       sent:        result.sent,
@@ -215,22 +236,28 @@ export async function POST(
     })
   } catch (err) {
     if (err instanceof Error && err.message === 'Não autorizado') {
-      return Response.json({ error: 'Não autorizado' }, { status: 401 })
+      logWarn('dispatch.unauthorized', logContext)
+      return json({ error: 'Não autorizado' }, { status: 401 })
     }
-    console.error('[dispatch] POST error:', err)
-    return Response.json({ error: 'Erro interno' }, { status: 500 })
+    logError('dispatch.unhandled_error', logContext, err)
+    return json({ error: 'Erro interno' }, { status: 500 })
   }
 }
 
 // ─── GET — Listar histórico de disparos ───────────────────────────────────────
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const correlationId = getCorrelationId(request)
+  const logContext = { route: 'GET /api/admin/surveys/[id]/dispatch', correlationId }
+  const json = (body: unknown, init?: ResponseInit) => jsonWithCorrelation(body, init, correlationId)
+
   try {
     await requireAuth()
     const { id: surveyId } = await params
+    const surveyLogContext = { ...logContext, surveyId }
     const supabase = createServiceClient()
 
     const { data: dispatches, error } = await supabase
@@ -246,14 +273,18 @@ export async function GET(
       .order('created_at', { ascending: false })
 
     if (error) {
-      return Response.json({ error: 'Erro ao buscar histórico' }, { status: 500 })
+      logError('dispatch.history_failed', surveyLogContext, error)
+      return json({ error: 'Erro ao buscar histórico' }, { status: 500 })
     }
 
-    return Response.json({ dispatches: dispatches ?? [] })
+    logInfo('dispatch.history_loaded', surveyLogContext, { count: dispatches?.length ?? 0 })
+    return json({ dispatches: dispatches ?? [] })
   } catch (err) {
     if (err instanceof Error && err.message === 'Não autorizado') {
-      return Response.json({ error: 'Não autorizado' }, { status: 401 })
+      logWarn('dispatch.history_unauthorized', logContext)
+      return json({ error: 'Não autorizado' }, { status: 401 })
     }
-    return Response.json({ error: 'Erro interno' }, { status: 500 })
+    logError('dispatch.history_unhandled_error', logContext, err)
+    return json({ error: 'Erro interno' }, { status: 500 })
   }
 }

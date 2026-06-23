@@ -11,11 +11,14 @@ export default function ScaleRow({ label, value, onChange, highlight }: ScaleRow
   return (
     <div className="scale-group" style={highlight ? { borderColor: '#e53e3e', boxShadow: '0 0 0 2px rgba(229,62,62,.15)' } : undefined}>
       <p className="scale-label">{label}</p>
-      <div className="scale-btns">
+      <div className="scale-btns" role="group" aria-label={label}>
         {[6, 5, 4, 3, 2, 1].map(n => (
           <button
             key={n}
+            type="button"
             className={`scale-btn${value === n ? ' sel' : ''}`}
+            aria-pressed={value === n}
+            aria-label={`${label}: ${n}`}
             onClick={() => onChange(n)}
           >
             {n}

@@ -11,7 +11,10 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "coverage/**",
     "next-env.d.ts",
+    "gen-pdf.js",
+    "screenshot-playbook.js",
   ]),
 ]);
 

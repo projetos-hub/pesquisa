@@ -31,19 +31,21 @@ export default function StepText({ step, tipo, onNext, onBack, isLast, loading }
         <p className="question-label">{resolve(step.pergunta)}</p>
         <textarea
           className="text-area"
+          aria-label={resolve(step.pergunta)}
           placeholder={step.placeholder || 'Digite aqui...'}
           value={txt}
           onChange={e => setTxt(e.target.value)}
         />
         {tentou && !ok && (
-          <p style={{ fontSize: '.85rem', color: '#e53e3e', marginTop: 4 }}>
+          <p role="alert" style={{ fontSize: '.85rem', color: '#e53e3e', marginTop: 4 }}>
             ⚠️ Este campo é obrigatório.
           </p>
         )}
       </div>
       <div className="btn-row">
-        <button className="btn btn-secondary" onClick={onBack}>← Voltar</button>
+        <button type="button" className="btn btn-secondary" onClick={onBack}>← Voltar</button>
         <button
+          type="button"
           className="btn btn-primary"
           disabled={loading}
           style={!ok && !loading ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}

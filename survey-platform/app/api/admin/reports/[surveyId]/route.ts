@@ -14,7 +14,7 @@
  *   npsKey        string  (default: "nps")
  */
 
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { adminAuthErrorResponse, requireAdmin } from '@/lib/admin-auth'
 import {
   fetchSurveyMeta,
   fetchNpsBreakdown,
@@ -50,12 +50,7 @@ export async function GET(
   context: { params: Promise<{ surveyId: string }> }
 ) {
   try {
-    // Auth
-    const supabase = await createServerSupabaseClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    await requireAdmin()
 
     const { surveyId } = await context.params
     if (!surveyId) {
@@ -136,6 +131,9 @@ export async function GET(
       },
     })
   } catch (err) {
+    const authResponse = adminAuthErrorResponse(err)
+    if (authResponse) return authResponse
+
     console.error('[reports/surveyId] error:', err)
     const message = err instanceof Error ? err.message : 'Internal server error'
     return Response.json({ error: message }, { status: 500 })

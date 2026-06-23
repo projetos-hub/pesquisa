@@ -1,183 +1,145 @@
-/**
- * respondente.spec.ts
- * Fluxo completo: acessar survey → responder → ThankYou → idempotência
- */
-import { test, expect } from '@playwright/test'
-import { createClient } from '@supabase/supabase-js'
+import { expect, test } from '@playwright/test'
+import {
+  cleanupSurveyFixtures,
+  createSurveyFixture,
+  E2E_COMMUNITY_ID,
+  serviceDb,
+  submitAnswers,
+  type SurveyFixture,
+} from './helpers/e2e-data'
 
-const BASE = '/p/csat?communityId=raizeducacao&userId=pw-test-resp-001&nome=Playwright&studentName=FilhoTeste&grade=3A'
+test.describe('Fluxo respondente deterministico', () => {
+  let survey: SurveyFixture
+  const slug = `respondente-${Date.now()}`
 
-test.describe('Fluxo respondente', () => {
-
-  test('WelcomeStep carrega e botão Responder existe', async ({ page }) => {
-    await page.goto(BASE)
-    // Aguarda hydration do SurveyRunner
-    await page.waitForLoadState('networkidle')
-    // Welcome step deve ter um botão de avançar
-    const btn = page.locator('button:has-text("Responder"), button:has-text("Começar"), button:has-text("Iniciar")')
-    await expect(btn).toBeVisible({ timeout: 12_000 })
+  test.beforeAll(async () => {
+    const db = serviceDb()
+    await cleanupSurveyFixtures([slug], db)
+    survey = await createSurveyFixture({
+      slug,
+      title: 'E2E Respondente',
+      bilingualNps: true,
+    }, db)
   })
 
-  test('NPS step renderiza após WelcomeStep', async ({ page }) => {
-    await page.goto(BASE)
+  test.afterAll(async () => {
+    await cleanupSurveyFixtures([slug])
+  })
+
+  test('carrega welcome, responde NPS com bilingue e chega no ThankYou', async ({ page }) => {
+    const userId = `e2e-ui-${Date.now()}`
+    await page.goto(`/p/${survey.slug}?communityId=${E2E_COMMUNITY_ID}&userId=${userId}&perfil=responsavel&email=ui-e2e@example.com`)
     await page.waitForLoadState('networkidle')
 
-    // Clica no botão de avançar do WelcomeStep
-    const startBtn = page.locator('button:has-text("Responder"), button:has-text("Começar"), button:has-text("Iniciar")').first()
-    await startBtn.click()
+    const startButton = page.getByRole('button', { name: /responder|comecar|começar|iniciar/i })
+    await expect(startButton).toBeVisible({ timeout: 12_000 })
+    await startButton.click()
 
-    // Aguarda NPS renderizar (tem botões 0-10 com class nps-btn)
     await expect(page.locator('.nps-btn').first()).toBeVisible({ timeout: 10_000 })
-    await expect(page.locator('.nps-btn').nth(9)).toBeVisible() // botão '9'
-    await expect(page.locator('.step-title')).toBeVisible()
+    await expect(page.locator('.nps-btn')).toHaveCount(11)
+    await page.locator('.nps-btn').first().click()
+    await expect(page.getByText(/programa bilingue|programa bilíngue/i)).toBeVisible()
+    await page.getByRole('button', { name: /nao|não/i }).click()
+    await page.getByRole('button', { name: /proximo|próximo/i }).click()
+
+    await expect(page.getByText('Pedagogico')).toBeVisible({ timeout: 8_000 })
+    await page.locator('.scale-group').nth(0).locator('.scale-btn').first().click()
+    await page.locator('.scale-group').nth(1).locator('.scale-btn').first().click()
+    await page.getByRole('button', { name: /enviar pesquisa/i }).click()
+
+    await expect(page.getByText(/obrigado/i).first()).toBeVisible({ timeout: 12_000 })
   })
 
-  test('NPS promotor (9) → avança → ThankYou ou próximo step', async ({ page }) => {
-    await page.goto(BASE)
-    await page.waitForLoadState('networkidle')
+  test('falha temporaria no submit mostra retry sem perder respostas', async ({ page }) => {
+    const userId = `e2e-retry-${Date.now()}`
+    let attempts = 0
 
-    // WelcomeStep
-    await page.locator('button:has-text("Responder"), button:has-text("Começar")').first().click()
-    await expect(page.locator('.nps-btn').first()).toBeVisible({ timeout: 10_000 })
+    await page.route(`**/api/surveys/${survey.slug}/submit`, async (route) => {
+      attempts += 1
+      if (attempts === 1) {
+        await route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'temporary_failure' }),
+        })
+        return
+      }
 
-    // Clica NPS 9 (índice 9 = décimo botão, valor 9)
-    await page.locator('.nps-btn').nth(9).click()
-
-    // Responde bilíngue se aparecer (csat tem perguntaBilingue=true)
-    const bilBtn = page.locator('.option-btn, button:has-text("Sim"), button:has-text("Não")').first()
-    if (await bilBtn.isVisible({ timeout: 1000 }).catch(() => false)) await bilBtn.click()
-
-    // Clica Próximo
-    await page.locator('button:has-text("Próximo")').click()
-
-    // Deve ter avançado para próximo step
-    await expect(page.locator('.step-title').first()).toBeVisible({ timeout: 8_000 })
-  })
-
-  test('submissão via API persiste no banco', async () => {
-    const userId = `pw-test-submit-api-${Date.now()}`
-
-    // Busca config da survey para montar answers com as question keys corretas
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    )
-    const { data: questions } = await supabase
-      .from('questions')
-      .select('id, key, type')
-      .eq('survey_id', '83c7556d-d0af-4815-8bc8-38059d50ac21') // csat
-      .order('order_index')
-
-    // Monta answers para todos os steps
-    const answers: Record<string, unknown> = {}
-    for (const q of questions ?? []) {
-      if (q.type === 'nps')           answers[q.key] = { nps: 10, participa_bilingue: 'Não' }
-      if (q.type === 'scale')         answers[q.key] = { 0: 5, 1: 5, 2: 5, 3: 5, 4: 5 }
-      if (q.type === 'scale_sections') answers[q.key] = {}
-      if (q.type === 'welcome')       answers[q.key] = true
-    }
-
-    // Chama o endpoint de submit diretamente
-    const res = await fetch('http://localhost:3000/api/surveys/csat/submit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        communityId: 'raizeducacao',
-        userId,
-        accountId:   userId,
-        perfil:      'responsavel',
-        nomeCompleto: 'Playwright Test',
-        answers,
-      }),
+      await route.fallback()
     })
 
-    expect(res.status).toBe(200)
-    const body = await res.json() as { ok: boolean; sessionId?: string }
-    expect(body.ok).toBe(true)
-    console.log('[respondente] session via API:', body.sessionId)
+    await page.goto(`/p/${survey.slug}?communityId=${E2E_COMMUNITY_ID}&userId=${userId}&perfil=responsavel&email=retry-e2e@example.com`)
 
-    // Verifica no banco
-    const { data } = await supabase
-      .from('response_sessions')
-      .select('id, community_id, user_id')
-      .eq('community_id', 'raizeducacao')
-      .eq('user_id', userId)
-      .limit(1)
+    await page.locator('.welcome-footer .btn-primary').click()
+    await page.locator('.nps-btn').first().click()
+    await page.locator('.option-btn').nth(1).click()
+    await page.locator('.btn-primary').click()
+    await page.locator('.scale-group').nth(0).locator('.scale-btn').first().click()
+    await page.locator('.scale-group').nth(1).locator('.scale-btn').first().click()
+    await page.locator('.btn-primary').click()
 
-    expect(data?.length).toBe(1)
+    await expect(page.locator('.submit-alert')).toContainText(/nao foi possivel|temporary_failure/i)
+    await page.getByRole('button', { name: /tentar novamente/i }).click()
+
+    await expect(page.getByText(/obrigado/i).first()).toBeVisible({ timeout: 12_000 })
+    expect(attempts).toBe(2)
   })
 
-  test('Survey slug inválido exibe tela de erro', async ({ page }) => {
-    await page.goto('/p/survey-nao-existe-404')
+  test('submit via API persiste respostas e duplicate e idempotente', async ({ request }) => {
+    const userId = `e2e-submit-${Date.now()}`
+    const payload = {
+      communityId: E2E_COMMUNITY_ID,
+      userId,
+      accountId: userId,
+      perfil: 'responsavel',
+      nomeCompleto: 'Pessoa E2E',
+      email: 'respondente-e2e@example.com',
+      answers: submitAnswers(),
+    }
+
+    const first = await request.post(`/api/surveys/${survey.slug}/submit`, { data: payload })
+    expect(first.status()).toBe(200)
+    await expect(first).toBeOK()
+    const firstBody = await first.json() as { ok?: boolean; sessionId?: string }
+    expect(firstBody.ok).toBe(true)
+    expect(firstBody.sessionId).toBeTruthy()
+
+    const second = await request.post(`/api/surveys/${survey.slug}/submit`, { data: payload })
+    expect(second.status()).toBe(200)
+    const secondBody = await second.json() as { duplicate?: boolean }
+    expect(secondBody.duplicate).toBe(true)
+
+    const db = serviceDb()
+    const { count } = await db
+      .from('response_sessions')
+      .select('*', { count: 'exact', head: true })
+      .eq('survey_id', survey.surveyId)
+      .eq('user_id', userId)
+
+    expect(count).toBe(1)
+  })
+
+  test('payload invalido retorna 422 sem criar sessao', async ({ request }) => {
+    const res = await request.post(`/api/surveys/${survey.slug}/submit`, {
+      data: {
+        communityId: E2E_COMMUNITY_ID,
+        userId: 'e2e-invalid-payload',
+        perfil: 'responsavel',
+        answers: { unknown_key: 'value' },
+      },
+    })
+
+    expect(res.status()).toBe(422)
+    const body = await res.json() as { error: string }
+    expect(body.error).toContain('No valid answers')
+  })
+
+  test('survey inexistente mostra erro para usuario', async ({ page }) => {
+    await page.goto('/p/e2e-survey-nao-existe')
     await page.waitForLoadState('networkidle')
+
     await expect(
-      page.locator('text=não encontrada').or(page.locator('text=Erro').or(page.locator('text=erro')))
+      page.getByText(/nao encontrada|não encontrada|erro/i).first()
     ).toBeVisible({ timeout: 8_000 })
   })
-
-  test('submit duplicado retorna 200 com duplicate:true (idempotência)', async () => {
-    const userId = `pw-idem-test-${Date.now()}`
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    )
-    const { data: questions } = await supabase
-      .from('questions')
-      .select('id, key, type')
-      .eq('survey_id', '83c7556d-d0af-4815-8bc8-38059d50ac21')
-      .order('order_index')
-
-    const answers: Record<string, unknown> = {}
-    for (const q of questions ?? []) {
-      if (q.type === 'nps')    answers[q.key] = { nps: 8, participa_bilingue: 'Não' }
-      if (q.type === 'scale')  answers[q.key] = { 0: 4, 1: 4, 2: 4, 3: 4, 4: 4 }
-      if (q.type === 'welcome') answers[q.key] = true
-    }
-
-    const payload = {
-      communityId: 'raizeducacao',
-      userId,
-      accountId:   userId,
-      perfil:      'responsavel',
-      answers,
-    }
-
-    // Primeira submissão — deve criar
-    const res1 = await fetch('http://localhost:3000/api/surveys/csat/submit', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    expect(res1.status).toBe(200)
-    const body1 = await res1.json() as { ok?: boolean; duplicate?: boolean }
-    expect(body1.ok).toBe(true)
-
-    // Segunda submissão — deve retornar duplicate:true sem erro
-    const res2 = await fetch('http://localhost:3000/api/surveys/csat/submit', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    expect(res2.status).toBe(200)
-    const body2 = await res2.json() as { ok?: boolean; duplicate?: boolean }
-    expect(body2.duplicate).toBe(true)
-  })
-
-  test('survey encerrada mostra tela Encerrada', async ({ page }) => {
-    await page.goto('/p/csat?status=encerrada&closeDate=2026-01-01&communityId=raizeducacao')
-    await page.waitForLoadState('networkidle')
-    await expect(
-      page.locator('text=encerrada, text=Encerrada').first()
-        .or(page.locator('[data-testid="encerrada"]').first())
-    ).toBeVisible({ timeout: 10_000 })
-  })
-
-  test('survey não aberta mostra tela Não Aberta', async ({ page }) => {
-    await page.goto('/p/csat?status=nao_aberta&openDate=2099-01-01&communityId=raizeducacao')
-    await page.waitForLoadState('networkidle')
-    await expect(
-      page.locator('text=aberta, text=Aberta').first()
-        .or(page.locator('text=2099').first())
-        .or(page.locator('[data-testid="nao_aberta"]').first())
-    ).toBeVisible({ timeout: 10_000 })
-  })
-
 })

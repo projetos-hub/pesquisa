@@ -6,6 +6,20 @@
 import { createServiceClient }                                          from '@/lib/supabase-service'
 import { executeDispatch, executePersonalizedJob, executePersonalizedJobSample, type DispatchRecord } from '@/lib/layers-notifications'
 import { fetchLayersUserByEmail }                                        from '@/lib/layers-hub'
+import { decideDispatchClose, type DispatchJobStatus }                    from '@/lib/dispatch-state'
+import { getCorrelationId, jsonWithCorrelation, logError, logInfo, logWarn } from '@/lib/observability'
+
+interface ClaimedDispatchJob {
+  id: string
+  dispatch_id: string
+  community_id: string
+}
+
+interface InProgressDispatchJob {
+  id: string
+  community_id: string
+  dispatchId: string
+}
 
 function isAuthorized(req: Request): boolean {
   const auth        = req.headers.get('authorization') ?? ''
@@ -18,10 +32,16 @@ function isAuthorized(req: Request): boolean {
 }
 
 export async function GET(request: Request) {
+  const correlationId = getCorrelationId(request)
+  const logContext = { route: 'GET /api/cron/process-dispatches', correlationId }
+  const json = (body: unknown, init?: ResponseInit) => jsonWithCorrelation(body, init, correlationId)
+
   if (!isAuthorized(request)) {
-    return Response.json({ error: 'Não autorizado' }, { status: 401 })
+    logWarn('cron.dispatches.unauthorized', logContext)
+    return json({ error: 'Não autorizado' }, { status: 401 })
   }
 
+  logInfo('cron.dispatches.started', logContext)
   const supabase = createServiceClient()
 
   // ── 1. Dispatches agendados com horário chegado ────────────────────────────
@@ -30,6 +50,7 @@ export async function GET(request: Request) {
     .select('id')
     .eq('status', 'scheduled')
     .lte('scheduled_at', new Date().toISOString())
+  const scheduledCount = scheduled?.length ?? 0
 
   const scheduledResults = await Promise.allSettled(
     (scheduled ?? []).map(async (d: { id: string }) => {
@@ -40,31 +61,18 @@ export async function GET(request: Request) {
 
   // ── 2. Jobs personalizados em andamento (próximo lote) ────────────────────
   // Busca dispatches personalizados com jobs ainda em 'sending'
-  const { data: inProgressDispatches } = await supabase
-    .from('survey_dispatches')
-    .select('id')
-    .eq('status', 'sending')
-    .eq('personalized', true)
-    .order('created_at', { ascending: false })
-    .limit(5)
+  const { data: claimedJobs } = await supabase.rpc('claim_sending_dispatch_jobs', {
+    p_limit: 15,
+    p_lock_seconds: 240,
+  })
 
-  const inProgressJobs: { id: string; community_id: string; dispatchId: string }[] = []
-
-  for (const d of inProgressDispatches ?? []) {
-    const { data: jobs } = await supabase
-      .from('survey_dispatch_jobs')
-      .select('id, community_id, processed_users, total_users')
-      .eq('dispatch_id', d.id)
-      .eq('status', 'sending')
-      .limit(3)
-
-    for (const j of jobs ?? []) {
-      const job = j as { id: string; community_id: string; processed_users: number; total_users: number | null }
-      if (job.total_users === null || job.processed_users < job.total_users) {
-        inProgressJobs.push({ id: job.id, community_id: job.community_id, dispatchId: d.id as string })
-      }
-    }
-  }
+  const claimedDispatchJobs = (claimedJobs ?? []) as ClaimedDispatchJob[]
+  const claimedJobsCount = claimedDispatchJobs.length
+  const inProgressJobs: InProgressDispatchJob[] = claimedDispatchJobs.map(job => ({
+    id: job.id,
+    community_id: job.community_id,
+    dispatchId: job.dispatch_id,
+  }))
 
   const personalizedResults = await Promise.allSettled(
     inProgressJobs.map(async (job) => {
@@ -109,13 +117,15 @@ export async function GET(request: Request) {
     const finalStatus =
       failedCount === 0 ? 'sent' :
       sentCount   === 0 ? 'failed' : 'partial_failure'
+    const decision = decideDispatchClose(allJobs.map(j => j.status as DispatchJobStatus))
+    if (!decision.shouldClose) continue
 
     await supabase
       .from('survey_dispatches')
       .update({
-        status:         finalStatus,
-        completed_jobs: sentCount,
-        failed_jobs:    failedCount,
+        status:         decision.status ?? finalStatus,
+        completed_jobs: decision.completedJobs ?? sentCount,
+        failed_jobs:    decision.failedJobs ?? failedCount,
         completed_at:   new Date().toISOString(),
       })
       .eq('id', dispatchId)
@@ -130,6 +140,7 @@ export async function GET(request: Request) {
     .select('id, community_id, email')
     .is('layers_user_id', null)
     .limit(5000) // processa até 5000 por ciclo
+  const pendingSamplesCount = pendingSamples?.length ?? 0
 
   let resolvedSamples = 0
   if (pendingSamples && pendingSamples.length > 0) {
@@ -153,12 +164,29 @@ export async function GET(request: Request) {
     ...personalizedResults.filter(r => r.status === 'rejected'),
   ].length
 
-  console.log(
-    `[cron/process-dispatches] scheduled=${processedScheduled} ` +
-    `personalized=${processedPersonalized} errors=${errors}`
-  )
+  for (const result of scheduledResults) {
+    if (result.status === 'rejected') {
+      logError('cron.dispatches.scheduled_failed', logContext, result.reason)
+    }
+  }
 
-  return Response.json({
+  for (const result of personalizedResults) {
+    if (result.status === 'rejected') {
+      logError('cron.dispatches.personalized_failed', logContext, result.reason)
+    }
+  }
+
+  logInfo('cron.dispatches.completed', logContext, {
+    scheduledCount,
+    claimedJobsCount,
+    pendingSamplesCount,
+    processedScheduled,
+    processedPersonalized,
+    resolvedSamples,
+    errors,
+  })
+
+  return json({
     ok:                      true,
     processed_scheduled:     processedScheduled,
     processed_personalized:  processedPersonalized,

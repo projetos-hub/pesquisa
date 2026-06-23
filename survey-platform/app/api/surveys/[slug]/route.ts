@@ -162,6 +162,13 @@ export async function GET(req: Request, { params }: RouteContext) {
   if (result.accessControl === 'amostra') {
     const supabase = createServiceClient()
 
+    if (!communityId) {
+      return NextResponse.json(
+        { error: 'community_required', message: 'Comunidade obrigatoria para pesquisa segmentada' },
+        { status: 403 }
+      )
+    }
+
     if (!email) {
       return NextResponse.json(
         { error: 'not_in_sample', message: 'Email não fornecido para pesquisa segmentada' },
@@ -173,6 +180,7 @@ export async function GET(req: Request, { params }: RouteContext) {
       .from('survey_sample_lists')
       .select('id')
       .eq('survey_id', result.surveyId!)
+      .eq('community_id', communityId)
       .eq('email', email.toLowerCase())
       .limit(1)
 

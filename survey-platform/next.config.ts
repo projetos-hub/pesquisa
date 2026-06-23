@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: __dirname,
+  },
   async headers() {
     return [
       {
@@ -29,7 +32,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Content-Security-Policy',
-            value: "frame-ancestors *",
+            value: "frame-ancestors 'self'",
           },
         ],
       },
