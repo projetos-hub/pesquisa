@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { AdminPageShell } from '../AdminPageShell'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-service'
 
@@ -73,7 +74,8 @@ export default async function DispatchCenterPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl">
+    <AdminPageShell active="dispatch" title="Disparos">
+      <div className="rounded-3xl border border-white/12 bg-[#12151d]/88 p-5 text-gray-900 shadow-[0_30px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-lg font-semibold text-gray-900">Central de Disparos</h2>
         <p className="text-xs text-gray-400">Notificações push e email via Layers</p>
@@ -174,6 +176,7 @@ export default async function DispatchCenterPage() {
         </div>
 
       </div>
-    </div>
+      </div>
+    </AdminPageShell>
   )
 }

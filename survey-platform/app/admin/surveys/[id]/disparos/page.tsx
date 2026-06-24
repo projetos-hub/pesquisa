@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { AdminPageShell } from '../../../AdminPageShell'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import DisparoForm from './DisparoForm'
 import { getBroadcasts } from './actions'
@@ -34,16 +35,25 @@ export default async function DisparosPage({ params }: PageProps) {
 
   const { data: communities } = await supabase
     .from('survey_communities')
-    .select('community_id, theme, status')
+    .select('community_id, status')
     .eq('survey_id', id)
     .eq('active', true)
     .order('community_id')
 
   const broadcasts = await getBroadcasts(id)
 
+  const communityIds = (communities ?? []).map(c => c.community_id)
+  const { data: communityRows } = communityIds.length > 0
+    ? await supabase
+        .from('communities')
+        .select('community_id, nome_escola')
+        .in('community_id', communityIds)
+    : { data: [] }
+  const nameByCommunity = new Map((communityRows ?? []).map(c => [c.community_id, c.nome_escola ?? c.community_id]))
+
   const communityOptions = (communities ?? []).map(c => ({
     id: c.community_id,
-    label: (c.theme as { nomeEscola?: string })?.nomeEscola ?? c.community_id,
+    label: nameByCommunity.get(c.community_id) ?? c.community_id,
     status: c.status,
   }))
 
@@ -51,7 +61,8 @@ export default async function DisparosPage({ params }: PageProps) {
   const communityNameMap = Object.fromEntries(communityOptions.map(c => [c.id, c.label]))
 
   return (
-    <div className="p-6 max-w-4xl">
+    <AdminPageShell active="dispatch" title="Disparos">
+      <div className="rounded-3xl border border-white/12 bg-[#12151d]/88 p-5 text-gray-900 shadow-[0_30px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl">
       {/* Breadcrumb */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/admin/surveys" className="text-gray-400 hover:text-gray-600 text-sm">← Pesquisas</Link>
@@ -124,6 +135,7 @@ export default async function DisparosPage({ params }: PageProps) {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </AdminPageShell>
   )
 }

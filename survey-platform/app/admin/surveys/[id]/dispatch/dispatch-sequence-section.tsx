@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 
-import { PLACEHOLDERS, type SequenceStep } from './dispatch-form-utils'
+import { PlaceholderTextField } from '../../../components/PlaceholderTextField'
+import type { SequenceStep } from './dispatch-form-utils'
 
 interface SequenceSectionProps {
   seqMode:    boolean
@@ -26,16 +27,16 @@ export function SequenceSection({
   return (
     <section className="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-700">4. Régua de disparos</h3>
+        <h3 className="text-sm font-semibold text-gray-700">4. Regua de disparos</h3>
         <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
           <input type="checkbox" checked={seqMode} onChange={event => setSeqMode(event.target.checked)} className="rounded border-gray-300 text-[#F7941D]" />
-          Ativar régua
+          Ativar regua
         </label>
       </div>
 
       {!seqMode && (
         <p className="text-xs text-gray-400">
-          Régua permite criar uma sequência automática de mensagens ao longo da pesquisa.
+          Regua permite criar uma sequencia automatica de mensagens ao longo da pesquisa.
         </p>
       )}
 
@@ -43,11 +44,11 @@ export function SequenceSection({
         <div className="space-y-3">
           {openDate ? (
             <p className="text-xs text-[#F7941D] bg-[#F7941D]/5 rounded-lg px-3 py-1.5">
-              Base: abertura da pesquisa em {new Date(openDate).toLocaleDateString('pt-BR')}. Os dias são relativos a essa data.
+              Base: abertura da pesquisa em {new Date(openDate).toLocaleDateString('pt-BR')}. Os dias sao relativos a essa data.
             </p>
           ) : (
             <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-1.5">
-              A pesquisa não tem data de abertura definida. Os dias serão relativos a agora.
+              A pesquisa nao tem data de abertura definida. Os dias serao relativos a agora.
             </p>
           )}
 
@@ -66,7 +67,7 @@ export function SequenceSection({
                     <input
                       value={step.label}
                       onChange={event => updateStep(step.key, 'label', event.target.value)}
-                      placeholder="Rótulo"
+                      placeholder="Rotulo"
                       className="flex-1 border border-gray-200 rounded-lg px-2.5 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#F7941D]"
                     />
                     <div className="flex items-center gap-1 shrink-0">
@@ -80,35 +81,26 @@ export function SequenceSection({
                       />
                     </div>
                     {steps.length > 1 && (
-                      <button type="button" onClick={() => removeStep(step.key)} className="text-gray-300 hover:text-red-500 text-sm">×</button>
+                      <button type="button" onClick={() => removeStep(step.key)} className="text-gray-300 hover:text-red-500 text-sm">x</button>
                     )}
                   </div>
-                  <input
+
+                  <PlaceholderTextField
+                    label="Titulo especifico"
                     value={step.overrideTitle}
-                    onChange={event => updateStep(step.key, 'overrideTitle', event.target.value)}
-                    placeholder="Título específico (usa título geral se vazio)"
+                    onChange={value => updateStep(step.key, 'overrideTitle', value)}
+                    placeholder="Usa titulo geral se vazio"
                     className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#F7941D]"
                   />
-                  <textarea
+                  <PlaceholderTextField
+                    label="Mensagem especifica"
                     value={step.overrideBody}
-                    onChange={event => updateStep(step.key, 'overrideBody', event.target.value)}
+                    onChange={value => updateStep(step.key, 'overrideBody', value)}
+                    multiline
                     rows={2}
-                    placeholder="Mensagem específica (usa mensagem geral se vazio)"
+                    placeholder="Usa mensagem geral se vazio"
                     className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#F7941D]"
                   />
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-xs text-gray-400">Placeholders:</span>
-                    {PLACEHOLDERS.map(placeholder => (
-                      <button
-                        key={placeholder}
-                        type="button"
-                        onClick={() => updateStep(step.key, 'overrideBody', (step.overrideBody || '') + placeholder)}
-                        className="text-xs bg-gray-100 hover:bg-[#F7941D]/10 hover:text-[#D97B10] text-gray-500 rounded px-1.5 py-0.5 font-mono transition-colors"
-                      >
-                        {placeholder}
-                      </button>
-                    ))}
-                  </div>
 
                   <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none pt-1">
                     <input
@@ -125,15 +117,18 @@ export function SequenceSection({
                       {channels.includes('pushNotification') && (
                         <div className="space-y-1">
                           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Push</p>
-                          <input
+                          <PlaceholderTextField
+                            label="Titulo push"
                             value={step.pushTitle}
-                            onChange={event => updateStep(step.key, 'pushTitle', event.target.value)}
-                            placeholder="Título push (usa título do passo se vazio)"
+                            onChange={value => updateStep(step.key, 'pushTitle', value)}
+                            placeholder="Usa titulo do passo se vazio"
                             className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#F7941D]"
                           />
-                          <textarea
+                          <PlaceholderTextField
+                            label="Corpo push"
                             value={step.pushBody}
-                            onChange={event => updateStep(step.key, 'pushBody', event.target.value)}
+                            onChange={value => updateStep(step.key, 'pushBody', value)}
+                            multiline
                             rows={2}
                             placeholder="Corpo push"
                             className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#F7941D]"
@@ -143,15 +138,18 @@ export function SequenceSection({
                       {channels.includes('email') && (
                         <div className="space-y-1">
                           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Email</p>
-                          <input
+                          <PlaceholderTextField
+                            label="Titulo email"
                             value={step.emailTitle}
-                            onChange={event => updateStep(step.key, 'emailTitle', event.target.value)}
-                            placeholder="Título email"
+                            onChange={value => updateStep(step.key, 'emailTitle', value)}
+                            placeholder="Titulo email"
                             className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#F7941D]"
                           />
-                          <textarea
+                          <PlaceholderTextField
+                            label="Corpo email"
                             value={step.emailBody}
-                            onChange={event => updateStep(step.key, 'emailBody', event.target.value)}
+                            onChange={value => updateStep(step.key, 'emailBody', value)}
+                            multiline
                             rows={2}
                             placeholder="Corpo email"
                             className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#F7941D]"
@@ -159,7 +157,7 @@ export function SequenceSection({
                           <input
                             value={step.emailLabel}
                             onChange={event => updateStep(step.key, 'emailLabel', event.target.value)}
-                            placeholder="Texto do botão CTA"
+                            placeholder="Texto do botao CTA"
                             className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#F7941D]"
                           />
                         </div>

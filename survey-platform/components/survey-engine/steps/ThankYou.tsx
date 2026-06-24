@@ -22,6 +22,7 @@ export default function ThankYou({ nps, perfil, nomeAluno, school, tipo, theme, 
   const isNeutro   = score >= 7 && score <= 8
   const isDetrator = score <= 6
   const linkIndicacao = resolveReferralLink(theme, indicacaoLinks, school)
+  const textAlign = theme?.thankyouTextAlign ?? 'left'
 
   // Mensagem personalizada via admin (suporta {{nomeAluno}}, {{nomeEscola}}, etc.)
   if (theme?.thankyouMessage) {
@@ -30,7 +31,7 @@ export default function ThankYou({ nps, perfil, nomeAluno, school, tipo, theme, 
       nomeEscola: nomeDaEscola,
     })
     return (
-      <div className="thankyou">
+      <div className="thankyou" style={{ textAlign }}>
         <div className="icon">🎉</div>
         <h2>Obrigado pela sua avaliação!</h2>
         <p>{texto}</p>
@@ -41,7 +42,7 @@ export default function ThankYou({ nps, perfil, nomeAluno, school, tipo, theme, 
   // ── Aluno ──────────────────────────────────────────────────────────────────
   if (!isResponsavel) {
     return (
-      <div className="thankyou">
+      <div className="thankyou" style={{ textAlign }}>
         <div className="icon">{isDetrator ? '💬' : '🎉'}</div>
         <h2>Obrigado pelo seu feedback!</h2>
         {(isPromotor || isNeutro) && (
@@ -68,7 +69,7 @@ export default function ThankYou({ nps, perfil, nomeAluno, school, tipo, theme, 
   // ── Responsável — Promotor ─────────────────────────────────────────────────
   if (isPromotor) {
     return (
-      <div className="thankyou">
+      <div className="thankyou" style={{ textAlign }}>
         <div className="icon">🎉</div>
         <h2>Obrigado pela sua avaliação!</h2>
         <p>
@@ -93,7 +94,7 @@ export default function ThankYou({ nps, perfil, nomeAluno, school, tipo, theme, 
   // ── Responsável — Neutro ───────────────────────────────────────────────────
   if (isNeutro) {
     return (
-      <div className="thankyou">
+      <div className="thankyou" style={{ textAlign }}>
         <div className="icon">🙏</div>
         <h2>Obrigado pela sua avaliação!</h2>
         <p>
@@ -114,7 +115,7 @@ export default function ThankYou({ nps, perfil, nomeAluno, school, tipo, theme, 
 
   // ── Responsável — Detrator ─────────────────────────────────────────────────
   return (
-    <div className="thankyou">
+    <div className="thankyou" style={{ textAlign }}>
       <div className="icon">💬</div>
       <h2>Obrigado pela sua avaliação!</h2>
       <p>

@@ -16,6 +16,7 @@ export default function StepCheckbox({ step, tipo, onNext, onBack, isLast, loadi
   const [selected, setSelected] = useState<string[]>([])
   const [tentou, setTentou] = useState(false)
   const resolve = (l: string) => l.replace(/\{tipo\}/g, tipo)
+  const textAlign = step.textAlign ?? 'left'
 
   const opcoes = [...step.opcoes].sort((a, b) => a.localeCompare(b, 'pt-BR'))
   const min = step.minSelecoes ?? (step.obrigatorio ? 1 : 0)
@@ -37,10 +38,10 @@ export default function StepCheckbox({ step, tipo, onNext, onBack, isLast, loadi
 
   return (
     <div>
-      <p className="step-title">{step.titulo}</p>
-      {step.desc && <p className="step-desc">{step.desc}</p>}
+      <p className="step-title" style={{ textAlign }}>{step.titulo}</p>
+      {step.desc && <p className="step-desc" style={{ textAlign }}>{step.desc}</p>}
       <div className="q-group">
-        <p className="question-label">{resolve(step.pergunta)}</p>
+        <p className="question-label" style={{ textAlign }}>{resolve(step.pergunta)}</p>
         {step.maxSelecoes && (
           <p style={{ fontSize: '.8rem', color: '#718096', marginBottom: 8 }}>
             Selecione até {step.maxSelecoes} {step.maxSelecoes === 1 ? 'opção' : 'opções'}

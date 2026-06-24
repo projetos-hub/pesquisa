@@ -37,16 +37,6 @@ const STATUS_OPTIONS = [
   { value: 'encerrada',  label: 'Encerrada' },
 ]
 
-function statusBadge(status: string) {
-  const map: Record<string, string> = {
-    ativa:      'bg-green-100 text-green-700',
-    pausada:    'bg-yellow-100 text-yellow-700',
-    encerrada:  'bg-red-100 text-red-700',
-    nao_aberta: 'bg-gray-100 text-gray-500',
-  }
-  return map[status] ?? 'bg-gray-100 text-gray-500'
-}
-
 function communitySchedulingHint(
   openDate: string | null,
   status: string

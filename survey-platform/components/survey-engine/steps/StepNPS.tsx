@@ -17,6 +17,7 @@ export default function StepNPS({ step, tipo, onNext, onBack }: StepNPSProps) {
   const [tentou, setTentou] = useState(false)
   const perguntaBilingue = step.perguntaBilingue || false
   const ok = nps !== null && (!perguntaBilingue || bil !== null)
+  const textAlign = step.textAlign ?? 'left'
 
   function handleNext() {
     if (!ok) { setTentou(true); return }
@@ -25,8 +26,8 @@ export default function StepNPS({ step, tipo, onNext, onBack }: StepNPSProps) {
 
   return (
     <div>
-      <p className="step-title">{step.titulo ?? `Qual a probabilidade de recomendar a ${tipo} a um amigo ou colega?`}</p>
-      {step.desc && <p className="step-desc">{step.desc}</p>}
+      <p className="step-title" style={{ textAlign }}>{step.titulo ?? `Qual a probabilidade de recomendar a ${tipo} a um amigo ou colega?`}</p>
+      {step.desc && <p className="step-desc" style={{ textAlign }}>{step.desc}</p>}
       <div className="nps-row">
         {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0].map(n => (
           <button
@@ -47,7 +48,7 @@ export default function StepNPS({ step, tipo, onNext, onBack }: StepNPSProps) {
       </div>
       {perguntaBilingue && (
         <div className="q-group" style={{ marginTop: 28 }}>
-          <p className="question-label">Você faz parte do programa bilíngue?</p>
+          <p className="question-label" style={{ textAlign }}>Você faz parte do programa bilíngue?</p>
           <div className="option-list">
             {['Sim', 'Não'].map(op => (
               <OptionBtn key={op} label={op} selected={bil === op} onClick={() => setBil(op)} />

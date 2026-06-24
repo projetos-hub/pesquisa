@@ -4,10 +4,25 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-service'
 
+const COMMUNITY_IDENTITY_KEYS = [
+  'nomeEscola',
+  'primaryColor',
+  'secondaryColor',
+  'logo',
+] as const
+
+function removeLegacyCommunityIdentity(theme: Record<string, unknown> | null | undefined) {
+  const cleanTheme = { ...(theme ?? {}) }
+  for (const key of COMMUNITY_IDENTITY_KEYS) {
+    delete cleanTheme[key]
+  }
+  return cleanTheme
+}
+
 async function requireAuth() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Não autorizado')
+  if (!user) throw new Error('Nao autorizado')
 }
 
 export async function installCommunity(surveyId: string, formData: FormData) {
@@ -15,29 +30,12 @@ export async function installCommunity(surveyId: string, formData: FormData) {
     await requireAuth()
 
     const communityId = (formData.get('communityId') as string)?.trim().replace('@', '')
-    const status      = (formData.get('status') as string) || 'ativa'
+    const status = (formData.get('status') as string) || 'ativa'
 
-    if (!communityId) return { error: 'ID da comunidade é obrigatório' }
+    if (!communityId) return { error: 'ID da comunidade e obrigatorio' }
 
     const supabase = createServiceClient()
 
-    // Buscar tema da tabela communities (fonte única de verdade)
-    const { data: community } = await supabase
-      .from('communities')
-      .select('nome_escola, primary_color, secondary_color, logo')
-      .eq('community_id', communityId)
-      .maybeSingle()
-
-    const inheritedTheme = community
-      ? {
-          nomeEscola:     community.nome_escola,
-          primaryColor:   community.primary_color,
-          secondaryColor: community.secondary_color,
-          logo:           community.logo,
-        }
-      : {}
-
-    // Preservar override existente (ex: indicacaoLink) se já instalada
     const { data: existingRow } = await supabase
       .from('survey_communities')
       .select('theme')
@@ -45,9 +43,9 @@ export async function installCommunity(surveyId: string, formData: FormData) {
       .eq('community_id', communityId)
       .maybeSingle()
 
-    const themeToUse = (existingRow?.theme && Object.keys(existingRow.theme).length > 0)
-      ? { ...inheritedTheme, ...existingRow.theme }
-      : inheritedTheme
+    const themeToUse = removeLegacyCommunityIdentity(
+      existingRow?.theme as Record<string, unknown> | null | undefined
+    )
 
     const { error } = await supabase
       .from('survey_communities')
@@ -112,5 +110,7 @@ export async function removeCommunity(surveyId: string, communityId: string) {
       .eq('survey_id', surveyId)
       .eq('community_id', communityId)
     revalidatePath(`/admin/surveys/${surveyId}`)
-  } catch { /* silencia */ }
+  } catch {
+    // Mantem comportamento anterior: remover comunidade nao deve quebrar a tela.
+  }
 }

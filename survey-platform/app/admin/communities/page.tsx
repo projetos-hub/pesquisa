@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase-service'
+import { AdminPageShell } from '../AdminPageShell'
 import CommunitiesThemeEditor from './CommunitiesThemeEditor'
 
 export interface Community {
@@ -24,7 +25,8 @@ export default async function CommunitiesPage() {
   ).length
 
   return (
-    <div className="p-6">
+    <AdminPageShell active="communities" title="Identidade Visual">
+      <div className="rounded-3xl border border-white/12 bg-[#12151d]/88 p-5 text-gray-900 shadow-[0_30px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Identidade Visual</h1>
         <p className="text-gray-600">Gerenciar temas, cores e logos das comunidades</p>
@@ -42,6 +44,7 @@ export default async function CommunitiesPage() {
       </div>
 
       <CommunitiesThemeEditor communities={communities} />
-    </div>
+      </div>
+    </AdminPageShell>
   )
 }

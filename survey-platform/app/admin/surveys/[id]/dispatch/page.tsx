@@ -1,5 +1,6 @@
 import { notFound }  from 'next/navigation'
 import Link          from 'next/link'
+import { AdminPageShell } from '../../../AdminPageShell'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient }        from '@/lib/supabase-service'
 import DispatchForm    from './DispatchForm'
@@ -33,14 +34,23 @@ export default async function DispatchPage({ params }: PageProps) {
   // Comunidades instaladas
   const { data: installRows } = await service
     .from('survey_communities')
-    .select('community_id, theme')
+    .select('community_id')
     .eq('survey_id', surveyId)
     .eq('active', true)
     .order('community_id')
 
-  const communities = (installRows ?? []).map((r: { community_id: string; theme: unknown }) => ({
+  const communityIds = (installRows ?? []).map((r: { community_id: string }) => r.community_id)
+  const { data: communityRows } = communityIds.length > 0
+    ? await service
+        .from('communities')
+        .select('community_id, nome_escola')
+        .in('community_id', communityIds)
+    : { data: [] }
+  const nameByCommunity = new Map((communityRows ?? []).map(c => [c.community_id, c.nome_escola ?? c.community_id]))
+
+  const communities = (installRows ?? []).map((r: { community_id: string }) => ({
     id:   r.community_id,
-    nome: (r.theme as { nomeEscola?: string } | null)?.nomeEscola ?? r.community_id,
+    nome: nameByCommunity.get(r.community_id) ?? r.community_id,
   }))
 
   // Templates salvos
@@ -93,7 +103,8 @@ export default async function DispatchPage({ params }: PageProps) {
     .limit(30)
 
   return (
-    <div className="p-6 max-w-3xl">
+    <AdminPageShell active="dispatch" title="Disparos">
+      <div className="rounded-3xl border border-white/12 bg-[#12151d]/88 p-5 text-gray-900 shadow-[0_30px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl">
       {/* Breadcrumb */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/admin/surveys" className="text-gray-400 hover:text-gray-600 text-sm">
@@ -161,6 +172,7 @@ export default async function DispatchPage({ params }: PageProps) {
           />
         </div>
       </div>
-    </div>
+      </div>
+    </AdminPageShell>
   )
 }

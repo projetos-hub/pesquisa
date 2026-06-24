@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { AdminPageShell } from '../../../AdminPageShell'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { CommunityDisplay } from '@/lib/community-name'
 
@@ -57,7 +58,8 @@ export default async function ResponsesPage({ params, searchParams }: PageProps)
     .range(offset, offset + pageSize - 1)
 
   return (
-    <div className="p-6">
+    <AdminPageShell active="surveys" title="Respostas">
+      <div className="rounded-3xl border border-white/12 bg-[#12151d]/88 p-5 text-gray-900 shadow-[0_30px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl">
       {/* Breadcrumb */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/admin/surveys" className="text-gray-400 hover:text-gray-600 text-sm">
@@ -194,6 +196,7 @@ export default async function ResponsesPage({ params, searchParams }: PageProps)
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </AdminPageShell>
   )
 }

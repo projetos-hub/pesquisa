@@ -1,7 +1,7 @@
 'use client'
 
 // Resolve o nome legível de uma comunidade a partir do community_id
-// Usa nomeEscola do theme (survey_communities) se disponível,
+// Usa o nome global da comunidade quando disponivel,
 // senão formata o community_id (ex: "matriz-bangu" → "Matriz Bangu")
 
 export function formatCommunityId(communityId: string): string {
@@ -29,9 +29,9 @@ export function CommunityDisplay({
 
   return (
     <div className={className}>
-      <span className="font-medium text-gray-900 text-sm">{displayName}</span>
+      <span className="community-display-name text-sm font-medium text-inherit">{displayName}</span>
       {showSubtitle && (
-        <span className="block text-xs text-gray-400 font-mono">{communityId}</span>
+        <span className="block font-mono text-xs text-current opacity-55">{communityId}</span>
       )}
     </div>
   )

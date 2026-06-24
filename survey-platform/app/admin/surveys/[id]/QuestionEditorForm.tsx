@@ -5,6 +5,8 @@ import type { MutableRefObject } from 'react'
 
 import type { QuestionFormActions, QuestionFormState, QuestionRow } from './useQuestionForm'
 import { HAS_OPTIONS, HAS_PERGUNTA, QUESTION_TYPES } from './question-editor-utils'
+import { PlaceholderTextField } from '../../components/PlaceholderTextField'
+import { TextAlignControl } from '../../components/TextAlignControl'
 
 type QuestionForm = QuestionFormState & QuestionFormActions
 
@@ -96,11 +98,14 @@ export function QuestionEditorForm({
         </div>
 
         <div>
-          <label style={{ fontSize: '.85rem', fontWeight: 500, color: '#4a5568', display: 'block', marginBottom: 4 }}>
-            Título <span style={{ color: '#e53e3e' }}>*</span>
-          </label>
-          <input value={form.formTitle} onChange={e => form.handleTitleChange(e.target.value)}
-            placeholder="Ex: Satisfação geral" style={inputStyle} autoFocus />
+          <PlaceholderTextField
+            label="Título"
+            value={form.formTitle}
+            onChange={form.handleTitleChange}
+            required
+            placeholder="Ex: Satisfação geral"
+            className="w-full rounded-md border border-slate-200 px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
+          />
           {form.formKey && (
             <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: '.75rem', color: '#a0aec0' }}>ID: </span>
@@ -119,12 +124,23 @@ export function QuestionEditorForm({
             Descrição <span style={{ color: '#a0aec0', fontWeight: 400 }}>(opcional)</span>
           </label>
           {form.formType === 'welcome' ? (
-            <textarea value={form.formDesc} onChange={e => form.setFormDesc(e.target.value)}
+            <PlaceholderTextField
+              label="Texto de boas-vindas"
+              value={form.formDesc}
+              onChange={form.setFormDesc}
+              multiline
+              rows={4}
               placeholder="Texto de boas-vindas (suporta {{nome}}, {{nomeAluno}}, {{serie}}, {{nomeEscola}})"
-              style={{ ...inputStyle, minHeight: '120px', fontFamily: 'inherit', resize: 'vertical' }} />
+              className="w-full rounded-md border border-slate-200 px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
+            />
           ) : (
-            <input value={form.formDesc} onChange={e => form.setFormDesc(e.target.value)}
-              placeholder="Instrução ou contexto para o respondente" style={inputStyle} />
+            <PlaceholderTextField
+              label="Descrição"
+              value={form.formDesc}
+              onChange={form.setFormDesc}
+              placeholder="Instrução ou contexto para o respondente"
+              className="w-full rounded-md border border-slate-200 px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
+            />
           )}
         </div>
 
@@ -133,8 +149,13 @@ export function QuestionEditorForm({
             <label style={{ fontSize: '.85rem', fontWeight: 500, color: '#4a5568', display: 'block', marginBottom: 4 }}>
               Texto da pergunta <span style={{ color: '#a0aec0', fontWeight: 400 }}>— use {'{tipo}'} para substituir pelo tipo de unidade</span>
             </label>
-            <input value={form.formPergunta} onChange={e => form.setFormPergunta(e.target.value)}
-              placeholder="Ex: Como você avalia a {tipo}?" style={inputStyle} />
+            <PlaceholderTextField
+              label="Texto da pergunta"
+              value={form.formPergunta}
+              onChange={form.setFormPergunta}
+              placeholder="Ex: Como você avalia a {tipo}?"
+              className="w-full rounded-md border border-slate-200 px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
+            />
           </div>
         )}
 
@@ -143,10 +164,17 @@ export function QuestionEditorForm({
             <label style={{ fontSize: '.85rem', fontWeight: 500, color: '#4a5568', display: 'block', marginBottom: 4 }}>
               Placeholder <span style={{ color: '#a0aec0', fontWeight: 400 }}>(opcional)</span>
             </label>
-            <input value={form.formPlaceholder} onChange={e => form.setFormPlaceholder(e.target.value)}
-              placeholder="Ex: Escreva sua sugestão aqui..." style={inputStyle} />
+            <PlaceholderTextField
+              label="Placeholder"
+              value={form.formPlaceholder}
+              onChange={form.setFormPlaceholder}
+              placeholder="Ex: Escreva sua sugestão aqui..."
+              className="w-full rounded-md border border-slate-200 px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
+            />
           </div>
         )}
+
+        <TextAlignControl value={form.formTextAlign} onChange={form.setFormTextAlign} />
 
         {form.formType === 'file_upload' && (
           <div>

@@ -27,6 +27,7 @@ export interface QuestionFormState {
   formOptions: string[]
   formCorrectAnswer: string
   formQuizMode: boolean
+  formTextAlign: 'left' | 'center' | 'right' | 'justify'
 }
 
 export interface QuestionFormActions {
@@ -42,6 +43,7 @@ export interface QuestionFormActions {
   setFormOptions: React.Dispatch<React.SetStateAction<string[]>>
   setFormCorrectAnswer: (v: string) => void
   setFormQuizMode: (v: boolean) => void
+  setFormTextAlign: (v: 'left' | 'center' | 'right' | 'justify') => void
   handleTitleChange: (val: string) => void
   startEditMetadata: (q: QuestionRow) => void
   resetForm: () => void
@@ -76,6 +78,7 @@ export function useQuestionForm(
   const [formOptions, setFormOptions]           = useState<string[]>(['', ''])
   const [formCorrectAnswer, setFormCorrectAnswer] = useState('')
   const [formQuizMode, setFormQuizMode]         = useState(false)
+  const [formTextAlign, setFormTextAlign]       = useState<'left' | 'center' | 'right' | 'justify'>('left')
 
   function handleTitleChange(val: string) {
     setFormTitle(val)
@@ -94,6 +97,7 @@ export function useQuestionForm(
     setFormAccept((q.settings?.accept as string) || '')
     setFormCorrectAnswer((q.settings?.correctAnswer as string) || '')
     setFormQuizMode(!!(q.settings?.correctAnswer as string))
+    setFormTextAlign((q.settings?.textAlign as 'left' | 'center' | 'right' | 'justify') || 'left')
     setKeyEdited(true)
   }
 
@@ -101,6 +105,7 @@ export function useQuestionForm(
     setFormKey(''); setFormTitle(''); setFormDesc(''); setFormPergunta('')
     setFormPlaceholder(''); setFormAccept(''); setFormOptions(['', ''])
     setFormCorrectAnswer(''); setFormQuizMode(false); setFormRequired(true)
+    setFormTextAlign('left')
     setKeyEdited(false)
   }
 
@@ -115,6 +120,7 @@ export function useQuestionForm(
     fd.set('pergunta', formPergunta)
     fd.set('placeholder', formPlaceholder)
     fd.set('accept', formAccept)
+    fd.set('textAlign', formTextAlign)
     if (formCorrectAnswer) fd.set('correctAnswer', formCorrectAnswer)
     return fd
   }
@@ -122,10 +128,10 @@ export function useQuestionForm(
   return {
     formType, formTitle, formKey, keyEdited,
     formDesc, formPergunta, formPlaceholder, formAccept,
-    formRequired, formOptions, formCorrectAnswer, formQuizMode,
+    formRequired, formOptions, formCorrectAnswer, formQuizMode, formTextAlign,
     setFormType, setFormTitle, setFormKey, setKeyEdited,
     setFormDesc, setFormPergunta, setFormPlaceholder, setFormAccept,
-    setFormRequired, setFormOptions, setFormCorrectAnswer, setFormQuizMode,
+    setFormRequired, setFormOptions, setFormCorrectAnswer, setFormQuizMode, setFormTextAlign,
     handleTitleChange, startEditMetadata, resetForm, buildFormData,
   }
 }

@@ -39,18 +39,16 @@ export async function GET(
       map.set(r.community_id, entry)
     }
 
-    // Buscar nomeEscola do tema de cada community
+    // Buscar nome global de cada community
     const communityIds = [...map.keys()]
-    const { data: themes } = await supabase
-      .from('survey_communities')
-      .select('community_id, theme')
-      .eq('survey_id', id)
+    const { data: communityRows } = await supabase
+      .from('communities')
+      .select('community_id, nome_escola')
       .in('community_id', communityIds)
 
     const nomeMap = new Map<string, string>()
-    for (const t of themes ?? []) {
-      const nome = (t.theme as { nomeEscola?: string } | null)?.nomeEscola ?? t.community_id
-      nomeMap.set(t.community_id, nome)
+    for (const community of communityRows ?? []) {
+      nomeMap.set(community.community_id, community.nome_escola ?? community.community_id)
     }
 
     const communities = communityIds.map(cid => ({

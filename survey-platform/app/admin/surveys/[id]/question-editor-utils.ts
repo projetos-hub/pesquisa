@@ -59,6 +59,7 @@ export function applyQuestionMetadata(
     placeholder: string
     accept: string
     correctAnswer: string
+    textAlign: string
   }
 ): QuestionRow[] {
   return questions.map(q => q.id === questionId
@@ -75,6 +76,7 @@ export function applyQuestionMetadata(
           placeholder: metadata.placeholder,
           accept: metadata.accept,
           correctAnswer: metadata.correctAnswer,
+          textAlign: metadata.textAlign,
         },
       }
     : q

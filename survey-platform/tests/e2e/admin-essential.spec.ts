@@ -83,36 +83,46 @@ test.describe('Admin essencial deterministico', () => {
     expect(install?.status).toBe('ativa')
   })
 
-  test('edita identidade visual da comunidade', async ({ page }) => {
+  test('edita identidade visual global da comunidade', async ({ page }) => {
     const db = serviceDb()
     const survey = await createSurveyFixture({
       slug: THEME_SLUG,
       title: 'E2E Admin Theme',
     }, db)
 
-    await page.goto(`/admin/surveys/${survey.surveyId}/communities`)
+    await db
+      .from('communities')
+      .upsert({
+        community_id: E2E_COMMUNITY_ID,
+        nome_escola: 'Raiz Educacao E2E Antes',
+        primary_color: '#667eea',
+        secondary_color: '#764ba2',
+        logo: '',
+      }, { onConflict: 'community_id' })
+
+    await page.goto('/admin/communities')
     await page.waitForLoadState('networkidle')
 
-    await page.getByRole('button', { name: /editar/i }).first().click()
+    const row = page.locator('tr').filter({ hasText: E2E_COMMUNITY_ID }).first()
+    await row.getByRole('button', { name: /editar/i }).click()
     await page.locator('input[name="nomeEscola"]').fill('Raiz Educacao E2E Tema')
     await page.locator('input[name="primaryColor"]').fill('#123456')
     await page.locator('input[name="secondaryColor"]').fill('#abcdef')
-    await page.locator('textarea[name="thankyouMessage"]').fill('Obrigado pela resposta E2E.')
     await page.getByRole('button', { name: /^salvar$/i }).click()
 
     await expect(page.getByText('Raiz Educacao E2E Tema').first()).toBeVisible({ timeout: 8_000 })
 
-    const { data: install } = await db
-      .from('survey_communities')
-      .select('theme')
-      .eq('survey_id', survey.surveyId)
+    await page.goto(`/admin/surveys/${survey.surveyId}/communities`)
+    await expect(page.getByText('Raiz Educacao E2E Tema').first()).toBeVisible({ timeout: 8_000 })
+
+    const { data: community } = await db
+      .from('communities')
+      .select('nome_escola, primary_color, secondary_color')
       .eq('community_id', E2E_COMMUNITY_ID)
       .single()
 
-    const theme = install?.theme as Record<string, string> | null
-    expect(theme?.nomeEscola).toBe('Raiz Educacao E2E Tema')
-    expect(theme?.primaryColor).toBe('#123456')
-    expect(theme?.secondaryColor).toBe('#abcdef')
-    expect(theme?.thankyouMessage).toBe('Obrigado pela resposta E2E.')
+    expect(community?.nome_escola).toBe('Raiz Educacao E2E Tema')
+    expect(community?.primary_color).toBe('#123456')
+    expect(community?.secondary_color).toBe('#abcdef')
   })
 })

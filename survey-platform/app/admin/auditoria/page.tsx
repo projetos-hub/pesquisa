@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { AdminPageShell } from '../AdminPageShell'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-service'
 import { redirect } from 'next/navigation'
@@ -125,7 +126,8 @@ export default async function AuditoriaOverviewPage() {
   })
 
   return (
-    <div className="p-6">
+    <AdminPageShell active="auditoria" title="Auditoria">
+      <div className="rounded-3xl border border-white/12 bg-[#12151d]/88 p-5 text-gray-900 shadow-[0_30px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Auditoria de Disparos</h2>
@@ -219,6 +221,7 @@ export default async function AuditoriaOverviewPage() {
           </tbody>
         </table>
       </div>
-    </div>
+      </div>
+    </AdminPageShell>
   )
 }

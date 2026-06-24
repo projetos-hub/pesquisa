@@ -18,6 +18,7 @@ export default function StepRadio({ step, tipo, onNext, onBack, isLast, loading 
   const [tentou, setTentou] = useState(false)
   const resolve = (l: string) => l.replace(/\{tipo\}/g, tipo)
   const opcoes = step.opcoes
+  const textAlign = step.textAlign ?? 'left'
 
   function handleNext() {
     if (!ans) { setTentou(true); return }
@@ -26,10 +27,10 @@ export default function StepRadio({ step, tipo, onNext, onBack, isLast, loading 
 
   return (
     <div>
-      <p className="step-title">{step.titulo}</p>
-      {step.desc && <p className="step-desc">{step.desc}</p>}
+      <p className="step-title" style={{ textAlign }}>{step.titulo}</p>
+      {step.desc && <p className="step-desc" style={{ textAlign }}>{step.desc}</p>}
       <div className="q-group">
-        <p className="question-label">{resolve(step.pergunta)}</p>
+        <p className="question-label" style={{ textAlign }}>{resolve(step.pergunta)}</p>
         <div className="option-list">
           {opcoes.map(op => (
             <OptionBtn key={op} label={resolve(op)} selected={ans === op} onClick={() => setAns(op)} />

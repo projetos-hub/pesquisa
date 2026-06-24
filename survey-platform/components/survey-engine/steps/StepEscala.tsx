@@ -15,6 +15,7 @@ interface StepEscalaProps {
 
 export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading }: StepEscalaProps) {
   const resolve = (l: string) => l.replace(/\{tipo\}/g, tipo)
+  const textAlign = step.textAlign ?? 'left'
 
   const [simpleRatings, setSimpleRatings] = useState<Record<number, number>>({})
   const [sectionRatings, setSectionRatings] = useState<Record<string, Record<number, number>>>({})
@@ -41,8 +42,8 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
 
     return (
       <div>
-        <p className="step-title">{step.titulo}</p>
-        {step.desc && <p className="step-desc">{step.desc}</p>}
+        <p className="step-title" style={{ textAlign }}>{step.titulo}</p>
+        {step.desc && <p className="step-desc" style={{ textAlign }}>{step.desc}</p>}
         {step.secoes.map(sec => (
           <div key={sec.key}>
             <p className="section-div">{sec.titulo}</p>
@@ -97,8 +98,8 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
 
   return (
     <div>
-      <p className="step-title">{step.titulo}</p>
-      {step.desc && <p className="step-desc">{step.desc}</p>}
+      <p className="step-title" style={{ textAlign }}>{step.titulo}</p>
+      {step.desc && <p className="step-desc" style={{ textAlign }}>{step.desc}</p>}
       {perguntas.map((l, i) => (
         <ScaleRow
           key={i}

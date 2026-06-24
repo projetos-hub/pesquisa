@@ -8,7 +8,7 @@ export const NOMEFANTASIA_TO_COMMUNITY_ID: Record<string, string> = {
   "APOGEU SANTO ANTÔNIO I": "apogeu-santoantonio-i",
   "APOGEU SANTO ANTÔNIO II": "apogeu-santoantonio-ii",
   "APOGEU ZONA NORTE": "wmfkn49h",
-  "BOM TEMPO CRECHE E EDUCAÇÃO INFANTIL": "bomtempo",
+  "BOM TEMPO CRECHE E EDUCAÇÃO INFANTIL": "n6k47n81",
   "COLÉGIO AMERICANO BILÍNGUE": "americano",
   "COLÉGIO LEONARDO DA VINCI ALFA": "leonardodavinci-alfa",
   "COLÉGIO LEONARDO DA VINCI BETA": "leonardodavinci-beta",
@@ -88,6 +88,17 @@ export const NOMEFANTASIA_TO_COMMUNITY_ID: Record<string, string> = {
   "ESCOLA SA PEREIRA - FUND E MEDIO":    "xa7y5zam",
   "ESCOLA SA PEREIRA - INFANTIL":        "w213sfza",
   "COLEGIO SA PEREIRA":                  "xa7y5zam",
+
+  // Variantes TOTVS encontradas em uploads de amostra
+  "COLEGIO AMERICANO": "americano",
+  "COLEGIOS INTEGRADOS LEONARDO DA VINCI - GAMA": "leonardodavinci-gama",
+  "COLEGIO E CURSO MATRIZ EDUCACAO DUQUE DE CAXIAS": "matriz-caxias",
+  "COLEGIO E CURSO AO CUBO BOTAFOGO": "ns8z5w8m",
+  "COLEGIO E CURSO AO CUBO BARRA": "yxak8s0k",
+  "COLEGIO E CURSO CUBO BARRA GOLFE": "k4ys44r2",
+  "BOM TEMPO CRECHE E EDUCACAO INFANTIL LTDA": "n6k47n81",
+  "ESCOLA SA PEREIRA S.A. CAPISTRANO": "w213sfza",
+  "COLEGIO QI BOTAFOGO": "qi-botafogo",
 }
 
 function normalize(s: string): string {

@@ -30,6 +30,7 @@ export async function updateSurvey(
   }
 
   const thankyouMessage = (formData.get('thankyouMessage') as string) || ''
+  const thankyouTextAlign = (formData.get('thankyouTextAlign') as string) || ''
 
   const supabase = createServiceClient()
 
@@ -47,6 +48,11 @@ export async function updateSurvey(
     newTheme.thankyouMessage = thankyouMessage
   } else {
     delete newTheme.thankyouMessage
+  }
+  if (['left', 'center', 'right', 'justify'].includes(thankyouTextAlign)) {
+    newTheme.thankyouTextAlign = thankyouTextAlign
+  } else {
+    delete newTheme.thankyouTextAlign
   }
 
   const newSettings = {

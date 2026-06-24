@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { AdminPageShell } from '../AdminPageShell'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 interface Survey {
@@ -24,7 +24,8 @@ export default async function ExportPage() {
   }))
 
   return (
-    <div className="p-6">
+    <AdminPageShell active="export" title="Exportar">
+      <div className="rounded-3xl border border-white/12 bg-[#12151d]/88 p-5 text-gray-900 shadow-[0_30px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Exportar Respostas</h1>
@@ -85,6 +86,7 @@ export default async function ExportPage() {
           </tbody>
         </table>
       </div>
-    </div>
+      </div>
+    </AdminPageShell>
   )
 }

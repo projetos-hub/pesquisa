@@ -22,17 +22,16 @@ export async function GET(
 
     const communities = await resolveTargetCommunities(surveyId, scope, communityIds)
 
-    // Busca nome de cada comunidade instalada
+    // Busca nome global de cada comunidade
     const service = createServiceClient()
     const { data: rows } = await service
-      .from('survey_communities')
-      .select('community_id, theme')
-      .eq('survey_id', surveyId)
+      .from('communities')
+      .select('community_id, nome_escola')
       .in('community_id', communities)
 
     const communityList = communities.map(id => {
       const row  = rows?.find((r: { community_id: string }) => r.community_id === id)
-      const nome = (row?.theme as { nomeEscola?: string } | null)?.nomeEscola ?? id
+      const nome = row?.nome_escola ?? id
       return { id, nome }
     })
 

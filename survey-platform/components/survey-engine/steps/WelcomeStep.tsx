@@ -27,6 +27,7 @@ export default function WelcomeStep({ step, nome, nomeAluno, serie, perfil, tipo
   const welcomeBody = step.desc || theme?.welcomeMessage
     ? interpolate(step.desc || theme?.welcomeMessage || '', { nome, nomeAluno, serie, nomeEscola: nomeDaEscola })
     : null
+  const textAlign = step.textAlign ?? theme?.welcomeTextAlign ?? 'left'
 
   return (
     <div className="welcome">
@@ -34,9 +35,9 @@ export default function WelcomeStep({ step, nome, nomeAluno, serie, perfil, tipo
         <img src={theme.logo} alt={nomeDaEscola} className="school-logo" />
       )}
       {welcomeTitle && (
-        <p className="welcome-greeting">{welcomeTitle}</p>
+        <p className="welcome-greeting" style={{ textAlign }}>{welcomeTitle}</p>
       )}
-      <div className="welcome-body">
+      <div className="welcome-body" style={{ textAlign }}>
         {welcomeBody ? (
           <p style={{ whiteSpace: 'pre-wrap' }}>{welcomeBody}</p>
         ) : (

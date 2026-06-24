@@ -7,20 +7,25 @@ export default function DeleteSurveyButton({
   surveyId,
   surveyTitle,
   responseCount,
+  tone = 'light',
 }: {
   surveyId:      string
   surveyTitle:   string
   responseCount: number
+  tone?:         'light' | 'dark'
 }) {
   const [confirming, setConfirming] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState('')
+  const isDark = tone === 'dark'
 
   if (!confirming) {
     return (
       <button
         onClick={() => setConfirming(true)}
-        className="text-red-400 hover:text-red-600 text-xs font-medium transition-colors"
+        className={isDark
+          ? 'text-xs font-bold text-red-300 transition-colors hover:text-red-100'
+          : 'text-red-400 hover:text-red-600 text-xs font-medium transition-colors'}
       >
         Apagar
       </button>
@@ -28,14 +33,18 @@ export default function DeleteSurveyButton({
   }
 
   return (
-    <div className="flex items-center gap-2 justify-end">
-      {error && <span className="text-xs text-red-600">{error}</span>}
-      <span className="text-xs text-gray-500">
+    <div className="flex items-center justify-end gap-2">
+      {error && (
+        <span className={isDark ? 'text-xs text-red-200' : 'text-xs text-red-600'}>
+          {error}
+        </span>
+      )}
+      <span className={isDark ? 'text-xs text-slate-300' : 'text-xs text-gray-500'}>
         {responseCount > 0 ? `Apaga ${responseCount} resposta(s). Confirma?` : 'Confirma?'}
       </span>
       <button
         onClick={() => setConfirming(false)}
-        className="text-xs text-gray-500 hover:text-gray-700"
+        className={isDark ? 'text-xs text-slate-400 hover:text-slate-100' : 'text-xs text-gray-500 hover:text-gray-700'}
         disabled={isPending}
       >
         Cancelar
@@ -48,9 +57,9 @@ export default function DeleteSurveyButton({
           })
         }}
         disabled={isPending}
-        className="text-xs text-white bg-red-500 hover:bg-red-600 disabled:bg-red-300 px-2 py-0.5 rounded font-medium transition-colors"
+        className="rounded bg-red-500 px-2 py-0.5 text-xs font-bold text-white transition-colors hover:bg-red-600 disabled:bg-red-300"
       >
-        {isPending ? 'Apagando…' : `Sim, apagar "${surveyTitle}"`}
+        {isPending ? 'Apagando...' : `Sim, apagar "${surveyTitle}"`}
       </button>
     </div>
   )

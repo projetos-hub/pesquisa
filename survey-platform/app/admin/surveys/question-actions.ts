@@ -19,6 +19,7 @@ export async function createQuestion(
   const placeholder    = (formData.get('placeholder')    as string) || ''
   const accept         = (formData.get('accept')         as string) || ''
   const correctAnswer  = (formData.get('correctAnswer')  as string) || ''
+  const textAlign      = (formData.get('textAlign')      as string) || ''
 
   if (!type || !key || !title) return { error: 'Tipo, key e tÃ­tulo sÃ£o obrigatÃ³rios' }
   if (!/^[a-z0-9_]+$/.test(key)) return { error: 'Key deve conter apenas letras minÃºsculas, nÃºmeros e underscore' }
@@ -39,6 +40,7 @@ export async function createQuestion(
   if (placeholder)   settings.placeholder   = placeholder
   if (accept)        settings.accept        = accept
   if (correctAnswer) settings.correctAnswer = correctAnswer
+  if (['left', 'center', 'right', 'justify'].includes(textAlign)) settings.textAlign = textAlign
 
   const { data: created, error } = await supabase
     .from('questions')
@@ -96,6 +98,7 @@ export async function updateQuestion(
   const placeholder    = (formData.get('placeholder')    as string) || ''
   const accept         = (formData.get('accept')         as string) || ''
   const correctAnswer  = (formData.get('correctAnswer')  as string) || ''
+  const textAlign      = (formData.get('textAlign')      as string) || ''
 
   if (!type || !key || !title) return { error: 'Tipo, key e tÃ­tulo sÃ£o obrigatÃ³rios' }
   if (!/^[a-z0-9_]+$/.test(key)) return { error: 'Key deve conter apenas letras minÃºsculas, nÃºmeros e underscore' }
@@ -107,6 +110,7 @@ export async function updateQuestion(
   if (placeholder)   settings.placeholder   = placeholder
   if (accept)        settings.accept        = accept
   if (correctAnswer) settings.correctAnswer = correctAnswer
+  if (['left', 'center', 'right', 'justify'].includes(textAlign)) settings.textAlign = textAlign
 
   const { error } = await supabase
     .from('questions')

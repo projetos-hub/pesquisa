@@ -2,6 +2,7 @@
 export type Perfil = 'responsavel' | 'aluno' | 'colaborador'
 export type TipoPesquisa = 'quantitativa' | 'qualitativa'
 export type SurveyStatus = 'ativa' | 'nao_aberta' | 'encerrada' | 'pausada'
+export type TextAlign = 'left' | 'center' | 'right' | 'justify'
 
 // ─── Respostas ────────────────────────────────────────────────────────────────
 export type Answers = Record<string, unknown>
@@ -26,6 +27,7 @@ interface BaseStep {
   somentePara?: Perfil
   condicional?: (answers: Answers) => boolean
   conditional_on?: ConditionalDef   // spec serializável — reconstruído por applyConditionals()
+  textAlign?: TextAlign
 }
 
 export interface WelcomeStepDef extends BaseStep {
@@ -117,6 +119,8 @@ export interface SurveyTheme {
   nomeEscola?: string
   welcomeMessage?: string
   thankyouMessage?: string
+  welcomeTextAlign?: TextAlign
+  thankyouTextAlign?: TextAlign
   indicacaoLink?: string
 }
 

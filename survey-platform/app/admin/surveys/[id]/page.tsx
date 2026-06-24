@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { AdminPageShell } from '../../AdminPageShell'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import SurveyEditForm from './SurveyEditForm'
 import QuestionEditor from './QuestionEditor'
@@ -44,12 +45,21 @@ export default async function SurveyDetailPage({ params }: PageProps) {
     options: (optionsRaw ?? []).filter(o => o.question_id === q.id),
   }))
 
-  // Comunidades instaladas (inclui theme para exibir nomeEscola e datas por comunidade)
+  // Comunidades instaladas. Identidade visual vem da tabela global communities.
   const { data: installs } = await supabase
     .from('survey_communities')
-    .select('community_id, status, active, theme, open_date, close_date')
+    .select('community_id, status, active, open_date, close_date')
     .eq('survey_id', id)
     .order('community_id', { ascending: true })
+
+  const installedCommunityIds = (installs ?? []).map(i => i.community_id)
+  const { data: communityRows } = installedCommunityIds.length > 0
+    ? await supabase
+        .from('communities')
+        .select('community_id, nome_escola')
+        .in('community_id', installedCommunityIds)
+    : { data: [] }
+  const nameByCommunity = new Map((communityRows ?? []).map(c => [c.community_id, c.nome_escola ?? null]))
 
   // Stats de respostas
   const { data: sessions } = await supabase
@@ -71,7 +81,12 @@ export default async function SurveyDetailPage({ params }: PageProps) {
     .slice(0, 5)
 
   return (
-    <div className="p-6 max-w-3xl">
+    <AdminPageShell
+      active="surveys"
+      title={survey.title}
+      action={<DuplicateSurveyButton surveyId={id} surveyTitle={survey.title} tone="dark" />}
+    >
+      <div className="rounded-3xl border border-white/12 bg-[#12151d]/88 p-5 text-gray-900 shadow-[0_30px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl">
       {/* Breadcrumb */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/admin/surveys" className="text-gray-400 hover:text-gray-600 text-sm">
@@ -79,9 +94,6 @@ export default async function SurveyDetailPage({ params }: PageProps) {
         </Link>
         <span className="text-gray-300">/</span>
         <h2 className="text-lg font-semibold text-gray-900 truncate">{survey.title}</h2>
-        <span className="ml-auto">
-          <DuplicateSurveyButton surveyId={id} surveyTitle={survey.title} />
-        </span>
       </div>
 
       <div className="grid gap-6">
@@ -132,7 +144,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
               community_id: i.community_id,
               status:       i.status,
               active:       i.active,
-              nomeEscola:   (i.theme as { nomeEscola?: string } | null)?.nomeEscola ?? null,
+              nomeEscola:   nameByCommunity.get(i.community_id) ?? null,
               open_date:    i.open_date as string | null ?? null,
               close_date:   i.close_date as string | null ?? null,
             }))}
@@ -211,6 +223,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
           <QuestionEditor surveyId={id} questions={questions} />
         </div>
       </div>
-    </div>
+      </div>
+    </AdminPageShell>
   )
 }

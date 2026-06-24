@@ -118,6 +118,7 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
           placeholder: form.formPlaceholder,
           accept: form.formAccept,
           correctAnswer: form.formCorrectAnswer,
+          textAlign: form.formTextAlign,
         },
         options: buildQuestionOptions(labels),
       }])
@@ -145,6 +146,7 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
         placeholder: form.formPlaceholder,
         accept: form.formAccept,
         correctAnswer: form.formCorrectAnswer,
+        textAlign: form.formTextAlign,
       }))
       resetForm()
     })

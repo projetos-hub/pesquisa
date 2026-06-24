@@ -33,7 +33,7 @@ export default function ReportsClient({ surveys }: Props) {
   const [onda, setOnda]             = useState<string>('')
   const [dateFrom, setDateFrom]     = useState<string>('')
   const [dateTo, setDateTo]         = useState<string>('')
-  const [npsKey, setNpsKey]         = useState<string>('nps')
+  const [npsKey]                    = useState<string>('nps')
 
   // Preview
   const [preview, setPreview]         = useState<PreviewData | null>(null)

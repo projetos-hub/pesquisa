@@ -60,6 +60,7 @@ function baseFields(q: QuestionRow) {
   return {
     ...(q.conditional_on ? { conditional_on: q.conditional_on } : {}),
     ...(q.only_for_roles?.[0] ? { somentePara: q.only_for_roles[0] as Perfil } : {}),
+    ...(q.settings?.textAlign ? { textAlign: q.settings.textAlign as StepDef['textAlign'] } : {}),
   }
 }
 

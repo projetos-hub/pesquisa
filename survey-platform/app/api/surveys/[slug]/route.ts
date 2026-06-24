@@ -5,6 +5,21 @@ import { createServiceClient } from '@/lib/supabase-service'
 import { rowsToConfig } from '@/lib/survey-config'
 import type { QuestionRow, OptionRow, InstallationRow } from '@/lib/survey-config'
 
+const COMMUNITY_IDENTITY_KEYS = [
+  'nomeEscola',
+  'primaryColor',
+  'secondaryColor',
+  'logo',
+] as const
+
+function removeLegacyCommunityIdentity(theme: Record<string, unknown> | null | undefined) {
+  const cleanTheme = { ...(theme ?? {}) }
+  for (const key of COMMUNITY_IDENTITY_KEYS) {
+    delete cleanTheme[key]
+  }
+  return cleanTheme
+}
+
 interface RouteContext {
   params: Promise<{ slug: string }>
 }
@@ -76,9 +91,10 @@ const getCachedSurveyConfig = unstable_cache(
         // Survey-level theme (settings.theme) serve como fallback padrão
         // Community-level theme (installation.theme) tem prioridade máxima
         const surveyTheme = (survey.settings as { theme?: Record<string, unknown> })?.theme ?? {}
+        const legacyInstallTheme = removeLegacyCommunityIdentity(installation.theme)
         installation = {
           ...installation,
-          theme: { ...baseTheme, ...surveyTheme, ...(installation.theme ?? {}) }
+          theme: { ...surveyTheme, ...legacyInstallTheme, ...baseTheme }
         }
       }
     }

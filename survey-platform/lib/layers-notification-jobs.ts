@@ -23,12 +23,11 @@ export async function executePersonalizedJobSample(
   const supabase = createServiceClient()
 
   const { data: commRow } = await supabase
-    .from('survey_communities')
-    .select('theme')
-    .eq('survey_id', dispatch.survey_id)
+    .from('communities')
+    .select('nome_escola')
     .eq('community_id', communityId)
-    .single()
-  const communityNomeEscola = (commRow?.theme as { nomeEscola?: string } | null)?.nomeEscola ?? ''
+    .maybeSingle()
+  const communityNomeEscola = commRow?.nome_escola ?? ''
 
   const { data: job } = await supabase
     .from('survey_dispatch_jobs')

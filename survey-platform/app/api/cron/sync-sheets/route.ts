@@ -50,14 +50,13 @@ export async function GET(req: Request) {
   // Busca nomeEscola de todas as comunidades das sessões em batch
   const communityIds = [...new Set(sessions.map(s => s.community_id).filter(Boolean))]
   const { data: communities } = await supabase
-    .from('survey_communities')
-    .select('community_id, theme')
+    .from('communities')
+    .select('community_id, nome_escola')
     .in('community_id', communityIds)
 
   const nomeEscolaMap = new Map<string, string>()
   for (const c of communities ?? []) {
-    const nome = (c.theme as { nomeEscola?: string })?.nomeEscola ?? ''
-    nomeEscolaMap.set(c.community_id, nome)
+    nomeEscolaMap.set(c.community_id, c.nome_escola ?? '')
   }
 
   let synced = 0

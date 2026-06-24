@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { AdminPageShell } from '../AdminPageShell'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-service'
 
@@ -39,7 +40,8 @@ export default async function AnalyticsIndexPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl">
+    <AdminPageShell active="auditoria" title="Analytics">
+      <div className="rounded-3xl border border-white/12 bg-[#12151d]/88 p-5 text-gray-900 shadow-[0_30px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
         <p className="text-sm text-gray-500 mt-1">
@@ -90,6 +92,7 @@ export default async function AnalyticsIndexPage() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </AdminPageShell>
   )
 }

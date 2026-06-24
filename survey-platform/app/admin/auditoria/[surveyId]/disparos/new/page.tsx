@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
+import { AdminPageShell } from '../../../../AdminPageShell'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-service'
 import NovoDisparoForm from './NovoDisparoForm'
@@ -35,18 +36,24 @@ export default async function NovoDisparoPage({ params }: PageProps) {
 
   const { data: commData } = await db
     .from('survey_communities')
-    .select('community_id, theme')
+    .select('community_id')
     .eq('survey_id', surveyId)
     .eq('active', true)
     .order('community_id', { ascending: true })
 
-  const communities = (commData ?? []).map(c => {
-    const theme = c.theme as { nomeEscola?: string } | null
-    return {
-      id: c.community_id,
-      label: theme?.nomeEscola ?? c.community_id,
-    }
-  })
+  const communityIds = (commData ?? []).map(c => c.community_id)
+  const { data: communityRows } = communityIds.length > 0
+    ? await db
+        .from('communities')
+        .select('community_id, nome_escola')
+        .in('community_id', communityIds)
+    : { data: [] }
+  const nameByCommunity = new Map((communityRows ?? []).map(c => [c.community_id, c.nome_escola ?? c.community_id]))
+
+  const communities = (commData ?? []).map(c => ({
+    id: c.community_id,
+    label: nameByCommunity.get(c.community_id) ?? c.community_id,
+  }))
 
   // Default = agora no fuso de Brasília (servidor roda em UTC, enviamos UTC-3)
   const nowBR = new Date()
@@ -54,7 +61,8 @@ export default async function NovoDisparoPage({ params }: PageProps) {
   const defaultFiredAt = toDatetimeLocalString(nowBR)
 
   return (
-    <div className="p-6 max-w-2xl">
+    <AdminPageShell active="auditoria" title="Registrar disparo" maxWidth="max-w-3xl">
+      <div className="rounded-3xl border border-white/12 bg-[#12151d]/88 p-5 text-gray-900 shadow-[0_30px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl">
       {/* Breadcrumb */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/admin/auditoria" className="text-gray-400 hover:text-gray-600 text-sm">
@@ -82,6 +90,7 @@ export default async function NovoDisparoPage({ params }: PageProps) {
           defaultFiredAt={defaultFiredAt}
         />
       </div>
-    </div>
+      </div>
+    </AdminPageShell>
   )
 }

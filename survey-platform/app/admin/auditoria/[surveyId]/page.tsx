@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
+import { AdminPageShell } from '../../AdminPageShell'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-service'
 import ExpectedResponsesEditor from './ExpectedResponsesEditor'
@@ -155,14 +156,22 @@ export default async function AuditoriaSurveyPage({ params }: PageProps) {
   // Comunidades com dados de resposta
   const { data: commData } = await db
     .from('survey_communities')
-    .select('community_id, theme, expected_responses')
+    .select('community_id, expected_responses')
     .eq('survey_id', surveyId)
     .eq('active', true)
     .order('community_id', { ascending: true })
 
+  const communityIds = (commData ?? []).map(c => c.community_id)
+  const { data: communityRows } = communityIds.length > 0
+    ? await db
+        .from('communities')
+        .select('community_id, nome_escola')
+        .in('community_id', communityIds)
+    : { data: [] }
+  const nameByCommunity = new Map((communityRows ?? []).map(c => [c.community_id, c.nome_escola ?? null]))
+
   const schools: SchoolResponseRow[] = (commData ?? []).map(c => {
-    const theme = c.theme as { nomeEscola?: string } | null
-    const nome_escola = theme?.nomeEscola ?? null
+    const nome_escola = nameByCommunity.get(c.community_id) ?? null
     const expected = c.expected_responses as number | null
     const commSessions = sessionList.filter(s => s.community_id === c.community_id)
     const total_respostas = commSessions.length
@@ -199,14 +208,12 @@ export default async function AuditoriaSurveyPage({ params }: PageProps) {
 
   // Nomes legíveis das comunidades para exibir nos disparos
   const commNameMap = Object.fromEntries(
-    (commData ?? []).map(c => {
-      const theme = c.theme as { nomeEscola?: string } | null
-      return [c.community_id, theme?.nomeEscola ?? c.community_id]
-    })
+    (commData ?? []).map(c => [c.community_id, nameByCommunity.get(c.community_id) ?? c.community_id])
   )
 
   return (
-    <div className="p-6 max-w-5xl">
+    <AdminPageShell active="auditoria" title="Auditoria">
+      <div className="rounded-3xl border border-white/12 bg-[#12151d]/88 p-5 text-gray-900 shadow-[0_30px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl">
       {/* Breadcrumb */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/admin/auditoria" className="text-gray-400 hover:text-gray-600 text-sm">
@@ -437,6 +444,7 @@ export default async function AuditoriaSurveyPage({ params }: PageProps) {
           </table>
         </div>
       </div>
-    </div>
+      </div>
+    </AdminPageShell>
   )
 }

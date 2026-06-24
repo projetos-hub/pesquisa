@@ -1,6 +1,8 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
+import { PlaceholderTextField } from '../../components/PlaceholderTextField'
+import { TextAlignControl, type TextAlign } from '../../components/TextAlignControl'
 import { updateSurvey } from '../actions'
 
 interface Survey {
@@ -16,6 +18,7 @@ interface Survey {
 interface SurveySettings {
   theme?: {
     thankyouMessage?: string
+    thankyouTextAlign?: TextAlign
   }
 }
 
@@ -52,6 +55,8 @@ function toDatetimeLocal(iso: string | null): string {
 export default function SurveyEditForm({ survey, settings }: { survey: Survey; settings?: Record<string, unknown> | null }) {
   const surveySettings = (settings ?? {}) as SurveySettings
   const defaultThankyou = surveySettings.theme?.thankyouMessage ?? ''
+  const [thankyouMessage, setThankyouMessage] = useState(defaultThankyou)
+  const [thankyouTextAlign, setThankyouTextAlign] = useState<TextAlign>(surveySettings.theme?.thankyouTextAlign ?? 'left')
   const [state, formAction, isPending] = useActionState(
     async (_prev: State, formData: FormData): Promise<State> => {
       const result = await updateSurvey(survey.id, formData)
@@ -164,20 +169,27 @@ export default function SurveyEditForm({ survey, settings }: { survey: Survey; s
       </p>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Mensagem de agradecimento padrão
-        </label>
-        <textarea
+        <PlaceholderTextField
           name="thankyouMessage"
+          label="Mensagem de agradecimento padrão"
+          value={thankyouMessage}
+          onChange={setThankyouMessage}
+          multiline
           rows={3}
-          defaultValue={defaultThankyou}
           placeholder="Deixe em branco para usar o texto padrão (baseado no perfil + NPS)"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D] resize-y"
         />
         <p className="text-xs text-gray-500 mt-1">
           Substitui o texto de agradecimento para <strong>todas</strong> as comunidades
           que não tiverem uma mensagem personalizada. Variáveis: {'{{nomeAluno}}'} | {'{{nomeEscola}}'}
         </p>
+        <div className="mt-2">
+          <TextAlignControl
+            name="thankyouTextAlign"
+            value={thankyouTextAlign}
+            onChange={setThankyouTextAlign}
+            label="Alinhamento do agradecimento"
+          />
+        </div>
       </div>
 
       <div className="pt-1">

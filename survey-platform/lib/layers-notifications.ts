@@ -146,14 +146,14 @@ export async function executeDispatch(dispatchId: string): Promise<DispatchResul
   const isSampleScope = dispatchRecord.target_scope === 'sample'
 
   if (dispatchRecord.personalized) {
-    // Busca nome da escola para placeholder {{nomeEscola}}
-    const { data: communityRow } = await supabase
-      .from('survey_communities')
-      .select('theme')
-      .eq('survey_id', dispatch.survey_id)
-      .limit(1)
-      .single()
-    const nomeEscola = (communityRow?.theme as { nomeEscola?: string } | null)?.nomeEscola ?? ''
+    const communityIds = jobs.map((job: { community_id: string }) => job.community_id)
+    const { data: communityRows } = await supabase
+      .from('communities')
+      .select('community_id, nome_escola')
+      .in('community_id', communityIds)
+    const nomeEscolaByCommunity = new Map(
+      (communityRows ?? []).map(row => [row.community_id, row.nome_escola ?? ''])
+    )
 
     const results = await Promise.allSettled(
       jobs.map(async (job: { id: string; community_id: string }) => {
@@ -167,7 +167,7 @@ export async function executeDispatch(dispatchId: string): Promise<DispatchResul
               job.id,
               dispatchRecord as DispatchRecord,
               job.community_id,
-              nomeEscola,
+              nomeEscolaByCommunity.get(job.community_id) ?? '',
             )
         return { communityId: job.community_id, success: res.failed === 0, hasMore: res.hasMore }
       })

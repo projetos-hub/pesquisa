@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createServiceClient } from '@/lib/supabase-service'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { notFound } from 'next/navigation'
+import { AdminPageShell } from '../../AdminPageShell'
 import ActiveTabLink from './_components/ActiveTabLink'
 
 interface LayoutProps {
@@ -34,7 +35,8 @@ export default async function SurveyAnalyticsLayout({ children, params }: Layout
   if (!survey) notFound()
 
   return (
-    <div className="flex flex-col h-full">
+    <AdminPageShell active="auditoria" title="Analytics">
+      <div className="overflow-hidden rounded-3xl border border-white/12 bg-[#12151d]/88 text-gray-900 shadow-[0_30px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl">
       {/* Header */}
       <div className="border-b border-gray-200 bg-white px-6 pt-5 pb-0">
         <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
@@ -61,6 +63,7 @@ export default async function SurveyAnalyticsLayout({ children, params }: Layout
       <div className="flex-1 overflow-auto">
         {children}
       </div>
-    </div>
+      </div>
+    </AdminPageShell>
   )
 }
