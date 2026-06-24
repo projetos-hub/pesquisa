@@ -1,14 +1,39 @@
 // GET /api/admin/surveys/[id]/sample/communities
-// Retorna comunidades presentes na amostra com contagens de total e resolvidos.
-// Usado pelo DispatchForm para mostrar checklist de segmentação.
+// Returns sample communities with total and resolved counts.
 
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { createServiceClient }        from '@/lib/supabase-service'
+import { createServiceClient } from '@/lib/supabase-service'
+
+const PAGE_SIZE = 1000
 
 async function requireAuth() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authorized')
+}
+
+type SampleRow = {
+  community_id: string
+  layers_user_id: string | null
+}
+
+async function fetchAllSampleRows(surveyId: string): Promise<SampleRow[]> {
+  const supabase = createServiceClient()
+  const rows: SampleRow[] = []
+
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('survey_sample_lists')
+      .select('community_id, layers_user_id')
+      .eq('survey_id', surveyId)
+      .range(from, from + PAGE_SIZE - 1)
+
+    if (error) throw error
+    rows.push(...((data ?? []) as SampleRow[]))
+    if (!data || data.length < PAGE_SIZE) break
+  }
+
+  return rows
 }
 
 export async function GET(
@@ -20,26 +45,19 @@ export async function GET(
     const { id } = await params
     const supabase = createServiceClient()
 
-    // Contagem por community_id — total e resolvidos
-    const { data: rows } = await supabase
-      .from('survey_sample_lists')
-      .select('community_id, layers_user_id')
-      .eq('survey_id', id)
-
-    if (!rows || rows.length === 0) {
+    const rows = await fetchAllSampleRows(id)
+    if (rows.length === 0) {
       return Response.json({ communities: [] })
     }
 
-    // Agregar por community_id
     const map = new Map<string, { total: number; resolved: number }>()
-    for (const r of rows) {
-      const entry = map.get(r.community_id) ?? { total: 0, resolved: 0 }
+    for (const row of rows) {
+      const entry = map.get(row.community_id) ?? { total: 0, resolved: 0 }
       entry.total++
-      if (r.layers_user_id && r.layers_user_id !== 'NOT_FOUND') entry.resolved++
-      map.set(r.community_id, entry)
+      if (row.layers_user_id && row.layers_user_id !== 'NOT_FOUND') entry.resolved++
+      map.set(row.community_id, entry)
     }
 
-    // Buscar nome global de cada community
     const communityIds = [...map.keys()]
     const { data: communityRows } = await supabase
       .from('communities')
@@ -53,9 +71,9 @@ export async function GET(
 
     const communities = communityIds.map(cid => ({
       community_id: cid,
-      nome:         nomeMap.get(cid) ?? cid,
-      total:        map.get(cid)!.total,
-      resolved:     map.get(cid)!.resolved,
+      nome: nomeMap.get(cid) ?? cid,
+      total: map.get(cid)!.total,
+      resolved: map.get(cid)!.resolved,
     })).sort((a, b) => b.resolved - a.resolved)
 
     return Response.json({ communities })
