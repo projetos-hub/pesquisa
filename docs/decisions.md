@@ -134,3 +134,45 @@ survey-platform/
 ```
 
 **Motivo do route group `(respondente)`:** isola o layout do respondente (sem navbar, sem footer) do layout admin, sem afetar a URL (`/p/csat`, não `/(respondente)/p/csat`).
+
+---
+
+## Decisoes de produto e UX - junho/2026
+
+### Identidade visual por comunidade
+
+**Decisao:** logos, cores e mensagens institucionais pertencem a comunidade/escola, nao a uma pesquisa especifica.
+
+**Motivo:** o usuario nao deve configurar a mesma identidade visual toda vez que cria uma nova pesquisa. A identidade da comunidade tende a ser estavel; a pesquisa muda mais frequentemente.
+
+**Impacto:** telas de criacao/edicao de pesquisa devem focar no conteudo da pesquisa. Ajustes de logo, tema e mensagens por escola ficam nas telas de comunidades/identidade visual.
+
+### Home admin sem sidebar tradicional
+
+**Decisao:** a home do mini app usa atalhos visuais em cards. Nas telas internas, os mesmos atalhos aparecem como uma navegacao superior compacta.
+
+**Motivo:** o app e pequeno e orientado a poucos fluxos principais. Uma sidebar permanente consumia espaco e deixava a interface mais pesada que o necessario.
+
+**Alternativa descartada:** manter sidebar lateral em todas as telas. Ela nao combinava com a home e reduzia a area util das tabelas/listas.
+
+### Textos com placeholders e alinhamento visual
+
+**Decisao:** campos editaveis de texto devem oferecer placeholders visuais sempre que houver variaveis seguras disponiveis. O alinhamento deve ser configuravel por controles visuais.
+
+**Motivo:** textos de welcome, thank you, perguntas e mensagens de disparo precisam ser operados por usuarios nao tecnicos. Digitar variaveis manualmente aumenta risco de erro.
+
+### Justificacao sem hifenizacao agressiva
+
+**Decisao:** texto justificado e permitido, mas o respondente deve receber fallback para alinhamento a esquerda quando o card estiver estreito. A hifenizacao automatica agressiva foi removida.
+
+**Motivo:** em portugues, texto justificado em largura estreita cria buracos grandes entre palavras. Hifenizacao automatica corrige parte disso, mas pode deixar muitas quebras e piorar a leitura. A solucao atual usa `text-wrap: pretty`, `text-justify: inter-word`, `hyphens: manual` e container query no card.
+
+**Arquivos:** `components/survey-engine/utils/textAlign.ts` e `app/(respondente)/survey.css`.
+
+### Agregacao de amostras sem limite de 1000 linhas
+
+**Decisao:** endpoints que agregam comunidades de uma amostra devem paginar a leitura e processar todos os registros relevantes.
+
+**Motivo:** Supabase pode retornar paginas limitadas. Agregar apenas a primeira pagina fazia a quebra por comunidade divergir do total de emails resolvidos em amostras grandes.
+
+**Arquivo:** `app/api/admin/surveys/[id]/sample/communities/route.ts`.

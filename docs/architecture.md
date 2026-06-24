@@ -187,3 +187,26 @@ Admin com `service_role_key` (API routes): bypass de RLS, acesso total.
 | `/admin/surveys/[id]` | Page | ✅ | Editar título/status/datas |
 | `/admin/surveys/[id]/responses` | Page | ✅ | Tabela de respostas |
 | `/admin/surveys/[id]/questions` | Page | 🔜 Fase 3B | Editor de perguntas (drag & drop) |
+# Atualizacao operacional - 2026-06-24
+
+Este documento tem historico das fases iniciais. Para o estado atual da arquitetura, considerar tambem:
+
+- `docs/release-2026-06-24-visual-sample-text.md`
+- `README.md`
+- `survey-platform/README.md`
+- `MANUAL-RETOMADA.md`
+
+Pontos atuais:
+
+- Admin sem sidebar lateral como estrutura principal.
+- Home com tiles/atalhos principais.
+- Telas internas com navegacao superior compacta em `app/admin/AdminHubNav.tsx`.
+- Shell visual do admin em `app/admin/AdminPageShell.tsx`.
+- Identidade visual por comunidade em `/admin/communities`.
+- Placeholders visuais em `app/admin/components/PlaceholderTextField.tsx`.
+- Controle de alinhamento em `app/admin/components/TextAlignControl.tsx`.
+- Helper de alinhamento do respondente em `components/survey-engine/utils/textAlign.ts`.
+- Aliases de comunidades em `lib/community-mapping.ts`.
+- Agregacao paginada de comunidades de amostra em `app/api/admin/surveys/[id]/sample/communities/route.ts`.
+
+---

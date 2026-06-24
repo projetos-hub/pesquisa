@@ -1465,3 +1465,38 @@ Status atualizado:
 - Branch `main`: publicada em producao.
 - Deploy Vercel: sucesso.
 - Plano de qualidade 0-10: concluido, mergeado e publicado.
+
+---
+
+### Sessao 2026-06-24 - Identidade visual, amostras e texto justificado
+
+| Item | Status | Detalhe |
+|---|---|---|
+| Nova identidade visual admin | concluido | Home e telas internas atualizadas para identidade Raiz, com logo oficial, fundo escuro animado, cards/atalhos com gradientes e navegacao superior compacta |
+| Sidebar lateral | removida do fluxo principal | A home nao usa sidebar; nas telas internas os atalhos principais ficam no topo |
+| Identidade visual por comunidade | consolidado | Identidade visual deve ser configurada por comunidade/escola, nao por pesquisa |
+| Placeholders em textos | concluido | Campos editaveis ganharam suporte visual a placeholders quando aplicavel |
+| Alinhamento de textos | concluido | Textos editaveis podem ser alinhados por controle visual; engine respondente aplica helper compartilhado |
+| Texto justificado | refinado | Removida hifenizacao automatica agressiva; card estreito cai para alinhamento a esquerda via container query |
+| Mapeamento de comunidades | atualizado | `BOM TEMPO CRECHE E EDUCACAO INFANTIL LTDA` -> `n6k47n81`; `COLEGIO QI BOTAFOGO` -> `qi-botafogo`; aliases adicionais de escolas nao mapeadas foram registrados |
+| Amostras grandes | corrigido | Endpoint de comunidades da amostra agora pagina a leitura e agrega todos os registros, evitando divergencia entre total resolvido e soma por comunidade |
+| Documentacao | atualizada | `README.md`, `survey-platform/README.md`, `MANUAL-RETOMADA.md`, `docs/como-adicionar-escola.md`, `docs/decisions.md` e `docs/release-2026-06-24-visual-sample-text.md` |
+
+Commits publicados:
+- `53845b2 feat(admin): atualiza identidade visual e comunidades`
+- `b8ea4e3 fix(sample): pagina contagem por comunidade`
+- `d93192b fix(respondente): melhora texto justificado`
+- `cdf3a08 fix(respondente): evita hifenizacao excessiva`
+
+Gates validados na rodada:
+
+```bash
+cd survey-platform
+npm run typecheck  # passou
+npm run lint       # passou com warnings conhecidos de <img>
+npm run build      # passou
+```
+
+Status atualizado:
+- Branch `main`: publicada com ajustes visuais e fixes citados.
+- Proxima atencao: manter `node_modules/.vite` fora de commits; ha delecoes locais antigas nesse caminho.

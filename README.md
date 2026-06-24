@@ -1,104 +1,83 @@
-# Pesquisa de Satisfação — Mini App para Layers
+# Mini App Layers Pesquisa
 
-Mini app React para ser embutido como **iFrame** dentro do app escolar da [Layers Education](https://layers.education).
+Plataforma de pesquisas CSAT para rodar como mini app/iFrame dentro da Layers Education.
 
-## Funcionalidades
+O produto atual fica em `survey-platform/` e usa Next.js, React, Supabase, Tailwind CSS e Vercel. Os arquivos legados `pesquisa.html` e `google-apps-script.js` permanecem no repositorio apenas como referencia historica.
 
-- ✅ Formulário multi-step com barra de progresso
-- ✅ Pergunta de identificação (perfil / unidade / segmento)
-- ✅ NPS (escala 1–5) + detecção de usuário bilíngue
-- ✅ Bloco condicional: avaliação do programa bilíngue (só exibido se participante)
-- ✅ 3 eixos de avaliação por escala 1–5 (Pedagógico, Administrativo, Infraestrutura)
-- ✅ Envio para API da Layers com contexto de usuário
-- ✅ Tela de erro com retry e tela de agradecimento
+## Status
 
----
+- Producao: https://pesquisa-nu-sand.vercel.app
+- Repositorio: https://github.com/projetos-hub/pesquisa
+- Branch publicada: `main`
+- Banco: Supabase `Mini-App Layers Pesquisa`
+- Projeto Supabase: `qnpvlhfjknnvfiyxrhhl`
+
+## Principais fluxos
+
+- Home admin com identidade visual Raiz e atalhos para Pesquisas, Disparos, Exportar, Identidade Visual e Auditoria.
+- CRUD de pesquisas, perguntas, opcoes, duplicacao e exclusao segura.
+- Instalacao de comunidades por pesquisa.
+- Identidade visual por comunidade, nao por pesquisa.
+- Textos editaveis com placeholders visuais.
+- Controle visual de alinhamento de texto, incluindo justificacao com fallback responsivo.
+- Upload de amostras e resolucao de destinatarios por comunidade.
+- Disparos Layers por amostra, comunidade, turma ou todas as comunidades.
+- Historico/auditoria de disparos.
+- Exportacao e relatorios.
+- Engine respondente em `/p/[surveySlug]`.
 
 ## Como rodar localmente
 
 ```bash
-cd survey-layers-app
+cd survey-platform
 npm install
 npm run dev
 ```
 
-Acesse: http://localhost:5173
+Acesse `http://localhost:3000`.
 
----
-
-## Como configurar para produção
-
-### 1. Configure a API da Layers
-
-Edite `src/api/layers.js` e preencha:
-
-```js
-const LAYERS_API_URL = 'https://api.layers.education'
-const COMMUNITY_SLUG = 'nome-da-sua-comunidade'
-const SURVEY_ALIAS  = 'csat-bilingue-2025'
-```
-
-Consulte a documentação da Layers para obter o endpoint correto de submissão de pesquisas.
-
-### 2. Ajuste as opções de unidade
-
-Em `src/components/IdentificationStep.jsx`, substitua `['Unidade A', 'Unidade B', 'Unidade C']` pelas unidades reais da escola.
-
-### 3. Build
+## Gates recomendados antes de publicar
 
 ```bash
+cd survey-platform
+npm run typecheck
+npm run lint
+npm run test:unit
 npm run build
 ```
 
-Os arquivos de produção ficarão em `dist/`.
+Para releases maiores:
 
-### 4. Hospedagem
-
-Faça o deploy da pasta `dist/` em qualquer serviço estático:
-- **Vercel** (recomendado): `vercel --prod`
-- **Netlify**: arraste a pasta `dist/` no painel
-- **GitHub Pages**: configure o build action
-
-### 5. Embed no Layers
-
-No painel da Layers, crie um novo **Mini App** do tipo iFrame e defina a URL:
-
-```
-https://SEU_DOMINIO.vercel.app?userId={{userId}}&communityId={{communityId}}&token={{token}}
+```bash
+npm run test:ci
+npm run test:e2e
 ```
 
-A Layers substituirá `{{userId}}`, `{{communityId}}` e `{{token}}` automaticamente com os dados da sessão do usuário.
+## Estrutura
 
----
-
-## Estrutura do projeto
-
-```
-src/
-├── api/
-│   └── layers.js          # Integração com API da Layers
-├── components/
-│   ├── ProgressBar.jsx
-│   ├── IdentificationStep.jsx
-│   ├── NPSStep.jsx
-│   ├── BilingualStep.jsx  # Step condicional (programa bilíngue)
-│   ├── ScaleStep.jsx      # Reutilizável para os 3 eixos
-│   ├── ThankYou.jsx
-│   └── ErrorScreen.jsx
-├── App.jsx                # Orquestrador de steps e lógica de submit
-├── App.css                # Estilos globais
-├── index.css
-└── main.jsx
+```text
+survey-platform/
+  app/
+    (respondente)/        Rotas publicas do respondente
+    admin/                Painel interno
+    api/                  API routes
+  components/
+    survey-engine/        Engine de perguntas e steps
+    ui/                   Primitivos compartilhados
+  lib/                    Supabase, mapeamentos, relatorios e jobs
+  supabase/migrations/    Migrations SQL versionadas
+  tests/                  Unitarios e E2E
+docs/                     Arquitetura, decisoes, runbooks e planos
+PROGRESSO.md              Estado vivo do projeto
+MANUAL-RETOMADA.md        Resumo para retomar desenvolvimento
 ```
 
----
+## Regras operacionais
 
-## Personalização
+Commits neste repositorio devem usar:
 
-| O que mudar | Onde |
-|---|---|
-| Logo da escola | Coloque `logo.png` em `public/` |
-| Cores e fonte | `src/App.css` (variáveis de gradiente) |
-| Unidades | `IdentificationStep.jsx` |
-| Aspectos avaliados | `App.jsx` (props dos ScaleStep) |
-| Endpoint da API | `src/api/layers.js` |
+```text
+Projetos Raiz <projetos@raizeducacao.com.br>
+```
+
+O Vercel bloqueia deploys de outros autores.

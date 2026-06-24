@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Survey Platform
 
-## Getting Started
+Aplicacao Next.js do Mini App Layers Pesquisa.
 
-First, run the development server:
+## Stack
+
+- Next.js 16 App Router
+- React 19
+- Supabase Auth + Postgres + Storage
+- Tailwind CSS 4
+- Vitest
+- Playwright
+- Vercel
+
+## Rotas principais
+
+| Rota | Uso |
+|---|---|
+| `/` | Home/admin hub do mini app |
+| `/admin/surveys` | Lista de pesquisas |
+| `/admin/surveys/[id]` | Edicao de pesquisa e perguntas |
+| `/admin/surveys/[id]/sample` | Upload e gestao de amostras |
+| `/admin/surveys/[id]/dispatch` | Criacao de disparos |
+| `/admin/auditoria` | Auditoria de disparos |
+| `/admin/export` | Exportacao |
+| `/admin/communities` | Identidade visual por comunidade |
+| `/p/[surveySlug]` | Experiencia do respondente |
+| `/api/health` | Health check operacional |
+
+## Comandos
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run typecheck
+npm run lint
+npm run test:unit
+npm run test:e2e
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Identidade visual atual
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+O admin usa uma identidade inspirada na Raiz:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- fundo escuro com animacao sutil;
+- logo oficial `public/logo-raiz.png`;
+- home sem sidebar;
+- atalhos em cards/tiles com gradientes;
+- nas telas internas, os atalhos migram para uma barra superior compacta.
 
-## Learn More
+Componentes centrais:
 
-To learn more about Next.js, take a look at the following resources:
+- `app/admin/AdminPageShell.tsx`
+- `app/admin/AdminHubNav.tsx`
+- `app/admin/AdminShell.tsx`
+- `app/admin/page.tsx`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Textos, placeholders e alinhamento
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Campos editaveis de texto usam:
 
-## Deploy on Vercel
+- placeholders visuais em `app/admin/components/PlaceholderTextField.tsx`;
+- renderizacao em `lib/placeholders/render.ts`;
+- catalogo em `lib/placeholders/catalog.ts`;
+- controle de alinhamento em `app/admin/components/TextAlignControl.tsx`;
+- aplicacao no respondente por `components/survey-engine/utils/textAlign.ts`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Regra de UX para texto justificado:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- justificar somente quando ha largura suficiente;
+- nao usar hifenizacao automatica agressiva;
+- usar `text-wrap: pretty` e fallback para alinhamento a esquerda em cards estreitos;
+- o idioma raiz do app e `pt-BR` para melhorar layout de texto.
+
+## Dados e comunidades
+
+Mapeamento de nomes importados para `community_id` fica em:
+
+```text
+lib/community-mapping.ts
+```
+
+Casos importantes recentes:
+
+- `BOM TEMPO CRECHE E EDUCACAO INFANTIL LTDA` mapeia para `n6k47n81`.
+- `COLEGIO QI BOTAFOGO` mapeia para `qi-botafogo`.
+- nomes sem acento ou variantes TOTVS devem ser adicionados como aliases, nao como novas comunidades, quando representam a mesma comunidade.
+
+## Cuidados
+
+- Nao commitar `node_modules/.vite`; ha sujeira local antiga nesse caminho.
+- Antes de commit, conferir `git config user.email`.
+- Para mudancas em Supabase, criar migration ou documentar SQL aplicado.
