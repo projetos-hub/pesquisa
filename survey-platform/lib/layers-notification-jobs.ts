@@ -46,6 +46,7 @@ export async function executePersonalizedJobSample(
       .eq('survey_id', dispatch.survey_id)
       .eq('community_id', communityId)
       .not('layers_user_id', 'is', null)
+      .neq('layers_user_id', 'NOT_FOUND')
 
     const total = count || 0
     if (total > 0) {
@@ -151,6 +152,7 @@ export async function executePersonalizedJobSample(
     .eq('survey_id', dispatch.survey_id)
     .eq('community_id', communityId)
     .not('layers_user_id', 'is', null)
+    .neq('layers_user_id', 'NOT_FOUND')
 
   const total = totalCount || 0
   const hasMore = newOffset < total
