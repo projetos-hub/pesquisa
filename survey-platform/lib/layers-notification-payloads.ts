@@ -123,15 +123,15 @@ export function buildNotificationPayload(dispatch: DispatchRecord): LayersPayloa
   const channels: LayersPayload['channels'] = {}
   if (dispatch.channels.includes('pushNotification')) {
     channels.pushNotification = {
-      title: dispatch.push_title ?? dispatch.title,
-      body:  dispatch.push_body  ?? dispatch.body,
+      title: optionalText(dispatch.push_title) ?? dispatch.title,
+      body:  optionalText(dispatch.push_body)  ?? dispatch.body,
     }
   }
 
   if (dispatch.channels.includes('email')) {
     const emailChannel: NonNullable<LayersPayload['channels']>['email'] = {
-      title: dispatch.email_title ?? dispatch.title,
-      body:  dispatch.email_body  ?? dispatch.body,
+      title: optionalText(dispatch.email_title) ?? dispatch.title,
+      body:  optionalText(dispatch.email_body)  ?? dispatch.body,
     }
     if (dispatch.email_action_label) emailChannel.actionLabel = dispatch.email_action_label
     if (dispatch.email_background_url) emailChannel.backgroundUrl = dispatch.email_background_url
@@ -154,6 +154,11 @@ export function interpolatePlaceholders(text: string, vars: PersonalizedVars): s
     .replace(/\{\{nomeAluno\}\}/g,  vars.nomeAluno  || 'seu filho(a)')
     .replace(/\{\{nomeEscola\}\}/g, vars.nomeEscola || 'a escola')
     .replace(/\{\{serie\}\}/g,      vars.serie      || 'a turma')
+}
+
+function optionalText(value: string | null | undefined): string | null {
+  const trimmed = value?.trim()
+  return trimmed ? value! : null
 }
 
 export function buildPersonalizedPayload(
@@ -181,8 +186,8 @@ function buildUserPayload(
   topic:    LayersTopic,
   vars:     PersonalizedVars,
 ): LayersPayload {
-  const title = interpolatePlaceholders(dispatch.push_title ?? dispatch.title, vars)
-  const body  = interpolatePlaceholders(dispatch.push_body  ?? dispatch.body,  vars)
+  const title = interpolatePlaceholders(optionalText(dispatch.push_title) ?? dispatch.title, vars)
+  const body  = interpolatePlaceholders(optionalText(dispatch.push_body)  ?? dispatch.body,  vars)
 
   const payload: LayersPayload = {
     targets: { topics: [topic], roles: dispatch.target_roles },
@@ -198,8 +203,8 @@ function buildUserPayload(
 
   if (dispatch.channels.includes('email')) {
     channels.email = {
-      title: interpolatePlaceholders(dispatch.email_title ?? dispatch.title, vars),
-      body:  interpolatePlaceholders(dispatch.email_body  ?? dispatch.body,  vars),
+      title: interpolatePlaceholders(optionalText(dispatch.email_title) ?? dispatch.title, vars),
+      body:  interpolatePlaceholders(optionalText(dispatch.email_body)  ?? dispatch.body,  vars),
       actionLabel: dispatch.email_action_label || 'Responder Pesquisa',
       ...(dispatch.email_background_url ? { backgroundUrl: dispatch.email_background_url } : {}),
     }

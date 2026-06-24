@@ -73,6 +73,29 @@ describe('buildNotificationPayload', () => {
       },
     })
   })
+
+  it('falls back to root title and body when channel overrides are blank', () => {
+    const payload = buildNotificationPayload(
+      dispatch({
+        channels: ['pushNotification', 'email'],
+        push_title: '',
+        push_body: '   ',
+        email_title: '',
+        email_body: '   ',
+      }),
+    )
+
+    expect(payload.title).toBe('Pesquisa')
+    expect(payload.body).toBe('Responda a pesquisa')
+    expect(payload.channels).toEqual({
+      pushNotification: { title: 'Pesquisa', body: 'Responda a pesquisa' },
+      email: {
+        title: 'Pesquisa',
+        body: 'Responda a pesquisa',
+        actionLabel: 'Responder',
+      },
+    })
+  })
 })
 
 describe('buildNotificationAuditLog', () => {
@@ -149,6 +172,42 @@ describe('buildSamplePersonalizedPayload', () => {
       email: {
         title: 'Email Raiz',
         body: 'Aluno Bruno',
+        actionLabel: 'Responder',
+      },
+    })
+  })
+
+  it('uses personalized root content when channel overrides are blank', () => {
+    const payload = buildSamplePersonalizedPayload(
+      dispatch({
+        target_scope: 'sample',
+        personalized: true,
+        channels: ['pushNotification', 'email'],
+        title: 'Pesquisa {{nomeEscola}}',
+        body: 'Ola {{nome}}',
+        push_title: '',
+        push_body: '',
+        email_title: '',
+        email_body: '',
+      }),
+      {
+        layersUserId: 'layers-user-1',
+        vars: {
+          nome: 'Ana',
+          nomeAluno: 'Bruno',
+          nomeEscola: 'Raiz',
+          serie: '7A',
+        },
+      },
+    )
+
+    expect(payload.title).toBe('Pesquisa Raiz')
+    expect(payload.body).toBe('Ola Ana')
+    expect(payload.channels).toEqual({
+      pushNotification: { title: 'Pesquisa Raiz', body: 'Ola Ana' },
+      email: {
+        title: 'Pesquisa Raiz',
+        body: 'Ola Ana',
         actionLabel: 'Responder',
       },
     })

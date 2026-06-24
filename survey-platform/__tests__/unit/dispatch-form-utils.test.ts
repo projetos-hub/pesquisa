@@ -103,6 +103,22 @@ describe('dispatch-form-utils', () => {
     })
   })
 
+  it('normalizes blank custom channel fields to null', () => {
+    expect(buildDispatchBasePayload({
+      ...baseInput,
+      customPerCh: true,
+      pushTitle: '',
+      pushBody: '   ',
+      emailTitle: '',
+      emailBody: '   ',
+    })).toMatchObject({
+      push_title: null,
+      push_body: null,
+      email_title: null,
+      email_body: null,
+    })
+  })
+
   it('builds sequence step payload with per-step channel overrides', () => {
     const basePayload = buildDispatchBasePayload({ ...baseInput, customPerCh: true })
     const steps = [step({ customPerCh: true, pushTitle: 'P2', emailLabel: 'Abrir' })]

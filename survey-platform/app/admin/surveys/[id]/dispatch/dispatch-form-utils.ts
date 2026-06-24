@@ -140,15 +140,20 @@ export function buildDispatchBasePayload(input: BuildBasePayloadInput) {
       input.scope === 'sample' && input.selectedSampleGroup ? input.selectedSampleGroup : null,
     target_roles: input.roles,
     personalized: input.personalized,
-    push_title: input.customPerCh ? input.pushTitle : null,
-    push_body: input.customPerCh ? input.pushBody : null,
-    email_title: input.customPerCh ? input.emailTitle : null,
-    email_body: input.customPerCh ? input.emailBody : null,
+    push_title: input.customPerCh ? optionalText(input.pushTitle) : null,
+    push_body: input.customPerCh ? optionalText(input.pushBody) : null,
+    email_title: input.customPerCh ? optionalText(input.emailTitle) : null,
+    email_body: input.customPerCh ? optionalText(input.emailBody) : null,
     email_action_label: input.emailLabel || null,
     email_background_url: input.emailBgUrl || null,
     save_as_template: input.saveTemplate,
     template_name: input.saveTemplate ? input.templateName : null,
   }
+}
+
+function optionalText(value: string) {
+  const trimmed = value.trim()
+  return trimmed ? value : null
 }
 
 export function resolveScheduledAt(mode: 'immediate' | 'scheduled', scheduledAt: string) {
