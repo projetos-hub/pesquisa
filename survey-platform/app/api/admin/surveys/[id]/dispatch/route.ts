@@ -265,7 +265,7 @@ export async function GET(
       .select(`
         *,
         jobs:survey_dispatch_jobs (
-          id, community_id, status, error, retry_count, sent_at, created_at
+          id, community_id, status, error, retry_count, sent_at, created_at, processed_users, failed_users, total_users
         )
       `)
       .eq('survey_id', surveyId)

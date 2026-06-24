@@ -94,7 +94,7 @@ export default async function DispatchPage({ params }: PageProps) {
       id, title, target_scope, channels, status, total_jobs, completed_jobs,
       failed_jobs, personalized, sequence_step, scheduled_at, created_at, completed_at,
       jobs:survey_dispatch_jobs (
-        id, community_id, status, error, retry_count, sent_at, processed_users, total_users
+        id, community_id, status, error, retry_count, sent_at, processed_users, failed_users, total_users
       )
     `)
     .eq('survey_id', surveyId)
