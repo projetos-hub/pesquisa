@@ -9,8 +9,7 @@ export function textAlignStyle(textAlign: TextAlign | undefined): CSSProperties 
   return {
     textAlign: 'justify',
     textAlignLast: 'left',
-    hyphens: 'auto',
-    overflowWrap: 'break-word',
+    textJustify: 'inter-word',
   }
 }
 
