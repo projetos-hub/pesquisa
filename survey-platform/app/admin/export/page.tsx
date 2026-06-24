@@ -1,7 +1,8 @@
 import { Fragment } from 'react'
 import { AdminPageShell } from '../AdminPageShell'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { createPublicResponseLink, disablePublicResponseLink } from './actions'
+import { disablePublicResponseLink } from './actions'
+import { PublicLinkCreateForm } from './PublicLinkCreateForm'
 
 interface Survey {
   id: string
@@ -17,6 +18,7 @@ interface PublicResponseLink {
   token: string
   enabled: boolean
   include_pii: boolean
+  access_key_hash: string | null
   created_at: string
 }
 
@@ -43,7 +45,7 @@ export default async function ExportPage() {
 
   const { data: publicLinks } = await supabase
     .from('public_response_links')
-    .select('id, survey_id, token, enabled, include_pii, created_at')
+    .select('id, survey_id, token, enabled, include_pii, access_key_hash, created_at')
     .order('created_at', { ascending: false }) as { data: PublicResponseLink[] | null }
 
   const linksBySurvey = new Map<string, PublicResponseLink[]>()
@@ -65,7 +67,7 @@ export default async function ExportPage() {
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Exportar Respostas</h1>
           <p className="mt-2 text-gray-600">
-            Exporte XLSX para admin ou crie links publicos com tabela, CSV, JSON e XLSX.
+            Exporte XLSX para admin ou crie links protegidos com senha para tabela, CSV, JSON e XLSX.
           </p>
         </div>
 
@@ -104,19 +106,7 @@ export default async function ExportPage() {
                         >
                           XLSX admin
                         </a>
-                        <form action={createPublicResponseLink} className="flex flex-wrap items-center justify-end gap-2">
-                          <input type="hidden" name="surveyId" value={survey.id} />
-                          <label className="inline-flex items-center gap-1 text-xs text-gray-600">
-                            <input name="includePii" type="checkbox" className="h-3.5 w-3.5" />
-                            incluir PII
-                          </label>
-                          <button
-                            type="submit"
-                            className="inline-flex items-center rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-slate-700"
-                          >
-                            Criar link publico
-                          </button>
-                        </form>
+                        <PublicLinkCreateForm surveyId={survey.id} />
                       </div>
                     </td>
                   </tr>
@@ -124,7 +114,6 @@ export default async function ExportPage() {
                   {survey.publicLinks.map(link => {
                     const publicUrl = `/public/responses/${link.token}`
                     const absolutePublicUrl = `${appUrl}${publicUrl}`
-                    const absoluteCsvUrl = `${appUrl}/api/public/responses/${link.token}.csv`
                     return (
                       <tr key={link.id} className="bg-slate-50">
                         <td colSpan={4} className="px-4 py-3">
@@ -134,14 +123,15 @@ export default async function ExportPage() {
                                 <span className={`rounded-full px-2 py-0.5 font-bold ${link.enabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'}`}>
                                   {link.enabled ? 'ativo' : 'desativado'}
                                 </span>
-                                <span>{link.include_pii ? 'com PII' : 'sem PII'}</span>
+                                <span>{link.access_key_hash ? 'com senha' : 'sem senha antiga'}</span>
+                                <span>{link.include_pii ? 'com dados pessoais' : 'sem dados pessoais'}</span>
                                 <span>{new Date(link.created_at).toLocaleString('pt-BR')}</span>
                               </div>
                               <div className="mt-2 flex flex-col gap-1 font-mono text-[11px]">
                                 <a className="truncate text-blue-700 hover:underline" href={publicUrl} target="_blank" rel="noreferrer">
                                   {absolutePublicUrl}
                                 </a>
-                                <span className="truncate text-slate-500">Sheets: =IMPORTDATA(&quot;{absoluteCsvUrl}&quot;)</span>
+                                <span className="truncate text-slate-500">Sheets: use a senha/key gerada como parametro ?key=...</span>
                               </div>
                             </div>
                             {link.enabled && (

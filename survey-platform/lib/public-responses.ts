@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs'
+import { createHash, timingSafeEqual } from 'node:crypto'
 import { createServiceClient } from '@/lib/supabase-service'
 import {
   fetchQuestionsAndOptions,
@@ -19,6 +20,7 @@ export interface PublicResponseLink {
   label: string | null
   enabled: boolean
   include_pii: boolean
+  access_key_hash: string | null
   expires_at: string | null
 }
 
@@ -32,6 +34,20 @@ export interface PublicResponsesDataset {
 }
 
 const PII_META_HEADERS = new Set(['userId', 'userName', 'userEmail'])
+
+export function hashPublicResponseAccessKey(accessKey: string) {
+  return createHash('sha256').update(accessKey, 'utf8').digest('hex')
+}
+
+export function verifyPublicResponseAccessKey(link: PublicResponseLink, accessKey: string | null | undefined) {
+  if (!link.access_key_hash || !accessKey) return false
+
+  const actual = Buffer.from(hashPublicResponseAccessKey(accessKey), 'hex')
+  const expected = Buffer.from(link.access_key_hash, 'hex')
+  if (actual.length !== expected.length) return false
+
+  return timingSafeEqual(actual, expected)
+}
 
 export function parsePublicResponseFormat(rawToken: string, searchParams: URLSearchParams) {
   const queryFormat = searchParams.get('format')
@@ -50,11 +66,11 @@ export function parsePublicResponseFormat(rawToken: string, searchParams: URLSea
   return { token: rawToken, format: 'json' as PublicResponseFormat }
 }
 
-export async function getPublicResponsesDataset(token: string): Promise<PublicResponsesDataset | null> {
+export async function getPublicResponseLink(token: string): Promise<PublicResponseLink | null> {
   const supabase = createServiceClient()
   const { data: link, error } = await supabase
     .from('public_response_links')
-    .select('id, survey_id, token, label, enabled, include_pii, expires_at')
+    .select('id, survey_id, token, label, enabled, include_pii, access_key_hash, expires_at')
     .eq('token', token)
     .maybeSingle()
 
@@ -63,6 +79,17 @@ export async function getPublicResponsesDataset(token: string): Promise<PublicRe
   const publicLink = link as PublicResponseLink
   if (!publicLink.enabled) return null
   if (publicLink.expires_at && new Date(publicLink.expires_at).getTime() < Date.now()) return null
+
+  return publicLink
+}
+
+export async function getPublicResponsesDataset(
+  token: string,
+  accessKey: string | null | undefined
+): Promise<PublicResponsesDataset | null> {
+  const publicLink = await getPublicResponseLink(token)
+  if (!publicLink) return null
+  if (!verifyPublicResponseAccessKey(publicLink, accessKey)) return null
 
   const [survey, sessions, questionData] = await Promise.all([
     fetchSurveyMeta(publicLink.survey_id),

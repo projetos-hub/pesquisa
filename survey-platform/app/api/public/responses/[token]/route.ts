@@ -19,10 +19,10 @@ export async function GET(request: Request, context: RouteContext) {
   const { token: rawToken } = await context.params
   const url = new URL(request.url)
   const { token, format } = parsePublicResponseFormat(rawToken, url.searchParams)
-  const dataset = await getPublicResponsesDataset(token)
+  const dataset = await getPublicResponsesDataset(token, url.searchParams.get('key'))
 
   if (!dataset) {
-    return Response.json({ error: 'Link invalido ou expirado' }, { status: 404 })
+    return Response.json({ error: 'Link invalido, expirado ou nao autorizado' }, { status: 404 })
   }
 
   const filename = publicResponsesFilename(dataset, format)

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import {
+  getPublicResponseLink,
   getPublicResponsesDataset,
   parsePublicResponseFormat,
 } from '@/lib/public-responses'
@@ -9,6 +10,7 @@ export const revalidate = 0
 
 interface PageProps {
   params: Promise<{ token: string }>
+  searchParams: Promise<{ key?: string }>
 }
 
 function cellText(value: unknown): string {
@@ -16,12 +18,47 @@ function cellText(value: unknown): string {
   return typeof value === 'string' ? value : JSON.stringify(value)
 }
 
-export default async function PublicResponsesPage({ params }: PageProps) {
-  const { token: rawToken } = await params
-  const { token } = parsePublicResponseFormat(rawToken, new URLSearchParams())
-  const dataset = await getPublicResponsesDataset(token)
+function AccessForm({ token, invalidKey }: { token: string; invalidKey: boolean }) {
+  return (
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-white">
+      <section className="mx-auto max-w-xl rounded-lg border border-white/10 bg-white/[0.06] p-6 shadow-2xl">
+        <p className="text-xs font-bold uppercase tracking-[0.28em] text-orange-300">Acesso protegido</p>
+        <h1 className="mt-3 text-2xl font-black">Digite a senha para ver as respostas</h1>
+        <p className="mt-2 text-sm text-slate-300">
+          Depois de liberar o acesso, a pagina mostra a tabela e o link tecnico para usar no Google Sheets.
+        </p>
 
-  if (!dataset) {
+        <form method="GET" action={`/public/responses/${token}`} className="mt-5 space-y-3">
+          <label className="block text-sm font-bold text-slate-200" htmlFor="key">
+            Senha
+          </label>
+          <input
+            id="key"
+            name="key"
+            type="password"
+            autoComplete="off"
+            className="w-full rounded-md border border-white/15 bg-white px-3 py-2 text-slate-950 outline-none focus:border-orange-300 focus:ring-2 focus:ring-orange-300/30"
+            required
+          />
+          {invalidKey && (
+            <p className="text-sm font-medium text-red-300">Senha incorreta ou link sem senha. Peça um novo link ao administrador.</p>
+          )}
+          <button type="submit" className="rounded-md bg-white px-4 py-2 text-sm font-black text-slate-950 hover:bg-orange-100">
+            Acessar
+          </button>
+        </form>
+      </section>
+    </main>
+  )
+}
+
+export default async function PublicResponsesPage({ params, searchParams }: PageProps) {
+  const { token: rawToken } = await params
+  const { key } = await searchParams
+  const { token } = parsePublicResponseFormat(rawToken, new URLSearchParams())
+  const link = await getPublicResponseLink(token)
+
+  if (!link) {
     return (
       <main className="min-h-screen bg-slate-950 px-6 py-10 text-white">
         <section className="mx-auto max-w-3xl rounded-lg border border-white/10 bg-white/8 p-6">
@@ -32,8 +69,21 @@ export default async function PublicResponsesPage({ params }: PageProps) {
     )
   }
 
+  if (!key) {
+    return <AccessForm token={token} invalidKey={false} />
+  }
+
+  const dataset = await getPublicResponsesDataset(token, key)
+  if (!dataset) {
+    return <AccessForm token={token} invalidKey />
+  }
+
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://pesquisa-nu-sand.vercel.app'
   const apiBase = `/api/public/responses/${token}`
+  const encodedKey = encodeURIComponent(key)
+  const csvUrl = `${apiBase}.csv?key=${encodedKey}`
+  const jsonUrl = `${apiBase}.json?key=${encodedKey}`
+  const xlsxUrl = `${apiBase}.xlsx?key=${encodedKey}`
   const previewRows = dataset.rows.slice(0, 250)
 
   return (
@@ -49,13 +99,13 @@ export default async function PublicResponsesPage({ params }: PageProps) {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <a className="rounded-md bg-white px-3 py-2 text-sm font-bold text-slate-950" href={`${apiBase}.csv`}>
+            <a className="rounded-md bg-white px-3 py-2 text-sm font-bold text-slate-950" href={csvUrl}>
               CSV
             </a>
-            <a className="rounded-md bg-white px-3 py-2 text-sm font-bold text-slate-950" href={`${apiBase}.json`}>
+            <a className="rounded-md bg-white px-3 py-2 text-sm font-bold text-slate-950" href={jsonUrl}>
               JSON
             </a>
-            <a className="rounded-md bg-white px-3 py-2 text-sm font-bold text-slate-950" href={`${apiBase}.xlsx`}>
+            <a className="rounded-md bg-white px-3 py-2 text-sm font-bold text-slate-950" href={xlsxUrl}>
               XLSX
             </a>
             <Link className="rounded-md border border-white/20 px-3 py-2 text-sm font-bold text-white" href="/">
@@ -67,7 +117,7 @@ export default async function PublicResponsesPage({ params }: PageProps) {
         <section className="rounded-lg border border-white/10 bg-white/[0.04] p-4">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Google Sheets</p>
           <code className="mt-2 block overflow-x-auto rounded-md bg-slate-900 p-3 text-sm text-slate-100">
-            =IMPORTDATA(&quot;{appUrl}{apiBase}.csv&quot;)
+            =IMPORTDATA(&quot;{appUrl}{csvUrl}&quot;)
           </code>
         </section>
 
