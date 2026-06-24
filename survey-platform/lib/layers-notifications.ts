@@ -14,6 +14,8 @@ import {
   type TargetScope,
 } from './layers-notification-payloads'
 
+const SAMPLE_COMMUNITY_PAGE_SIZE = 1000
+
 export {
   sendToOneCommunity,
 } from './layers-notification-client'
@@ -55,20 +57,34 @@ export async function resolveTargetCommunities(
   const supabase = createServiceClient()
 
   if (scope === 'sample') {
-    let query = supabase
-      .from('survey_sample_lists')
-      .select('community_id')
-      .eq('survey_id', surveyId)
-      .not('layers_user_id', 'is', null)
+    const communities = new Set<string>()
+    let from = 0
 
-    if (communityIds && communityIds.length > 0) {
-      query = query.in('community_id', communityIds)
+    while (true) {
+      let query = supabase
+        .from('survey_sample_lists')
+        .select('community_id')
+        .eq('survey_id', surveyId)
+        .not('layers_user_id', 'is', null)
+        .neq('layers_user_id', 'NOT_FOUND')
+        .range(from, from + SAMPLE_COMMUNITY_PAGE_SIZE - 1)
+
+      if (communityIds && communityIds.length > 0) {
+        query = query.in('community_id', communityIds)
+      }
+
+      const { data, error } = await query
+      if (error || !data || data.length === 0) break
+
+      for (const row of data as { community_id: string }[]) {
+        communities.add(row.community_id)
+      }
+
+      if (data.length < SAMPLE_COMMUNITY_PAGE_SIZE) break
+      from += SAMPLE_COMMUNITY_PAGE_SIZE
     }
 
-    const { data } = await query
-    if (!data) return []
-    const unique = [...new Set(data.map((r: { community_id: string }) => r.community_id))]
-    return unique
+    return [...communities]
   }
 
   const { data, error } = await supabase

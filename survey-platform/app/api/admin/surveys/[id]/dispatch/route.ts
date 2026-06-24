@@ -113,6 +113,7 @@ export async function POST(
         .select('*', { count: 'exact', head: true })
         .eq('survey_id', surveyId)
         .not('layers_user_id', 'is', null)
+        .neq('layers_user_id', 'NOT_FOUND')
 
       if (!count || count === 0) {
         logWarn('dispatch.sample_without_resolved_users', surveyLogContext)
