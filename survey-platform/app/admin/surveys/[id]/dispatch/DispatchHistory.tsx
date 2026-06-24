@@ -382,7 +382,7 @@ export default function DispatchHistory({
                         </div>
 
                         <div className="text-right text-[11px] text-gray-400">
-                          {job.sent_at ? formatDate(job.sent_at) : 'em lotes de 30'}
+                          {job.sent_at ? formatDate(job.sent_at) : 'em lotes de ate 75'}
                           {job.retry_count > 0 && <div>{job.retry_count} tentativas</div>}
                         </div>
                       </div>

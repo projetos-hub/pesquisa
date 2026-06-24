@@ -13,7 +13,7 @@ import { fetchCommunityUsers } from './layers-notification-users'
 import { createServiceClient } from './supabase-service'
 
 const PERSONALIZED_DELAY_MS = 150
-const PERSONALIZED_BATCH_SIZE = 30
+const PERSONALIZED_BATCH_SIZE = 75
 
 export async function executePersonalizedJobSample(
   jobId:       string,

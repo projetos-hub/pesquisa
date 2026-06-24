@@ -62,7 +62,7 @@ export async function GET(request: Request) {
   // ── 2. Jobs personalizados em andamento (próximo lote) ────────────────────
   // Busca dispatches personalizados com jobs ainda em 'sending'
   const { data: claimedJobs } = await supabase.rpc('claim_sending_dispatch_jobs', {
-    p_limit: 15,
+    p_limit: 16,
     p_lock_seconds: 240,
   })
 
