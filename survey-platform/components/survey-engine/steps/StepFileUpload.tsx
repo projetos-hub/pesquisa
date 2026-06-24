@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import type { FileUploadStepDef } from '../utils/types'
+import { textAlignClassName, textAlignStyle } from '../utils/textAlign'
 
 interface StepFileUploadProps {
   step: FileUploadStepDef
@@ -20,6 +21,8 @@ export default function StepFileUpload({ step, tipo, onNext, onBack, isLast, loa
   const inputRef = useRef<HTMLInputElement>(null)
   const resolve = (l: string) => l.replace(/\{tipo\}/g, tipo)
   const textAlign = step.textAlign ?? 'left'
+  const alignStyle = textAlignStyle(textAlign)
+  const alignClassName = textAlignClassName(textAlign)
 
   const ok = !step.obrigatorio || file !== null
 
@@ -50,11 +53,11 @@ export default function StepFileUpload({ step, tipo, onNext, onBack, isLast, loa
   }
 
   return (
-    <div>
-      <p className="step-title" style={{ textAlign }}>{step.titulo}</p>
-      {step.desc && <p className="step-desc" style={{ textAlign }}>{step.desc}</p>}
+    <div className={alignClassName}>
+      <p className="step-title" style={alignStyle}>{step.titulo}</p>
+      {step.desc && <p className="step-desc" style={alignStyle}>{step.desc}</p>}
       <div className="q-group">
-        <p className="question-label" style={{ textAlign }}>{resolve(step.pergunta)}</p>
+        <p className="question-label" style={alignStyle}>{resolve(step.pergunta)}</p>
         <div
           role="button"
           tabIndex={0}

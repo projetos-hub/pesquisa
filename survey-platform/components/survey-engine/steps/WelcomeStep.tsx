@@ -1,6 +1,7 @@
 'use client'
 
 import type { SurveyTheme, WelcomeStepDef } from '@/components/survey-engine/utils/types'
+import { textAlignClassName, textAlignStyle } from '@/components/survey-engine/utils/textAlign'
 import { interpolate } from '@/lib/interpolate'
 
 interface WelcomeStepProps {
@@ -28,16 +29,18 @@ export default function WelcomeStep({ step, nome, nomeAluno, serie, perfil, tipo
     ? interpolate(step.desc || theme?.welcomeMessage || '', { nome, nomeAluno, serie, nomeEscola: nomeDaEscola })
     : null
   const textAlign = step.textAlign ?? theme?.welcomeTextAlign ?? 'left'
+  const alignStyle = textAlignStyle(textAlign)
+  const alignClassName = textAlignClassName(textAlign)
 
   return (
-    <div className="welcome">
+    <div className={['welcome', alignClassName].filter(Boolean).join(' ')}>
       {theme?.logo && (
         <img src={theme.logo} alt={nomeDaEscola} className="school-logo" />
       )}
       {welcomeTitle && (
-        <p className="welcome-greeting" style={{ textAlign }}>{welcomeTitle}</p>
+        <p className="welcome-greeting" style={alignStyle}>{welcomeTitle}</p>
       )}
-      <div className="welcome-body" style={{ textAlign }}>
+      <div className="welcome-body" style={alignStyle}>
         {welcomeBody ? (
           <p style={{ whiteSpace: 'pre-wrap' }}>{welcomeBody}</p>
         ) : (

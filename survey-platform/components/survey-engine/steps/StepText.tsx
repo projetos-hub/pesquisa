@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { TextStepDef } from '../utils/types'
+import { textAlignClassName, textAlignStyle } from '../utils/textAlign'
 
 interface StepTextProps {
   step: TextStepDef
@@ -18,6 +19,8 @@ export default function StepText({ step, tipo, onNext, onBack, isLast, loading }
   const resolve = (l: string) => l.replace(/\{tipo\}/g, tipo)
   const ok = !step.obrigatorio || txt.trim().length > 0
   const textAlign = step.textAlign ?? 'left'
+  const alignStyle = textAlignStyle(textAlign)
+  const alignClassName = textAlignClassName(textAlign)
 
   function handleNext() {
     if (!ok) { setTentou(true); return }
@@ -25,11 +28,11 @@ export default function StepText({ step, tipo, onNext, onBack, isLast, loading }
   }
 
   return (
-    <div>
-      {step.titulo !== step.pergunta && <p className="step-title" style={{ textAlign }}>{step.titulo}</p>}
-      {step.desc && <p className="step-desc" style={{ textAlign }}>{step.desc}</p>}
+    <div className={alignClassName}>
+      {step.titulo !== step.pergunta && <p className="step-title" style={alignStyle}>{step.titulo}</p>}
+      {step.desc && <p className="step-desc" style={alignStyle}>{step.desc}</p>}
       <div className="q-group">
-        <p className="question-label" style={{ textAlign }}>{resolve(step.pergunta)}</p>
+        <p className="question-label" style={alignStyle}>{resolve(step.pergunta)}</p>
         <textarea
           className="text-area"
           aria-label={resolve(step.pergunta)}

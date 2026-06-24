@@ -151,6 +151,13 @@
 .welcome-body p { margin: 0; }
 .welcome-footer { margin-top: 32px; display: flex; justify-content: flex-end; }
 
+.text-justify-comfort {
+  text-align: justify;
+  text-align-last: left;
+  hyphens: auto;
+  overflow-wrap: break-word;
+}
+
 .text-area { width: 100%; padding: 12px 14px; border-radius: 10px; border: 2px solid #e5e7eb; font-size: .95rem; font-family: inherit; resize: vertical; min-height: 110px; outline: none; transition: border-color .15s; color: #333; }
 .text-area:focus { border-color: var(--color-primary, #667eea); }
 
@@ -164,6 +171,14 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+@media (max-width: 640px) {
+  .text-justify-comfort,
+  .text-justify-comfort p {
+    text-align: left !important;
+    text-align-last: auto !important;
+  }
 }
 
 @media (max-width: 520px) {
