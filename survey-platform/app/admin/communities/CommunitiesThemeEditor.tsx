@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { saveCommunityTheme } from './actions'
 import type { Community } from './page'
@@ -91,9 +91,42 @@ export default function CommunitiesThemeEditor({ communities }: Props) {
 function ThemeEditForm({ community, onClose }: { community: Community; onClose: () => void }) {
   const [primaryColor, setPrimaryColor] = useState(community.primary_color || '#667eea')
   const [secondaryColor, setSecondaryColor] = useState(community.secondary_color || '#764ba2')
+  const [logoUrl, setLogoUrl] = useState(community.logo || '')
+  const [uploadingLogo, setUploadingLogo] = useState(false)
   const [isPending, setIsPending] = useState(false)
   const [error, setError] = useState<string | undefined>()
   const [success, setSuccess] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  const handleLogoFile = async (file: File | null) => {
+    if (!file) return
+
+    setUploadingLogo(true)
+    setError(undefined)
+    setSuccess(false)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch(`/api/admin/communities/${encodeURIComponent(community.community_id)}/logo`, {
+        method: 'POST',
+        body: formData,
+      })
+      const data = await response.json() as { url?: string; error?: string }
+
+      if (!response.ok || !data.url) {
+        throw new Error(data.error ?? 'Falha ao enviar logo')
+      }
+
+      setLogoUrl(data.url)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao enviar logo')
+    } finally {
+      setUploadingLogo(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -107,7 +140,7 @@ function ThemeEditForm({ community, onClose }: { community: Community; onClose: 
       unidade:        formData.get('unidade')        as string || undefined,
       primaryColor:   formData.get('primaryColor')   as string || undefined,
       secondaryColor: formData.get('secondaryColor') as string || undefined,
-      logo:           formData.get('logo')           as string || undefined,
+      logo:           logoUrl,
     })
 
     setIsPending(false)
@@ -182,14 +215,46 @@ function ThemeEditForm({ community, onClose }: { community: Community; onClose: 
           </div>
         </Field>
 
-        <Field label="URL do logo">
-          <input
-            type="url"
-            name="logo"
-            defaultValue={community.logo}
-            placeholder="https://..."
-            className="w-full rounded-xl border border-white/10 bg-white/[0.08] px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[#F7941D]"
-          />
+        <Field label="Logo">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/5">
+                {logoUrl ? (
+                  <img src={logoUrl} alt="Logo atual" className="h-full w-full object-contain" />
+                ) : (
+                  <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Logo</span>
+                )}
+              </div>
+
+              <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  className="sr-only"
+                  onChange={event => void handleLogoFile(event.target.files?.[0] ?? null)}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingLogo}
+                  className="cursor-pointer rounded-xl bg-white px-3 py-2 text-sm font-bold text-slate-900 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-300"
+                >
+                  {uploadingLogo ? 'Enviando...' : logoUrl ? 'Trocar logo' : 'Enviar logo'}
+                </button>
+                {logoUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setLogoUrl('')}
+                    className="cursor-pointer rounded-xl border border-white/10 bg-white/[0.08] px-3 py-2 text-sm font-bold text-white transition hover:bg-white/[0.12]"
+                  >
+                    Remover
+                  </button>
+                )}
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-slate-500">PNG, JPG, WEBP ou SVG até 2 MB.</p>
+          </div>
         </Field>
 
         {error && <div className="rounded-xl bg-red-500/10 p-3 text-sm text-red-200">{error}</div>}
@@ -219,8 +284,8 @@ function ThemeEditForm({ community, onClose }: { community: Community; onClose: 
           className="flex h-44 flex-col items-center justify-center rounded-2xl p-6 text-white shadow-2xl shadow-black/30"
           style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)` }}
         >
-          {community.logo ? (
-            <img src={community.logo} alt="Logo preview" className="mb-4 h-16 w-16 object-contain" />
+          {logoUrl ? (
+            <img src={logoUrl} alt="Logo preview" className="mb-4 h-16 w-16 object-contain" />
           ) : (
             <div className="mb-4 h-16 w-16 rounded-xl bg-white/20" />
           )}
