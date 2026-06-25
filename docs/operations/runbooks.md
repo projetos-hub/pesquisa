@@ -62,6 +62,79 @@ Mitigacao:
 - Reprocessar pelo endpoint/botao de retry quando `retry_count < 3`.
 - Se persistir, reduzir batch/concorrencia do cron antes de novo disparo grande.
 
+## Disparo amostral incompleto ou parado
+
+Sintomas:
+
+- historico mostra comunidades paradas em `30/xxx`, `60/xxx` ou outro lote por muito tempo;
+- dispatch fica `sending` mesmo sem falhas;
+- total enviado e menor que o total de `survey_sample_lists` resolvido;
+- audit log mostra sucesso, mas nem todas as comunidades da amostra aparecem em `survey_dispatch_jobs`.
+
+Diagnostico:
+
+1. Identificar o dispatch recente em `survey_dispatches`.
+2. Comparar amostra resolvida com jobs do dispatch:
+
+```sql
+select
+  count(*) filter (where layers_user_id is not null and layers_user_id <> 'NOT_FOUND') as resolved_valid,
+  count(*) filter (where layers_user_id = 'NOT_FOUND') as not_found,
+  count(*) as total_rows
+from survey_sample_lists
+where survey_id = '<survey_id>';
+```
+
+```sql
+select
+  count(*) as jobs,
+  sum(processed_users) as sent_users,
+  sum(failed_users) as failed_users,
+  sum(total_users) as total_users
+from survey_dispatch_jobs
+where dispatch_id = '<dispatch_id>';
+```
+
+3. Verificar se ha backlog antigo antes do dispatch atual:
+
+```sql
+select d.id, d.created_at, d.status, count(j.*) as sending_jobs
+from survey_dispatches d
+join survey_dispatch_jobs j on j.dispatch_id = d.id
+where d.status = 'sending'
+  and d.personalized = true
+  and j.status = 'sending'
+group by d.id, d.created_at, d.status
+order by d.created_at asc;
+```
+
+4. Verificar se as comunidades da amostra foram todas materializadas em jobs:
+
+```sql
+with sample_counts as (
+  select community_id,
+         count(*) filter (where layers_user_id is not null and layers_user_id <> 'NOT_FOUND') as resolved_valid
+  from survey_sample_lists
+  where survey_id = '<survey_id>'
+  group by community_id
+)
+select sc.community_id, sc.resolved_valid, j.id as job_id
+from sample_counts sc
+left join survey_dispatch_jobs j
+  on j.community_id = sc.community_id
+ and j.dispatch_id = '<dispatch_id>'
+where sc.resolved_valid > 0
+order by sc.community_id;
+```
+
+Mitigacao:
+
+- Se o dispatch tem payload invalido, cancelar o dispatch e preservar audit log.
+- Se ha backlog antigo/zumbi, cancelar apenas dispatches antigos claramente obsoletos antes de retomar o envio novo.
+- Se faltaram comunidades por paginacao/escopo, criar dispatch complementar restrito as comunidades faltantes.
+- Se jobs estao quase completos mas nao fecham, conferir se `total_users` incluiu `NOT_FOUND`; corrigir total para contar apenas `layers_user_id <> 'NOT_FOUND'`.
+- Apos mitigacao, acionar o cron manualmente somente com `CRON_SECRET` valido e acompanhar `notification_audit_logs`.
+
 ## Migration pendente
 
 Sintomas:

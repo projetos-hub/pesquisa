@@ -1500,3 +1500,50 @@ npm run build      # passou
 Status atualizado:
 - Branch `main`: publicada com ajustes visuais e fixes citados.
 - Proxima atencao: manter `node_modules/.vite` fora de commits; ha delecoes locais antigas nesse caminho.
+
+---
+
+### Sessao 2026-06-25 - Incidente e fechamento do disparo Amostral 2
+
+| Item | Status | Detalhe |
+|---|---|---|
+| Diagnostico inicial | concluido | Ultimo disparo de `amostral-2-2026` retornava erro Layers `Existem campos invalidos` por campos opcionais vazios (`push_title`, `push_body`, `email_title`, `email_body`) enviados como string vazia |
+| Cancelamento do disparo invalido | concluido | Dispatch `5d2bb1ab-d489-4b1e-b2ee-948faf032f34` cancelado; 16 jobs marcados como `skipped`; 480 falhas preservadas no audit log |
+| Payload Layers | corrigido | Campos opcionais vazios agora caem para `null`/fallback do titulo e corpo principal |
+| Visibilidade operacional | concluido | Historico de disparos ganhou progresso agregado, progresso por comunidade, contadores de enviados/falhos/pendentes e auto-refresh de 20s |
+| Backlog antigo | mitigado | Cancelados 16 dispatches antigos `sending` e 81 jobs que estavam bloqueando a fila do reenvio |
+| Throughput | ajustado | Lote personalizado subiu de 30 para 75 usuarios por comunidade por ciclo; cron passou a claimar 16 jobs por ciclo |
+| Contador de amostra | corrigido | `NOT_FOUND` deixou de contar como usuario enviavel no progresso e fechamento dos jobs |
+| Paginacao de comunidades | corrigido | `resolveTargetCommunities()` agora pagina toda a amostra, evitando pegar apenas parte das comunidades |
+| Reenvio principal | concluido | Dispatch `97c6ed75-2826-4cc9-a28d-ecc12cf54240`: 5.792/5.792 enviados, 16/16 jobs, 0 falhas |
+| Complemento das comunidades faltantes | concluido | Dispatch `0ff58d56-2b94-46da-a294-ea53365c7947`: 6.563/6.563 enviados, 23/23 jobs, 0 falhas |
+| Agendamentos antigos | mitigado | Cancelados 8 agendamentos antigos de `amostral-2-2026` para evitar duplicidade futura |
+| Cobertura final | concluido | Amostra resolvida valida coberta integralmente: 12.355/12.355 enviados, 0 falhas; 548 `NOT_FOUND` nao eram enviaveis |
+| Documentacao | concluido | Criados `docs/release-2026-06-25-dispatch-amostral2.md` e runbook de disparo amostral incompleto/parado |
+
+Commits publicados:
+- `a23f745 fix(dispatch): evita campos vazios no payload Layers`
+- `6c11527 fix(dispatch): melhora visibilidade do progresso`
+- `037c9b0 fix(dispatch): aumenta lote de envio personalizado`
+- `0810e1a fix(dispatch): ignora amostras nao resolvidas no progresso`
+- `e0a652b fix(dispatch): pagina comunidades da amostra`
+
+Gates validados na rodada:
+
+```bash
+cd survey-platform
+npm run typecheck
+npm run lint -- lib/layers-notification-jobs.ts
+npm run lint -- lib/layers-notifications.ts app/api/admin/surveys/[id]/dispatch/route.ts
+npm run lint -- lib/layers-notification-jobs.ts app/api/cron/process-dispatches/route.ts app/admin/surveys/[id]/dispatch/DispatchHistory.tsx
+```
+
+Smoke/operacao:
+- Vercel retornou `success` nos deploys dos commits de fix.
+- `/api/health` em producao retornou `200 OK`.
+- Supabase remoto confirmou os dois dispatches finais como `sent`.
+
+Status atualizado:
+- Incidente operacional encerrado.
+- Disparo Amostral 2 concluido para toda a base resolvida valida.
+- Proxima atencao: antes de novo disparo amostral grande, consultar o runbook em `docs/operations/runbooks.md`.
