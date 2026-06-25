@@ -11,6 +11,12 @@ interface Props {
   communities: Community[]
 }
 
+interface ColorSuggestion {
+  primary: string
+  secondary: string
+  label: string
+}
+
 export default function CommunitiesThemeEditor({ communities }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
@@ -92,6 +98,7 @@ function ThemeEditForm({ community, onClose }: { community: Community; onClose: 
   const [primaryColor, setPrimaryColor] = useState(community.primary_color || '#667eea')
   const [secondaryColor, setSecondaryColor] = useState(community.secondary_color || '#764ba2')
   const [logoUrl, setLogoUrl] = useState(community.logo || '')
+  const [colorSuggestions, setColorSuggestions] = useState<ColorSuggestion[]>([])
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [isPending, setIsPending] = useState(false)
   const [error, setError] = useState<string | undefined>()
@@ -106,6 +113,14 @@ function ThemeEditForm({ community, onClose }: { community: Community; onClose: 
     setSuccess(false)
 
     try {
+      const suggestions = await extractLogoColorSuggestions(file)
+      setColorSuggestions(suggestions)
+
+      if (suggestions.length > 0) {
+        setPrimaryColor(suggestions[0]!.primary)
+        setSecondaryColor(suggestions[0]!.secondary)
+      }
+
       const formData = new FormData()
       formData.append('file', file)
 
@@ -245,7 +260,10 @@ function ThemeEditForm({ community, onClose }: { community: Community; onClose: 
                 {logoUrl && (
                   <button
                     type="button"
-                    onClick={() => setLogoUrl('')}
+                    onClick={() => {
+                      setLogoUrl('')
+                      setColorSuggestions([])
+                    }}
                     className="cursor-pointer rounded-xl border border-white/10 bg-white/[0.08] px-3 py-2 text-sm font-bold text-white transition hover:bg-white/[0.12]"
                   >
                     Remover
@@ -254,6 +272,37 @@ function ThemeEditForm({ community, onClose }: { community: Community; onClose: 
               </div>
             </div>
             <p className="mt-2 text-xs text-slate-500">PNG, JPG, WEBP ou SVG até 2 MB.</p>
+            {colorSuggestions.length > 0 && (
+              <div className="mt-3 border-t border-white/10 pt-3">
+                <div className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                  Sugestões de cores
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {colorSuggestions.map(suggestion => (
+                    <button
+                      key={`${suggestion.primary}-${suggestion.secondary}`}
+                      type="button"
+                      onClick={() => {
+                        setPrimaryColor(suggestion.primary)
+                        setSecondaryColor(suggestion.secondary)
+                      }}
+                      className="cursor-pointer rounded-xl border border-white/10 bg-white/[0.06] p-2 text-left transition hover:bg-white/[0.1] focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
+                    >
+                      <span className="mb-2 block h-8 overflow-hidden rounded-lg border border-white/10">
+                        <span
+                          className="block h-full w-full"
+                          style={{ background: `linear-gradient(135deg, ${suggestion.primary}, ${suggestion.secondary})` }}
+                        />
+                      </span>
+                      <span className="block text-xs font-bold text-slate-200">{suggestion.label}</span>
+                      <span className="mt-0.5 block font-mono text-[11px] text-slate-500">
+                        {suggestion.primary} / {suggestion.secondary}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </Field>
 
@@ -317,4 +366,147 @@ function ColorSwatch({ color }: { color?: string | null }) {
       title={color}
     />
   )
+}
+
+async function extractLogoColorSuggestions(file: File): Promise<ColorSuggestion[]> {
+  const colors = file.type === 'image/svg+xml'
+    ? await extractSvgColors(file)
+    : await extractRasterColors(file)
+
+  const uniqueColors = dedupeColors(colors).slice(0, 5)
+  if (uniqueColors.length === 0) return []
+
+  const primary = uniqueColors[0]!
+  const secondary = uniqueColors.find(color => color !== primary) ?? adjustColor(primary, -28)
+  const accent = uniqueColors.find(color => color !== primary && color !== secondary) ?? adjustColor(primary, 24)
+  const darkPrimary = adjustColor(primary, -18)
+  const softSecondary = adjustColor(secondary, 22)
+
+  return dedupeSuggestions([
+    { primary, secondary, label: 'Logo principal' },
+    { primary: darkPrimary, secondary: primary, label: 'Contraste da marca' },
+    { primary, secondary: accent, label: 'Marca + destaque' },
+    { primary: secondary, secondary: softSecondary, label: 'Variação suave' },
+  ])
+}
+
+async function extractSvgColors(file: File): Promise<string[]> {
+  const text = await file.text()
+  const matches = [...text.matchAll(/(?:fill|stroke|stop-color)=["'](#[0-9a-fA-F]{3,8})["']|#[0-9a-fA-F]{6}\b/g)]
+  return matches
+    .map(match => normalizeHex(match[1] ?? match[0]))
+    .filter((color): color is string => Boolean(color))
+    .filter(color => !isNearWhiteOrBlack(color))
+}
+
+async function extractRasterColors(file: File): Promise<string[]> {
+  const imageUrl = URL.createObjectURL(file)
+  try {
+    const image = await loadImage(imageUrl)
+    const size = 120
+    const scale = Math.min(size / image.naturalWidth, size / image.naturalHeight, 1)
+    const width = Math.max(1, Math.round(image.naturalWidth * scale))
+    const height = Math.max(1, Math.round(image.naturalHeight * scale))
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const context = canvas.getContext('2d', { willReadFrequently: true })
+    if (!context) return []
+
+    context.drawImage(image, 0, 0, width, height)
+    const pixels = context.getImageData(0, 0, width, height).data
+    const buckets = new Map<string, { count: number; saturation: number }>()
+
+    for (let i = 0; i < pixels.length; i += 16) {
+      const alpha = pixels[i + 3] ?? 255
+      if (alpha < 160) continue
+
+      const red = pixels[i] ?? 0
+      const green = pixels[i + 1] ?? 0
+      const blue = pixels[i + 2] ?? 0
+      const hex = rgbToHex(quantize(red), quantize(green), quantize(blue))
+      if (isNearWhiteOrBlack(hex)) continue
+
+      const saturation = getSaturation(red, green, blue)
+      if (saturation < 0.16) continue
+
+      const bucket = buckets.get(hex) ?? { count: 0, saturation }
+      bucket.count += 1
+      bucket.saturation = Math.max(bucket.saturation, saturation)
+      buckets.set(hex, bucket)
+    }
+
+    return [...buckets.entries()]
+      .sort((a, b) => (b[1].count * b[1].saturation) - (a[1].count * a[1].saturation))
+      .map(([hex]) => hex)
+  } finally {
+    URL.revokeObjectURL(imageUrl)
+  }
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error('Não foi possível ler as cores da logo'))
+    image.src = src
+  })
+}
+
+function normalizeHex(value: string): string | null {
+  const clean = value.trim()
+  if (!clean.startsWith('#')) return null
+  if (clean.length === 4) {
+    return `#${clean[1]}${clean[1]}${clean[2]}${clean[2]}${clean[3]}${clean[3]}`.toLowerCase()
+  }
+  if (clean.length >= 7) return clean.slice(0, 7).toLowerCase()
+  return null
+}
+
+function dedupeColors(colors: string[]): string[] {
+  return [...new Set(colors.map(normalizeHex).filter((color): color is string => Boolean(color)))]
+}
+
+function dedupeSuggestions(suggestions: ColorSuggestion[]): ColorSuggestion[] {
+  const seen = new Set<string>()
+  return suggestions.filter(suggestion => {
+    const key = `${suggestion.primary}-${suggestion.secondary}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+function quantize(value: number): number {
+  return Math.round(value / 32) * 32
+}
+
+function rgbToHex(red: number, green: number, blue: number): string {
+  return `#${[red, green, blue].map(value => Math.max(0, Math.min(255, value)).toString(16).padStart(2, '0')).join('')}`
+}
+
+function hexToRgb(hex: string): { red: number; green: number; blue: number } {
+  return {
+    red: parseInt(hex.slice(1, 3), 16),
+    green: parseInt(hex.slice(3, 5), 16),
+    blue: parseInt(hex.slice(5, 7), 16),
+  }
+}
+
+function getSaturation(red: number, green: number, blue: number): number {
+  const max = Math.max(red, green, blue) / 255
+  const min = Math.min(red, green, blue) / 255
+  if (max === 0) return 0
+  return (max - min) / max
+}
+
+function isNearWhiteOrBlack(hex: string): boolean {
+  const { red, green, blue } = hexToRgb(hex)
+  const brightness = (red * 299 + green * 587 + blue * 114) / 1000
+  return brightness < 28 || brightness > 238
+}
+
+function adjustColor(hex: string, amount: number): string {
+  const { red, green, blue } = hexToRgb(hex)
+  return rgbToHex(red + amount, green + amount, blue + amount)
 }
