@@ -7,6 +7,8 @@ import type { QuestionRow, OptionRow, InstallationRow } from '@/lib/survey-confi
 
 const COMMUNITY_IDENTITY_KEYS = [
   'nomeEscola',
+  'marca',
+  'unidade',
   'primaryColor',
   'secondaryColor',
   'logo',
@@ -77,13 +79,15 @@ const getCachedSurveyConfig = unstable_cache(
       // tem overrides per-survey (ex: indicacaoLink). Sempre mesclar nessa ordem.
       const { data: community } = await supabase
         .from('communities')
-        .select('nome_escola, primary_color, secondary_color, logo')
+        .select('nome_escola, marca, unidade, primary_color, secondary_color, logo')
         .eq('community_id', communityId)
         .maybeSingle()
 
       if (community) {
         const baseTheme = {
           nomeEscola:     community.nome_escola,
+          marca:          community.marca,
+          unidade:        community.unidade,
           primaryColor:   community.primary_color,
           secondaryColor: community.secondary_color,
           logo:           community.logo,

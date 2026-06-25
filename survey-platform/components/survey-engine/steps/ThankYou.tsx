@@ -32,6 +32,8 @@ export default function ThankYou({ nps, perfil, nomeAluno, school, tipo, theme, 
     const texto = interpolate(theme.thankyouMessage, {
       nomeAluno,
       nomeEscola: nomeDaEscola,
+      marca: theme?.marca ?? '',
+      unidade: theme?.unidade ?? '',
     })
     return (
       <div className={['thankyou', alignClassName].filter(Boolean).join(' ')} style={alignStyle}>

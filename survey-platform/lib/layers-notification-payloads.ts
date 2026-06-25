@@ -35,6 +35,8 @@ export interface PersonalizedVars {
   nome:       string
   nomeAluno:  string
   nomeEscola: string
+  marca?:     string
+  unidade?:   string
   serie:      string
 }
 
@@ -153,6 +155,11 @@ export function interpolatePlaceholders(text: string, vars: PersonalizedVars): s
     .replace(/\{\{nome\}\}/g,       vars.nome       || 'você')
     .replace(/\{\{nomeAluno\}\}/g,  vars.nomeAluno  || 'seu filho(a)')
     .replace(/\{\{nomeEscola\}\}/g, vars.nomeEscola || 'a escola')
+    .replace(/\{\{escola\.nome\}\}/g, vars.nomeEscola || 'a escola')
+    .replace(/\{\{marca\}\}/g,      vars.marca      || vars.nomeEscola || 'a escola')
+    .replace(/\{\{escola\.marca\}\}/g, vars.marca   || vars.nomeEscola || 'a escola')
+    .replace(/\{\{unidade\}\}/g,    vars.unidade    || vars.nomeEscola || 'a escola')
+    .replace(/\{\{escola\.unidade\}\}/g, vars.unidade || vars.nomeEscola || 'a escola')
     .replace(/\{\{serie\}\}/g,      vars.serie      || 'a turma')
 }
 
@@ -170,6 +177,8 @@ export function buildPersonalizedPayload(
     nome: formatFirstName(user.name ?? ''),
     nomeAluno: '',
     nomeEscola,
+    marca: '',
+    unidade: '',
     serie: '',
   })
 }

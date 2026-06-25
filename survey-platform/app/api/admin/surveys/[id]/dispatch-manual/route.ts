@@ -7,6 +7,7 @@ import { createServerSupabaseClient }     from '@/lib/supabase-server'
 import { createServiceClient }            from '@/lib/supabase-service'
 import { sendToOneCommunity, interpolatePlaceholders } from '@/lib/layers-notifications'
 import { fetchLayersUserProfileByEmail }              from '@/lib/layers-hub'
+import { resolveSchoolName } from '@/lib/community-identity'
 
 const PORTAL_ALIAS = '@raizeducacao:pesquisa'
 
@@ -47,10 +48,10 @@ export async function POST(
     const serviceSupabase = createServiceClient()
     const { data: commRow } = await serviceSupabase
       .from('communities')
-      .select('nome_escola')
+      .select('community_id, nome_escola, marca, unidade')
       .eq('community_id', community_id)
       .maybeSingle()
-    const nomeEscola = commRow?.nome_escola ?? ''
+    const nomeEscola = resolveSchoolName(commRow ?? { community_id })
 
     // Processa cada email em paralelo (com limite de 10 simultâneos)
     const results: { email: string; status: 'sent' | 'not_found' | 'failed'; error?: string }[] = []
@@ -70,7 +71,14 @@ export async function POST(
           ? profile.name.trim().split(/\s+/)[0]!.charAt(0).toUpperCase() +
             profile.name.trim().split(/\s+/)[0]!.slice(1).toLowerCase()
           : ''
-        const vars = { nome: firstName, nomeAluno: '', nomeEscola, serie: '' }
+        const vars = {
+          nome: firstName,
+          nomeAluno: '',
+          nomeEscola,
+          marca: commRow?.marca ?? '',
+          unidade: commRow?.unidade ?? '',
+          serie: '',
+        }
 
         const resolvedTitle     = interpolatePlaceholders(push_title  ?? title,       vars)
         const resolvedBody      = interpolatePlaceholders(push_body   ?? body,        vars)

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-service'
+import { composeSchoolName } from '@/lib/community-identity'
 
 async function requireAuth() {
   const supabase = await createServerSupabaseClient()
@@ -13,17 +14,23 @@ async function requireAuth() {
 
 export async function saveCommunityTheme(
   communityId: string,
-  theme: { nomeEscola?: string; primaryColor?: string; secondaryColor?: string; logo?: string }
+  theme: { marca?: string; unidade?: string; primaryColor?: string; secondaryColor?: string; logo?: string }
 ) {
   try {
     await requireAuth()
     const supabase = createServiceClient()
 
+    const marca = theme.marca?.trim() ?? ''
+    const unidade = theme.unidade?.trim() ?? ''
+    const nomeEscola = composeSchoolName(marca, unidade)
+
     const { error } = await supabase
       .from('communities')
       .upsert({
         community_id:    communityId,
-        nome_escola:     theme.nomeEscola     ?? '',
+        nome_escola:     nomeEscola,
+        marca,
+        unidade,
         primary_color:   theme.primaryColor   ?? '#667eea',
         secondary_color: theme.secondaryColor ?? '#764ba2',
         logo:            theme.logo           ?? '',

@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import { saveCommunityTheme } from './actions'
 import type { Community } from './page'
 import { CommunityDisplay } from '@/lib/community-name'
+import { resolveSchoolName } from '@/lib/community-identity'
 
 interface Props {
   communities: Community[]
@@ -28,6 +29,7 @@ export default function CommunitiesThemeEditor({ communities }: Props) {
         <tbody className="divide-y divide-white/10">
           {communities.map(community => {
             const isExpanded = expandedId === community.community_id
+            const displayName = resolveSchoolName(community)
 
             return (
               <tr key={community.community_id} className={isExpanded ? 'bg-white/[0.04]' : 'transition hover:bg-white/[0.03]'}>
@@ -43,10 +45,11 @@ export default function CommunitiesThemeEditor({ communities }: Props) {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <CommunityDisplay communityId={community.community_id} nomeEscola={community.nome_escola} />
+                      <CommunityDisplay communityId={community.community_id} nomeEscola={displayName} />
                     </td>
                     <td className="px-4 py-3">
-                      <div className="text-sm text-slate-300">{community.nome_escola || '-'}</div>
+                      <div className="text-sm text-slate-300">{community.marca || '-'}</div>
+                      <div className="text-xs text-slate-500">{community.unidade || '-'}</div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -100,7 +103,8 @@ function ThemeEditForm({ community, onClose }: { community: Community; onClose: 
 
     const formData = new FormData(e.currentTarget)
     const result = await saveCommunityTheme(community.community_id, {
-      nomeEscola:     formData.get('nomeEscola')     as string || undefined,
+      marca:          formData.get('marca')          as string || undefined,
+      unidade:        formData.get('unidade')        as string || undefined,
       primaryColor:   formData.get('primaryColor')   as string || undefined,
       secondaryColor: formData.get('secondaryColor') as string || undefined,
       logo:           formData.get('logo')           as string || undefined,
@@ -115,15 +119,27 @@ function ThemeEditForm({ community, onClose }: { community: Community; onClose: 
     }
   }
 
+  const displayName = resolveSchoolName(community)
+
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Field label="Nome da escola">
+        <Field label="Marca">
           <input
             type="text"
-            name="nomeEscola"
-            defaultValue={community.nome_escola}
-            placeholder="Ex: Escola Raiz"
+            name="marca"
+            defaultValue={community.marca}
+            placeholder="Ex: Matriz"
+            className="w-full rounded-xl border border-white/10 bg-white/[0.08] px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[#F7941D]"
+          />
+        </Field>
+
+        <Field label="Unidade">
+          <input
+            type="text"
+            name="unidade"
+            defaultValue={community.unidade}
+            placeholder="Ex: Bangu"
             className="w-full rounded-xl border border-white/10 bg-white/[0.08] px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[#F7941D]"
           />
         </Field>
@@ -209,7 +225,7 @@ function ThemeEditForm({ community, onClose }: { community: Community; onClose: 
             <div className="mb-4 h-16 w-16 rounded-xl bg-white/20" />
           )}
           <div className="text-center">
-            <div className="font-bold">{community.nome_escola || 'Nome da Escola'}</div>
+            <div className="font-bold">{displayName || 'Marca Unidade'}</div>
             <div className="text-xs opacity-75">{community.community_id}</div>
           </div>
         </div>

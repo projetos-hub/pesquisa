@@ -117,6 +117,8 @@ export interface SurveyTheme {
   secondaryColor?: string
   logo?: string
   nomeEscola?: string
+  marca?: string
+  unidade?: string
   welcomeMessage?: string
   thankyouMessage?: string
   welcomeTextAlign?: TextAlign

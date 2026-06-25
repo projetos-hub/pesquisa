@@ -6,6 +6,7 @@
 import { createServiceClient } from './supabase-service'
 import { sendToOneCommunity } from './layers-notification-client'
 import { executePersonalizedJob, executePersonalizedJobSample } from './layers-notification-jobs'
+import { resolveSchoolName } from './community-identity'
 import {
   buildNotificationPayload,
   type DispatchRecord,
@@ -165,10 +166,10 @@ export async function executeDispatch(dispatchId: string): Promise<DispatchResul
     const communityIds = jobs.map((job: { community_id: string }) => job.community_id)
     const { data: communityRows } = await supabase
       .from('communities')
-      .select('community_id, nome_escola')
+      .select('community_id, nome_escola, marca, unidade')
       .in('community_id', communityIds)
     const nomeEscolaByCommunity = new Map(
-      (communityRows ?? []).map(row => [row.community_id, row.nome_escola ?? ''])
+      (communityRows ?? []).map(row => [row.community_id, resolveSchoolName(row)])
     )
 
     const results = await Promise.allSettled(

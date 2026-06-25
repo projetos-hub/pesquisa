@@ -5,6 +5,8 @@ import CommunitiesThemeEditor from './CommunitiesThemeEditor'
 export interface Community {
   community_id: string
   nome_escola: string
+  marca: string
+  unidade: string
   primary_color: string
   secondary_color: string
   logo: string
@@ -15,7 +17,7 @@ export default async function CommunitiesPage() {
 
   const { data } = await supabase
     .from('communities')
-    .select('community_id, nome_escola, primary_color, secondary_color, logo')
+    .select('community_id, nome_escola, marca, unidade, primary_color, secondary_color, logo')
     .order('community_id', { ascending: true })
 
   const communities: Community[] = data ?? []

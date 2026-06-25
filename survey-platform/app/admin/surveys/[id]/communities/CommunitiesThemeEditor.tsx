@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { CommunityDisplay } from '@/lib/community-name'
+import { resolveSchoolName } from '@/lib/community-identity'
 
 export interface Community {
   id: string
@@ -8,6 +9,8 @@ export interface Community {
   close_date?: string | null
   status?: string | null
   nome_escola?: string | null
+  marca?: string | null
+  unidade?: string | null
   primary_color?: string | null
   secondary_color?: string | null
   logo?: string | null
@@ -30,7 +33,10 @@ export default function CommunitiesThemeEditor({ communities }: Props) {
           </tr>
         </thead>
         <tbody className="divide-y divide-white/10">
-          {communities.map(community => (
+          {communities.map(community => {
+            const displayName = resolveSchoolName(community)
+
+            return (
             <tr key={community.id} className="transition hover:bg-white/[0.03]">
               <td className="px-4 py-3">
                 <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/5">
@@ -44,9 +50,14 @@ export default function CommunitiesThemeEditor({ communities }: Props) {
               <td className="px-4 py-3">
                 <CommunityDisplay
                   communityId={community.community_id}
-                  nomeEscola={community.nome_escola}
+                  nomeEscola={displayName}
                   className="[&_.community-display-name]:text-white"
                 />
+                {(community.marca || community.unidade) && (
+                  <span className="mt-1 block text-xs text-slate-500">
+                    {[community.marca, community.unidade].filter(Boolean).join(' / ')}
+                  </span>
+                )}
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
@@ -63,7 +74,7 @@ export default function CommunitiesThemeEditor({ communities }: Props) {
                 </Link>
               </td>
             </tr>
-          ))}
+          )})}
 
           {communities.length === 0 && (
             <tr>

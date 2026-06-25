@@ -18,15 +18,23 @@ interface WelcomeStepProps {
 export default function WelcomeStep({ step, nome, nomeAluno, serie, perfil, tipo, theme, onStart }: WelcomeStepProps) {
   const isResponsavel = perfil !== 'aluno'
   const nomeDaEscola = theme?.nomeEscola ?? tipo
+  const placeholderVars = {
+    nome,
+    nomeAluno,
+    serie,
+    nomeEscola: nomeDaEscola,
+    marca: theme?.marca ?? '',
+    unidade: theme?.unidade ?? '',
+  }
 
   // Título personalizado (ex: "Olá, {{nome}}")
   const welcomeTitle = step.titulo
-    ? interpolate(step.titulo, { nome, nomeAluno, serie, nomeEscola: nomeDaEscola })
+    ? interpolate(step.titulo, placeholderVars)
     : null
 
   // Mensagem personalizada via admin (suporta {{nome}}, {{nomeAluno}}, {{serie}}, {{nomeEscola}})
   const welcomeBody = step.desc || theme?.welcomeMessage
-    ? interpolate(step.desc || theme?.welcomeMessage || '', { nome, nomeAluno, serie, nomeEscola: nomeDaEscola })
+    ? interpolate(step.desc || theme?.welcomeMessage || '', placeholderVars)
     : null
   const textAlign = step.textAlign ?? theme?.welcomeTextAlign ?? 'left'
   const alignStyle = textAlignStyle(textAlign)

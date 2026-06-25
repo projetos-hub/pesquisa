@@ -19,6 +19,8 @@ type SurveyCommunityRow = {
 type GlobalCommunityRow = {
   community_id: string
   nome_escola: string | null
+  marca: string | null
+  unidade: string | null
   primary_color: string | null
   secondary_color: string | null
   logo: string | null
@@ -48,7 +50,7 @@ export default async function CommunitiesPage({ params }: PageProps) {
   const { data: globalCommunities } = communityIds.length > 0
     ? await supabase
         .from('communities')
-        .select('community_id, nome_escola, primary_color, secondary_color, logo')
+        .select('community_id, nome_escola, marca, unidade, primary_color, secondary_color, logo')
         .in('community_id', communityIds)
     : { data: [] }
 
@@ -61,6 +63,8 @@ export default async function CommunitiesPage({ params }: PageProps) {
     return {
       ...installation,
       nome_escola:     global?.nome_escola ?? '',
+      marca:           global?.marca ?? '',
+      unidade:         global?.unidade ?? '',
       primary_color:   global?.primary_color ?? '',
       secondary_color: global?.secondary_color ?? '',
       logo:            global?.logo ?? '',

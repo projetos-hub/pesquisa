@@ -10,6 +10,7 @@ import {
   type PersonalizedVars,
 } from './layers-notification-payloads'
 import { fetchCommunityUsers } from './layers-notification-users'
+import { resolveSchoolName } from './community-identity'
 import { createServiceClient } from './supabase-service'
 
 const PERSONALIZED_DELAY_MS = 150
@@ -24,10 +25,10 @@ export async function executePersonalizedJobSample(
 
   const { data: commRow } = await supabase
     .from('communities')
-    .select('nome_escola')
+    .select('community_id, nome_escola, marca, unidade')
     .eq('community_id', communityId)
     .maybeSingle()
-  const communityNomeEscola = commRow?.nome_escola ?? ''
+  const communityNomeEscola = resolveSchoolName(commRow ?? { community_id: communityId })
 
   const { data: job } = await supabase
     .from('survey_dispatch_jobs')
@@ -115,6 +116,8 @@ export async function executePersonalizedJobSample(
         nome:       formatFirstName(entry.nome ?? ''),
         nomeAluno,
         nomeEscola: communityNomeEscola,
+        marca:      commRow?.marca ?? '',
+        unidade:    commRow?.unidade ?? '',
         serie,
       }
 
