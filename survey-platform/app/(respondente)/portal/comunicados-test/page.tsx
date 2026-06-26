@@ -98,9 +98,13 @@ export function ComunicadosTestPanel({
     try {
       const params = new URLSearchParams({
         session: context.session,
+        layers_session: context.session,
         community: context.communityId,
+        layers_community_id: context.communityId,
         userId: context.userId,
+        layers_user_id: context.userId,
       })
+      if (context.accountId) params.set('layers_account_id', context.accountId)
 
       const response = await fetch(`${COMUNICADOS_API_URL}?${params.toString()}`, {
         method: 'POST',
