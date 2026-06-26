@@ -91,6 +91,221 @@ Se Comunicados estiver marcado:
 | `group` | com cautela | se alias for confiavel, target group; senao fallback bloqueado |
 | `sample` | nao por padrao | liberar apenas depois de provar `targets.users` no app real |
 
+## Opcoes de configuracao de um comunicado
+
+### Campos minimos obrigatorios
+
+Todo comunicado precisa destes campos para aparecer corretamente pelo provider API Hub:
+
+| Campo | Obrigatorio | Origem no MVP | Observacao |
+|---|---|---|---|
+| `community_id` | sim | comunidade alvo do dispatch | Um comunicado por comunidade |
+| `title` | sim | `dispatch.title` | Deve ser curto e escaneavel |
+| `description` | sim | `dispatch.body` | Pode conter texto mais longo |
+| `category` | sim | default `Avisos` | Validar se a Layers aceita categorias livres |
+| `targets` | sim | `{"groups":["all"]}` | Define quem ve o comunicado |
+| `status` | sim | `published` ou `draft` | `published` aparece; `draft` nao |
+| `approved` | sim | `true` | Necessario para o provider retornar |
+| `author_name` | nao, mas recomendado | `Raiz Educacao` | Exibicao/autoria |
+
+Exemplo minimo:
+
+```json
+{
+  "community_id": "raizeducacao",
+  "title": "Pesquisa aberta",
+  "description": "Responda a pesquisa de satisfacao.",
+  "category": "Avisos",
+  "targets": { "groups": ["all"] },
+  "status": "published",
+  "approved": true,
+  "author_name": "Raiz Educacao"
+}
+```
+
+### Publico-alvo
+
+Publico e a decisao mais sensivel, porque erro aqui pode ampliar audiencia por acidente.
+
+| Tipo | Estrutura esperada | Status para MVP | Observacao |
+|---|---|---|---|
+| Comunidade inteira | `{ "groups": ["all"] }` | liberar | Caminho mais seguro para comecar |
+| Usuarios especificos | `{ "users": ["layers_user_id"] }` | bloquear ate validar | API retorna, mas UI real ainda precisa prova |
+| Grupo/turma | `{ "groups": ["alias-do-grupo"] }` | bloquear/validar | Depende de alias aceito pela Layers |
+| Admin/teste | users especificos ou role admin | uso tecnico | Apenas diagnostico |
+
+Regra de produto inicial:
+
+- Dispatch `all` e `communities`: permitido criar comunicado geral por comunidade.
+- Dispatch `group`: exigir validacao do alias antes de liberar.
+- Dispatch `sample`: nao criar comunicado automaticamente no MVP.
+
+### Status e publicacao
+
+| Campo/opcao | Uso | Recomendacao |
+|---|---|---|
+| `draft` | criado mas nao aparece | usar para agendados se nao houver publicacao futura confiavel |
+| `published` | aparece no app | usar para dispatch imediato |
+| `archived` | remove da exibicao sem apagar historico | usar para limpeza/encerramento |
+| `approved=true` | liberado para retorno no provider | default para criacao por admin autenticado |
+| `approved=false` | aguardando revisao | futuro fluxo editorial |
+
+Para dispatch imediato:
+
+```json
+{
+  "status": "published",
+  "approved": true
+}
+```
+
+Para dispatch agendado, decidir entre:
+
+1. Criar `draft` e publicar no horario do envio.
+2. Criar apenas quando o cron executar o dispatch.
+3. Criar `published` imediatamente, aceitando que apareca antes do push/e-mail.
+
+Recomendacao: opcao 1 ou 2. Evitar comunicado aparecer antes da comunicacao ativa.
+
+### Datas e ciclo de vida
+
+Campos recomendados:
+
+| Campo | Necessidade |
+|---|---|
+| `created_at` | auditoria |
+| `updated_at` | usado pelo `getUpdatedAfter` |
+| `published_at` | controle de quando passa a aparecer |
+| `expires_at` | retirada automatica futura |
+| `archived_at` | historico de arquivamento |
+
+No MVP, `created_at` e `updated_at` ja existem; adicionar os demais na migration de robustez.
+
+### Relacao com pesquisa e dispatch
+
+Campos necessarios para rastreabilidade:
+
+| Campo | Uso |
+|---|---|
+| `survey_id` | qual pesquisa originou |
+| `dispatch_id` | qual disparo originou |
+| `source` | `manual`, `dispatch`, `test` |
+| `created_by` | admin responsavel |
+
+Esses campos permitem:
+
+- evitar duplicidade;
+- mostrar comunicados no historico do dispatch;
+- auditar quem publicou;
+- arquivar tudo que veio de um dispatch, se necessario.
+
+### Conteudo por canal
+
+O disparo hoje ja tem conteudos separados para push/e-mail. Comunicados deve poder herdar ou ter override proprio.
+
+| Campo | MVP | Futuro |
+|---|---|---|
+| `title` geral | usado como titulo do comunicado | pode continuar como fallback |
+| `body` geral | usado como descricao do comunicado | pode continuar como fallback |
+| `push_title` / `push_body` | apenas push | sem mudanca |
+| `email_title` / `email_body` | apenas email | sem mudanca |
+| `comunicado_title` | nao necessario | override especifico |
+| `comunicado_description` | nao necessario | override especifico |
+| `comunicado_category` | default `Avisos` | editavel |
+| `comunicado_expires_at` | nao necessario | controle de validade |
+
+Contrato recomendado no POST:
+
+```json
+{
+  "channels": ["pushNotification", "email"],
+  "comunicado": {
+    "enabled": true,
+    "title": "Pesquisa de satisfacao disponivel",
+    "description": "Acesse o app Pesquisa e responda ate sexta-feira.",
+    "category": "Avisos"
+  }
+}
+```
+
+### Anexos e midia
+
+A tabela ja tem `attachments`.
+
+Para MVP:
+
+```json
+[]
+```
+
+Futuro:
+
+- link;
+- imagem de capa;
+- PDF;
+- arquivo complementar;
+- imagem especifica da pesquisa.
+
+Antes de liberar anexos, validar o formato aceito pela UI da Layers no retorno da action.
+
+### Categorias
+
+Categoria atual usada nos testes:
+
+```text
+Avisos
+```
+
+Categorias candidatas:
+
+- `Avisos`
+- `Pesquisas`
+- `Comunicados`
+- `Eventos`
+- `Academico`
+- `Financeiro`
+
+Risco:
+
+- A Layers pode aceitar texto livre, mas a UI pode filtrar ou agrupar por categorias conhecidas.
+
+Recomendacao:
+
+- MVP usa `Avisos`.
+- Depois testar `Pesquisas` e documentar se aparece igual.
+
+### Opcoes que a UI deve expor no MVP
+
+Na tela de disparo, expor apenas:
+
+1. `Criar comunicado no app` (`enabled`)
+2. `Titulo do comunicado` preenchido por default com o titulo do dispatch
+3. `Descricao do comunicado` preenchida por default com o corpo do dispatch
+4. `Categoria` com default `Avisos`
+5. Preview do publico herdado do dispatch
+6. Aviso/bloqueio para `sample`
+
+Nao expor no MVP:
+
+- anexos;
+- comunicado individual/amostra;
+- categorias avancadas;
+- expiracao automatica;
+- aprovacao manual;
+- editor HTML rico.
+
+### Validacoes obrigatorias
+
+| Validacao | Motivo |
+|---|---|
+| `title` nao vazio e maximo razoavel | evitar card quebrado |
+| `description` nao vazio | comunicado sem corpo perde valor |
+| `community_id` resolvido | evitar registro orfao |
+| `targets` compativel com scope | evitar audiencia errada |
+| `sample` bloqueado no MVP | evitar falso senso de segmentacao individual |
+| idempotencia por dispatch/comunidade | evitar duplicidade em retry |
+| secret validado no provider | proteger leitura dos comunicados |
+
 ## Arquitetura de dados
 
 ### Tabela atual: `comunicados`
