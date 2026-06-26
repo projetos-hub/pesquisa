@@ -119,6 +119,36 @@ survey-platform/app/api/admin/surveys/[id]/sample/communities/route.ts
 
 O historico principal de disparos nao tinha o mesmo problema da amostra. Pontos de auditoria podem ser paginados intencionalmente por tela/consulta, mas isso nao significa que a execucao do disparo esteja limitada a 1000 destinatarios.
 
+## Missao em andamento: Comunicados Layers
+
+Objetivo: usar o modulo Comunicados da Layers como canal persistente para divulgar pesquisas, complementando email e push.
+
+Documento principal da investigacao:
+
+```text
+docs/comunicados-apihub-missao-2026-06-26.md
+```
+
+Manifesto AppMaker/API Hub mais recente, sem secret:
+
+```text
+docs/layers-appmaker-manifest-apihub-2026-06-26.json
+```
+
+Estado atual:
+
+- API Hub apareceu na UI do AppMaker.
+- Respond configurado para `@layers:Posts:getUpdatedAfter` apontando para `https://pesquisa-nu-sand.vercel.app/api/layers/actions/posts`.
+- Discovery da Layers lista o app `m3jzq5s00b`, mas ainda com `versions: []`.
+- A chamada via `services/call` ainda nao esta funcional enquanto nao houver versao chamavel.
+- A API privada do app oficial de Comunicados foi analisada por HAR, mas nao deve ser usada como integracao de producao.
+
+Cuidados:
+
+- Nao commitar `docs/app.layers.education.criacaocomunicado.har`; ele contem contexto sensivel de sessao/rede.
+- Antes de producao real, validar o secret do API Hub no endpoint `/api/layers/actions/posts`.
+- A rota `/portal/comunicados-test` e temporaria e deve ser removida ou escondida apos a investigacao.
+
 ## Git
 
 Antes de qualquer commit:

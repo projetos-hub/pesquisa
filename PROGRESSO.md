@@ -1547,3 +1547,39 @@ Status atualizado:
 - Incidente operacional encerrado.
 - Disparo Amostral 2 concluido para toda a base resolvida valida.
 - Proxima atencao: antes de novo disparo amostral grande, consultar o runbook em `docs/operations/runbooks.md`.
+
+---
+
+### Sessao 2026-06-26 - Missao Comunicados via API Hub Layers
+
+| Item | Status | Detalhe |
+|---|---|---|
+| Objetivo de produto | em investigacao | Expandir divulgacao das pesquisas para alem de email/push, usando Comunicados como historico persistente dentro do app Layers |
+| Provider existente | confirmado | Endpoint `POST /api/layers/actions/posts` ja existe e consulta a tabela `comunicados` |
+| Tabela de comunicados | confirmada | Migration `029_comunicados.sql` criou `comunicados`; hardening posterior em `20260622210319_harden_comunicados_and_cron_rpc.sql` |
+| HAR do app oficial | analisado | HAR de criacao manual revelou API privada `comunicados-api.layers.digital/api/v1/post`, mas a chamada nao foi reproduzivel fora do portal oficial |
+| Rota temporaria de teste | publicada | `/portal/comunicados-test` criada para testar sessao encaminhada pela Layers; restrita a `raizeducacao` |
+| Teste com sessao do nosso portal | falhou | Mesmo recebendo `Layers session`, a API privada retornou `400 session / community / userId not provided in query params` |
+| AppMaker/API Hub | habilitado | A UI passou a mostrar secao API Hub com Respond e Request para `@layers:Posts:getUpdatedAfter` |
+| Discovery API Hub | parcialmente ok | `services/discover` passou a retornar `200` e listar `m3jzq5s00b`, mas com `versions: []` |
+| Chamada API Hub | bloqueada | `services/call` ainda nao chama nosso provider porque nao ha versao publicada/chamavel |
+| AppMaker API GET/PUT | investigado | GET de instalacao com `m3jzq5s00b` funciona parcialmente; PUT de manifesto completo falhou com `400 InvalidParameter` |
+| Manifesto | documentado | Manifesto de referencia salvo em `docs/layers-appmaker-manifest-apihub-2026-06-26.json` |
+| Documentacao da missao | criada | Registro completo em `docs/comunicados-apihub-missao-2026-06-26.md` |
+
+Commits publicados da rota temporaria:
+- `8a39f1b test(portal): adiciona rota de teste de comunicados Layers`
+- `d28de6a test(portal): envia parametros alternativos de sessao Layers`
+
+Conclusao atual:
+- Nao seguir pela API privada `comunicados-api.layers.digital` como integracao de producao.
+- Seguir pelo API Hub/provider documentado `@layers:Posts:getUpdatedAfter`.
+- O API Hub agora esta ativo, mas o provider `Pesquisa` ainda aparece com `versions: []`; esta e a proxima barreira tecnica.
+
+Proximos passos:
+1. Confirmar no AppMaker como publicar/atribuir versao ao Respond `@layers:Posts:getUpdatedAfter`.
+2. Reinstalar/atualizar a instalacao e testar `services/discover` ate `m3jzq5s00b` aparecer com `versions: [1]`.
+3. Testar `services/call` contra `m3jzq5s00b?version=1`.
+4. Implementar validacao de `LAYERS_POSTS_SECRET` no endpoint `/api/layers/actions/posts`.
+5. Remover ou esconder `/portal/comunicados-test` apos a validacao.
+6. Criar fluxo admin ou automatizacao para popular `comunicados` ao criar dispatch de pesquisa.

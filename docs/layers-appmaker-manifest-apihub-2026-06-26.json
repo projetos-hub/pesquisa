@@ -1,0 +1,166 @@
+{
+  "approval": "automatic",
+  "visibility": "private",
+  "displayName": "Pesquisa",
+  "description": "Novo app!",
+  "promotionalURL": null,
+  "icon": {
+    "width": 1024,
+    "height": 1024,
+    "url": "https://cdn.layers.digital/admin/uploads/03a7ec46-3103-4ef3-9944-5d70c3b2c4d3/RaizInadimplencia.png"
+  },
+  "notification": {
+    "enabled": true,
+    "channels": [
+      "pushNotification",
+      "email"
+    ],
+    "description": "Notificar sobre novas pesquisas"
+  },
+  "api": {
+    "enabled": true,
+    "roles": [
+      {
+        "value": "notification:send",
+        "reason": "Notificar usuarios sobre pesquisas novas"
+      },
+      {
+        "value": "user:read",
+        "reason": "Ler dados de usuarios: nome, turmas, etc"
+      },
+      {
+        "value": "@admin:layers-comunicados:posts:write",
+        "reason": "Criar comunicados anunciando as novas pesquisas lancadas"
+      },
+      {
+        "value": "statistics:read",
+        "reason": ""
+      },
+      {
+        "value": "appmaker:statistics",
+        "reason": ""
+      },
+      {
+        "value": "appmaker:appLog:read",
+        "reason": ""
+      },
+      {
+        "value": "@admin:layers-comunicados:manage",
+        "reason": ""
+      },
+      {
+        "value": "@admin:layers-comunicados:posts:autoapprove",
+        "reason": ""
+      },
+      {
+        "value": "@admin:layers-comunicados:network:manage",
+        "reason": ""
+      },
+      {
+        "value": "appmaker:appInstallation:read",
+        "reason": ""
+      },
+      {
+        "value": "apps:admin",
+        "reason": ""
+      },
+      {
+        "value": "appmaker:appInstallation:manage",
+        "reason": ""
+      }
+    ]
+  },
+  "targets": {
+    "enabled": true,
+    "data": [
+      {
+        "alias": "@raizeducacao:pesquisa",
+        "description": "Quem pode ver o app \"Pesquisa\""
+      },
+      {
+        "alias": "@raizeducacao:m3jzq5s00b",
+        "description": "Pesquisa"
+      }
+    ]
+  },
+  "portals": {
+    "enabled": true,
+    "data": [
+      {
+        "oauth": {
+          "enabled": false,
+          "scopes": []
+        },
+        "sso": {
+          "enabled": false
+        },
+        "origins": [
+          "https://pesquisa-nu-sand.vercel.app/"
+        ],
+        "placement": [
+          "web:launchers",
+          "mobile:launchers"
+        ],
+        "features": [
+          "forward-session"
+        ],
+        "alias": "@raizeducacao:pesquisa",
+        "title": "Pesquisa",
+        "icon": "https://cdn.layers.digital/raizeducacao/uploads/cefe5a39-abb9-41b8-95bf-4f199bbdfb7c/RaizInadimplencia.png",
+        "location": "https://pesquisa-nu-sand.vercel.app/portal",
+        "action": "embedded",
+        "target": "@raizeducacao:pesquisa"
+      },
+      {
+        "oauth": {
+          "enabled": false,
+          "scopes": []
+        },
+        "sso": {
+          "enabled": false
+        },
+        "origins": [
+          "https://pesquisa-nu-sand.vercel.app"
+        ],
+        "placement": [
+          "web:launchers",
+          "mobile:launchers",
+          "user:detail:action",
+          "web:settings"
+        ],
+        "features": [],
+        "alias": "@raizeducacao:m3jzq5s00b",
+        "title": "Pesquisa",
+        "icon": "https://cdn.layers.digital/admin/uploads/03a7ec46-3103-4ef3-9944-5d70c3b2c4d3/RaizInadimplencia.png",
+        "location": "https://pesquisa-nu-sand.vercel.app/portal/comunicados-test",
+        "action": "embedded",
+        "target": "@raizeducacao:m3jzq5s00b"
+      }
+    ]
+  },
+  "services": {
+    "enabled": true,
+    "responds": [
+      {
+        "action": "@layers:Posts:getUpdatedAfter",
+        "reason": "Prover comunicados de pesquisa para o feed de Comunicados da Layers",
+        "url": "https://pesquisa-nu-sand.vercel.app/api/layers/actions/posts",
+        "auth": {
+          "kind": "secret",
+          "secret": null
+        }
+      }
+    ],
+    "requests": [
+      {
+        "action": "@layers:Posts:getUpdatedAfter",
+        "reason": "Consumir actions de comunicados para validar discovery e chamadas API Hub"
+      }
+    ],
+    "publishes": [],
+    "subscribes": []
+  },
+  "i18n": {
+    "enabled": false
+  }
+}
