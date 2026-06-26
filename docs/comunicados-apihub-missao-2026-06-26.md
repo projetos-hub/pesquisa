@@ -87,7 +87,7 @@ Depois que a secao API Hub apareceu na UI, discovery passou a retornar `200` e l
 ]
 ```
 
-Esse resultado confirma que a feature de Services/API Hub foi ativada e que o app Pesquisa aparece como provider da action. A pendencia e que o provider `m3jzq5s00b` aparece com `versions: []`.
+Esse resultado confirmou que a feature de Services/API Hub foi ativada e que o app Pesquisa aparecia como provider da action, mas ainda sem versao chamavel.
 
 Chamadas testadas:
 
@@ -96,7 +96,82 @@ Chamadas testadas:
 - Com `version=0`, retornou `400 Missing or invalid version: 0`.
 - Chamando outro provider (`gestao-da-inadimplencia-raiz`) com `version=1`, a API respondeu que o provider falhou ao responder.
 
-Conclusao: o API Hub esta ativo, mas a publicacao/versionamento do nosso `respond` ainda nao esta em estado chamavel via `services/call`.
+Conclusao naquele momento: o API Hub estava ativo, mas a publicacao/versionamento do nosso `respond` ainda nao estava em estado chamavel via `services/call`.
+
+### API Hub operacional apos propagacao
+
+Apos gerar/rotacionar o secret do Respond no AppMaker e aguardar propagacao, o discovery passou a retornar o provider `Pesquisa` com versao:
+
+```json
+[
+  {
+    "id": "gestao-da-inadimplencia-raiz",
+    "displayName": "Gestao de comunicados",
+    "versions": [1]
+  },
+  {
+    "id": "m3jzq5s00b",
+    "displayName": "Pesquisa",
+    "versions": [1]
+  }
+]
+```
+
+O call tambem passou:
+
+```text
+POST /v1/services/call/@layers:Posts:getUpdatedAfter/m3jzq5s00b?version=1
+```
+
+Resposta confirmada:
+
+- `context.version = 1`
+- `context.community = "raizeducacao"`
+- `data.result` retornou os comunicados publicados da tabela `comunicados`
+
+Comunicados retornados no teste:
+
+- `TESTE - Comunicado da Pesquisa Raiz` com `targets.groups = ["all"]`
+- `Teste de Comunicado via API` com `targets.users = ["6377844ce70782001c8b06fc"]`
+
+Esse teste prova que o API Hub consegue chamar nosso provider e receber publicacoes. Ainda falta validar a exibicao visual dentro do app Comunicados da Layers, porque `services/call` valida o contrato API Hub, mas nao prova todos os filtros/caches da interface final.
+
+## Arquitetura operacional
+
+Fluxo esperado:
+
+```text
+Usuario abre Comunicados na Layers
+  -> Layers/API Hub chama o Respond @layers:Posts:getUpdatedAfter
+  -> POST https://pesquisa-nu-sand.vercel.app/api/layers/actions/posts
+  -> Vercel executa a route handler Next.js
+  -> Route consulta Supabase tabela comunicados
+  -> Vercel devolve JSON para a Layers
+  -> Layers exibe no modulo Comunicados, se targets/categoria/cache permitirem
+```
+
+Responsabilidades:
+
+- Vercel: recebe as requisicoes da Layers, executa a API route e formata o payload.
+- Supabase: persiste os comunicados e responde a consulta feita pela route.
+- Layers/API Hub: descobre providers, chama nossa route e exibe os posts no produto final.
+
+O Supabase nao recebe chamada direta da Layers. Ele e dependencia interna do nosso endpoint no Vercel.
+
+## Riscos e limitacoes da estrutura atual
+
+| Risco | Impacto | Mitigacao |
+|---|---|---|
+| Endpoint ainda sem validacao de secret | Qualquer cliente que conheca a URL pode consultar comunicados publicados por `community` | Implementar `LAYERS_POSTS_SECRET` antes de producao real |
+| Service role no endpoint | Se houver bug no filtro, a route pode ler dados alem do esperado | Manter query estrita por `community_id`, `status='published'`, `approved=true`; adicionar testes |
+| Disponibilidade Vercel | Se Vercel estiver fora, Comunicados nao carrega nossos posts | Monitorar `/api/health`; logs e alertas de 5xx |
+| Disponibilidade Supabase | Se Supabase falhar, provider retorna erro interno | Logs estruturados e fallback vazio apenas se produto aceitar; hoje retorna 500 |
+| Cache/propagacao Layers | Posts podem demorar ou nao aparecer imediatamente na UI mesmo com API OK | Validar no app real e registrar comportamento observado |
+| Target/categoria aceitos pela Layers | `groups:["all"]` ou `users:[...]` podem ser filtrados diferente na UI | Testar com usuario real de `raizeducacao` e depois com escola/unidade especifica |
+| Volume de chamadas | Se a Layers chamar o provider a cada abertura, pode aumentar leituras Supabase | Query indexada por `community_id/status/updated_at`; limitar payload e monitorar |
+| Volume de comunicados | Feed pode crescer e cada call precisa filtrar por `after` e `limit` | Respeitar `after`/`limit`; arquivar comunicados antigos quando fizer sentido |
+| Rota temporaria de teste | Superficie desnecessaria apos validacao | Remover/esconder `/portal/comunicados-test` |
+| HAR sensivel | Exposicao de contexto de sessao se versionado | Manter `docs/app.layers.education.criacaocomunicado.har` fora do git |
 
 ### API privada de Comunicados
 
@@ -151,19 +226,18 @@ Conclusao: a UI do AppMaker e a fonte pratica para configurar API Hub neste mome
 - A rota `/portal/comunicados-test` e temporaria e deve permanecer restrita a `raizeducacao`.
 - Nao usar API privada `comunicados-api.layers.digital` como integracao de producao sem validacao formal da Layers.
 - Nao commitar HARs, sessoes, secrets ou tokens.
-- Antes de usar o secret do API Hub, implementar validacao no endpoint `/api/layers/actions/posts`.
+- Antes de usar o canal em producao real, implementar validacao do secret do API Hub no endpoint `/api/layers/actions/posts`.
 - O endpoint atual aceita chamada com `context.community`; antes de producao real, validar secret do body conforme configurado no AppMaker.
 
 ## Proximos passos
 
-1. Confirmar no AppMaker se o `Respond` da action `@layers:Posts:getUpdatedAfter` permite definir/publicar versao. O discovery ja lista o app, mas com `versions: []`.
-2. Testar novamente `services/discover` apos reinstalar/atualizar a instalacao e aguardar propagacao. Esperado: provider `m3jzq5s00b` com `versions: [1]`.
-3. Quando houver versao, chamar `services/call` contra `m3jzq5s00b?version=1` e validar se a Layers chama nosso endpoint com `secret`.
-4. Implementar validacao de `LAYERS_POSTS_SECRET` em `survey-platform/app/api/layers/actions/posts/route.ts`.
-5. Remover ou esconder a rota temporaria `/portal/comunicados-test` apos conclusao da investigacao.
-6. Criar fluxo admin para popular `comunicados`, ou integrar a criacao de comunicado ao dispatch de pesquisa.
-7. Quando o provider estiver validado no app real, automatizar: ao criar um dispatch, inserir comunicados por comunidade com `status = "published"` e `approved = true`.
+1. Validar no app Comunicados da Layers se os dois posts de teste aparecem visualmente para usuario de `raizeducacao`.
+2. Colocar o secret rotacionado no Vercel como `LAYERS_POSTS_SECRET`.
+3. Implementar validacao de `LAYERS_POSTS_SECRET` em `survey-platform/app/api/layers/actions/posts/route.ts`.
+4. Remover ou esconder a rota temporaria `/portal/comunicados-test` apos conclusao da investigacao.
+5. Criar fluxo admin para popular `comunicados`, ou integrar a criacao de comunicado ao dispatch de pesquisa.
+6. Quando o provider estiver validado no app real, automatizar: ao criar um dispatch, inserir comunicados por comunidade com `status = "published"` e `approved = true`.
 
 ## Decisao atual
 
-Seguir pelo API Hub/provider documentado. A permissao `@admin:layers-comunicados:*` abriu a configuracao de API Hub no AppMaker, mas nao significa que exista endpoint publico para criar posts diretamente. A missao agora e fazer o provider `@layers:Posts:getUpdatedAfter` aparecer com versao chamavel e validar o contrato de secret.
+Seguir pelo API Hub/provider documentado. A permissao `@admin:layers-comunicados:*` abriu a configuracao de API Hub no AppMaker, mas nao significa que exista endpoint publico para criar posts diretamente. O provider `@layers:Posts:getUpdatedAfter` ja aparece com `versions: [1]` e responde via `services/call`; a missao agora e validar exibicao no app Comunicados, proteger o endpoint com secret e automatizar a populacao da tabela `comunicados`.

@@ -1561,8 +1561,8 @@ Status atualizado:
 | Rota temporaria de teste | publicada | `/portal/comunicados-test` criada para testar sessao encaminhada pela Layers; restrita a `raizeducacao` |
 | Teste com sessao do nosso portal | falhou | Mesmo recebendo `Layers session`, a API privada retornou `400 session / community / userId not provided in query params` |
 | AppMaker/API Hub | habilitado | A UI passou a mostrar secao API Hub com Respond e Request para `@layers:Posts:getUpdatedAfter` |
-| Discovery API Hub | parcialmente ok | `services/discover` passou a retornar `200` e listar `m3jzq5s00b`, mas com `versions: []` |
-| Chamada API Hub | bloqueada | `services/call` ainda nao chama nosso provider porque nao ha versao publicada/chamavel |
+| Discovery API Hub | concluido | Apos rotacionar secret e aguardar propagacao, `services/discover` passou a listar `m3jzq5s00b` com `versions: [1]` |
+| Chamada API Hub | concluido | `services/call` contra `m3jzq5s00b?version=1` retornou comunicados da tabela `comunicados` |
 | AppMaker API GET/PUT | investigado | GET de instalacao com `m3jzq5s00b` funciona parcialmente; PUT de manifesto completo falhou com `400 InvalidParameter` |
 | Manifesto | documentado | Manifesto de referencia salvo em `docs/layers-appmaker-manifest-apihub-2026-06-26.json` |
 | Documentacao da missao | criada | Registro completo em `docs/comunicados-apihub-missao-2026-06-26.md` |
@@ -1574,12 +1574,12 @@ Commits publicados da rota temporaria:
 Conclusao atual:
 - Nao seguir pela API privada `comunicados-api.layers.digital` como integracao de producao.
 - Seguir pelo API Hub/provider documentado `@layers:Posts:getUpdatedAfter`.
-- O API Hub agora esta ativo, mas o provider `Pesquisa` ainda aparece com `versions: []`; esta e a proxima barreira tecnica.
+- O API Hub esta operacional: o provider `Pesquisa` aparece com `versions: [1]` e responde via `services/call`.
+- A validacao restante e visual/produto: confirmar se o modulo Comunicados da Layers exibe os posts retornados pelo provider.
 
 Proximos passos:
-1. Confirmar no AppMaker como publicar/atribuir versao ao Respond `@layers:Posts:getUpdatedAfter`.
-2. Reinstalar/atualizar a instalacao e testar `services/discover` ate `m3jzq5s00b` aparecer com `versions: [1]`.
-3. Testar `services/call` contra `m3jzq5s00b?version=1`.
-4. Implementar validacao de `LAYERS_POSTS_SECRET` no endpoint `/api/layers/actions/posts`.
-5. Remover ou esconder `/portal/comunicados-test` apos a validacao.
-6. Criar fluxo admin ou automatizacao para popular `comunicados` ao criar dispatch de pesquisa.
+1. Abrir o modulo Comunicados da Layers com usuario de `raizeducacao` e verificar se aparecem os posts `TESTE - Comunicado da Pesquisa Raiz` e `Teste de Comunicado via API`.
+2. Colocar o secret rotacionado no Vercel como `LAYERS_POSTS_SECRET`.
+3. Implementar validacao de `LAYERS_POSTS_SECRET` no endpoint `/api/layers/actions/posts`.
+4. Remover ou esconder `/portal/comunicados-test` apos a validacao.
+5. Criar fluxo admin ou automatizacao para popular `comunicados` ao criar dispatch de pesquisa.
