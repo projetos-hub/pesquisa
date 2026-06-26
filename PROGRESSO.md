@@ -1586,3 +1586,6 @@ Proximos passos:
 
 Plano detalhado desses passos:
 - `docs/comunicados-apihub-missao-2026-06-26.md` secao "Plano operacional dos proximos passos".
+
+Plano arquitetural completo:
+- `docs/plan/comunicados-dispatch-architecture-plan.md` cobre UI, schema, servidor, seguranca, publico alvo, integracao com push/e-mail, rollout, fases e criterios de done.
