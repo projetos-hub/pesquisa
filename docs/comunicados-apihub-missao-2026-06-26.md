@@ -238,6 +238,161 @@ Conclusao: a UI do AppMaker e a fonte pratica para configurar API Hub neste mome
 5. Criar fluxo admin para popular `comunicados`, ou integrar a criacao de comunicado ao dispatch de pesquisa.
 6. Quando o provider estiver validado no app real, automatizar: ao criar um dispatch, inserir comunicados por comunidade com `status = "published"` e `approved = true`.
 
+## Plano operacional dos proximos passos
+
+### 1. Validar exibicao no app Comunicados
+
+Objetivo: confirmar que o contrato API Hub validado por `services/call` tambem aparece na interface real do modulo Comunicados.
+
+Como testar:
+
+1. Entrar na Layers com usuario da comunidade `raizeducacao`.
+2. Abrir o modulo Comunicados.
+3. Procurar pelos posts:
+   - `TESTE - Comunicado da Pesquisa Raiz`
+   - `Teste de Comunicado via API`
+4. Se houver botao/gesto de atualizar, forcar refresh.
+5. Se nao aparecer, repetir apos alguns minutos e registrar se a UI parece usar cache.
+
+Criterio de pronto:
+
+- Pelo menos o post `TESTE - Comunicado da Pesquisa Raiz`, com `targets.groups = ["all"]`, aparece no app Comunicados.
+
+Se falhar:
+
+- Verificar se o app Comunicados chama o provider correto.
+- Testar targets alternativos aceitos pela UI.
+- Testar categoria diferente de `Avisos`, caso a UI filtre categorias.
+- Conferir logs do Vercel para saber se a abertura do app gerou chamada em `/api/layers/actions/posts`.
+
+### 2. Configurar o secret no Vercel
+
+Objetivo: preparar o endpoint para aceitar apenas chamadas autenticadas pela Layers.
+
+Acao:
+
+- Criar a env var `LAYERS_POSTS_SECRET` no Vercel com o secret atual do Respond `@layers:Posts:getUpdatedAfter`.
+
+Cuidados:
+
+- Nao salvar o secret em arquivo versionado.
+- Nao colar o secret em issue, doc, print ou chat.
+- Se o secret for rotacionado no AppMaker, atualizar tambem o Vercel antes de ativar validacao estrita.
+
+Criterio de pronto:
+
+- `LAYERS_POSTS_SECRET` existe no ambiente de producao da Vercel.
+- O deploy novo enxerga a variavel.
+
+### 3. Implementar validacao do secret
+
+Objetivo: proteger `POST /api/layers/actions/posts`.
+
+Comportamento esperado:
+
+- Se `LAYERS_POSTS_SECRET` estiver configurado, a route deve comparar o secret recebido no body com a env var.
+- Se o secret estiver ausente/incorreto, responder `401`.
+- Se a env var nao estiver configurada, manter comportamento atual apenas em ambiente de desenvolvimento ou durante janela controlada de transicao.
+
+Ponto a confirmar:
+
+- A UI do AppMaker informa que o secret e enviado no body de cada requisicao na chave `secret`. A implementacao deve validar esse campo primeiro.
+
+Testes minimos:
+
+- Chamada sem `secret` retorna `401` quando `LAYERS_POSTS_SECRET` esta definido.
+- Chamada com `secret` incorreto retorna `401`.
+- Chamada com `secret` correto retorna `{ result: [...] }`.
+- `services/call` da Layers continua funcionando apos deploy.
+
+Criterio de pronto:
+
+- Endpoint protegido em producao e `services/call` ainda retorna comunicados.
+
+### 4. Remover a rota temporaria de teste
+
+Objetivo: reduzir superficie desnecessaria apos a investigacao.
+
+Rota:
+
+```text
+/portal/comunicados-test
+```
+
+Acao recomendada:
+
+- Remover a pagina se nao for mais necessaria.
+- Ou proteger por feature flag/env var se ainda for util para diagnostico.
+
+Criterio de pronto:
+
+- A rota nao fica disponivel para usuarios finais fora de uma necessidade explicita de suporte.
+
+### 5. Definir como comunicados serao criados
+
+Objetivo: decidir como a tabela `comunicados` sera populada em operacao real.
+
+Opcoes:
+
+| Opcao | Vantagem | Custo/risco |
+|---|---|---|
+| Criacao automatica junto ao dispatch | Garante que todo disparo relevante vira historico no app | Precisa cuidar de duplicidade, targets e arquivamento |
+| Tela admin `/admin/comunicados` | Da controle editorial e permite comunicados sem pesquisa | Requer nova UI e fluxo de aprovacao/publicacao |
+| Hibrido | Dispatch cria rascunho e admin publica | Mais seguro editorialmente, mas mais trabalho |
+
+Recomendacao inicial:
+
+- Comecar com automatizacao simples no dispatch para pesquisas, criando registros `published` e `approved=true` por comunidade.
+- Depois criar tela admin se Comunicados virar canal editorial mais amplo.
+
+Criterio de pronto:
+
+- Ao criar um dispatch de pesquisa, existe pelo menos um registro correspondente em `comunicados` para cada comunidade alvo.
+
+### 6. Integrar com dispatch sem duplicar comunicados
+
+Objetivo: quando uma pesquisa for enviada por push/email, criar tambem o post persistente de Comunicados.
+
+Pontos de desenho:
+
+- Relacionar `comunicados.survey_id` ao survey.
+- Usar `community_id` do alvo real.
+- Usar `targets.groups = ["all"]` apenas quando o comunicado deve aparecer para toda a comunidade.
+- Para amostras ou publico restrito, avaliar se `targets.users` e suportado pela UI final.
+- Evitar duplicidade por dispatch/comunidade, possivelmente adicionando chave logica ou guard em codigo.
+
+Risco principal:
+
+- Um dispatch amplo pode criar comunicados demais ou para comunidades erradas se o resolvedor de alvo estiver incorreto.
+
+Mitigacao:
+
+- Primeiro testar com `raizeducacao` e uma comunidade pequena.
+- Logar `dispatch_id`, `survey_id`, `community_id` e `comunicado_id`.
+- Adicionar modo dry-run ou preview antes de publicar automaticamente.
+
+Criterio de pronto:
+
+- Dispatch cria comunicados corretos, sem duplicidade, e eles aparecem no app Comunicados.
+
+### 7. Operacao e monitoramento
+
+Objetivo: detectar rapidamente quando a Layers nao consegue consumir o provider.
+
+Minimo recomendado:
+
+- Logar chamadas em `/api/layers/actions/posts` com `community`, `after`, `limit`, quantidade retornada e status.
+- Nao logar `secret`.
+- Monitorar erros 401/500.
+- Usar `/api/health` para dependencia geral, mas lembrar que health nao prova API Hub.
+- Criar smoke manual ou script que rode:
+  - `services/discover`
+  - `services/call` com `version=1`
+
+Criterio de pronto:
+
+- Existe forma rapida de saber se a chamada API Hub continua respondendo para `raizeducacao`.
+
 ## Decisao atual
 
 Seguir pelo API Hub/provider documentado. A permissao `@admin:layers-comunicados:*` abriu a configuracao de API Hub no AppMaker, mas nao significa que exista endpoint publico para criar posts diretamente. O provider `@layers:Posts:getUpdatedAfter` ja aparece com `versions: [1]` e responde via `services/call`; a missao agora e validar exibicao no app Comunicados, proteger o endpoint com secret e automatizar a populacao da tabela `comunicados`.

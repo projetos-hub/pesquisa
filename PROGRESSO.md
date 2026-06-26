@@ -1583,3 +1583,6 @@ Proximos passos:
 3. Implementar validacao de `LAYERS_POSTS_SECRET` no endpoint `/api/layers/actions/posts`.
 4. Remover ou esconder `/portal/comunicados-test` apos a validacao.
 5. Criar fluxo admin ou automatizacao para popular `comunicados` ao criar dispatch de pesquisa.
+
+Plano detalhado desses passos:
+- `docs/comunicados-apihub-missao-2026-06-26.md` secao "Plano operacional dos proximos passos".
