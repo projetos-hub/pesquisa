@@ -793,3 +793,204 @@ Script/manual:
 | Comunicados aparece em home/preview da Layers ou so no modulo? | Capturar HAR da home/launcher e procurar actions de cards/preview |
 | Existe limite de payload/quantidade no provider? | Testar `limit`, `after` e observar resposta da Layers |
 | A UI cacheia provider por quanto tempo? | Registrar horarios de insert/update e aparicao no app |
+
+## Plano de bateria de testes do contrato de Comunicados
+
+Objetivo: descobrir com seguranca qual payload do provider `@layers:Posts:getUpdatedAfter` a UI real do app Comunicados renderiza, antes de integrar a criacao automatica ao dispatch.
+
+Base visual observada no formulario nativo de criacao de Comunicados:
+
+- `Titulo` obrigatorio.
+- `Imagem do post` opcional.
+- `Descricao` obrigatoria com editor rico.
+- `Para quem enviar` obrigatorio, baseado em publico/topicos.
+- `Quem pode ver esta publicacao?` obrigatorio, baseado em perfis/roles.
+- `Categoria` obrigatoria, em `raizeducacao` observada como `Geral`.
+- `Anexos` opcionais, ate 5 anexos de 15 MB cada.
+- `App Agenda` opcional para adicionar evento.
+- `Enviar notificacao` opcional.
+- `Permitir solicitacoes` opcional.
+
+### Hipoteses a validar
+
+| Hipotese | Por que importa |
+|---|---|
+| Categoria invalida faz a publicacao sumir | Nosso teste usou `Avisos`, mas a categoria existente observada e `Geral` |
+| `targets` precisa conter `users`, `members` e `groups` mesmo vazios | A spec antiga mostra esse shape completo |
+| Roles/perfis influenciam renderizacao | O formulario nativo exige "Quem pode ver esta publicacao?" |
+| Provider pull usa shape diferente da API privada de criacao | HAR de criacao usa `targets.topics` + `targets.roles`; spec provider usa `groups/users/members` |
+| `approved: true` e necessario | Sem autoapprove pode nao aparecer |
+| `category` pode ser omitida com mais sucesso que categoria invalida | Doc antiga recomenda omitir se categorias nao forem conhecidas |
+| UI tem cache | API Hub retorna `200`, mas UI pode atrasar aparicao |
+
+### Perfis/roles observados na UI
+
+Perfis exibidos no print:
+
+- `mother` / Mae
+- `father` / Pai
+- `academic_responsible` / Responsavel Academico
+- `financial_responsible` / Responsavel Financeiro
+- `director` / Direcao
+- `secretary` / Secretaria / Adm
+- `coordenator` / Coordenador
+- `multiplicator` / Multiplicador
+- `library` / Biblioteca
+- `admin` / Administrador Geral
+- `student` / Estudante
+- `collaborator` / Colaborador ProRaiz
+- `marketplace_owner` / Marketplace Owner
+- `partner_school` / Escola / Parceiro
+- `professor` / Professor
+- `guardian` / Responsavel
+- `attendant` / Atendente
+
+Observacao: a API de notificacao usa roles agregados como `guardian`, `student`, `admin`. Para Comunicados, a UI nativa mostra roles mais granulares. Precisamos validar se o provider aceita os agregados, os granulares, ou se roles nao entram no payload provider.
+
+### Matriz de testes minima
+
+Cada teste deve criar um comunicado unico em `comunicados`, chamar `services/call`, abrir o app Comunicados e registrar:
+
+- aparece na UI? sim/nao;
+- tempo ate aparecer;
+- categoria exibida;
+- publico esperado;
+- logs Vercel da chamada;
+- payload retornado pelo provider;
+- usuario usado no teste.
+
+| Teste | Categoria | Targets | Author | Approved | Esperado |
+|---|---|---|---|---|---|
+| T01 baseline seguro | omitida/null | `{ users: [], members: [], groups: ["all"] }` | completo | true | Deve aparecer se categoria nao for obrigatoria no provider |
+| T02 categoria Geral | `Geral` | `{ users: [], members: [], groups: ["all"] }` | completo | true | Deve aparecer se categoria precisa ser valida |
+| T03 categoria Avisos | `Avisos` | `{ users: [], members: [], groups: ["all"] }` | completo | true | Provavel nao aparecer; confirma categoria invalida |
+| T04 targets atual | `Geral` | `{ groups: ["all"] }` | completo | true | Isola se arrays vazios sao obrigatorios |
+| T05 sem author | `Geral` | completo | ausente | true | Descobre se author e opcional de fato |
+| T06 approved ausente | `Geral` | completo | completo | ausente | Descobre se approved e obrigatorio |
+| T07 approved false | `Geral` | completo | completo | false | Deve nao aparecer ou ir para moderacao |
+| T08 usuario especifico string | `Geral` | `{ users: ["637..."], members: [], groups: [] }` | completo | true | Deve aparecer so para usuario alvo se formato for aceito |
+| T09 usuario especifico objeto | `Geral` | `{ users: [{ id: "637..." }], members: [], groups: [] }` | completo | true | Testa formato citado em doc v3 |
+| T10 grupo all + role guardian | `Geral` | completo + roles se suportado | completo | true | Avalia se role entra no provider |
+| T11 grupo real | `Geral` | `{ users: [], members: [], groups: ["alias-ou-id-grupo"] }` | completo | true | Valida turma/grupo |
+| T12 HTML simples | `Geral` | completo | completo | true | Valida descricao com `<p>`, `<strong>`, links |
+| T13 anexos vazios vs ausentes | `Geral` | completo | completo | true | Confirma se `attachments: []` e necessario |
+| T14 updatedAt novo | `Geral` | completo | completo | true | Confirma se `after`/cache atualiza alteracoes |
+
+Shape "completo" de targets para a matriz:
+
+```json
+{
+  "users": [],
+  "members": [],
+  "groups": ["all"]
+}
+```
+
+Author completo para a matriz:
+
+```json
+{
+  "name": "Raiz Educacao",
+  "email": "pesquisa@raizeducacao.com.br",
+  "alias": "raiz-pesquisa"
+}
+```
+
+### Matriz de perfis
+
+Depois que um payload geral aparecer, validar perfis em lote pequeno.
+
+| Teste | Perfil/role | Usuario de validacao | Objetivo |
+|---|---|---|---|
+| R01 | `admin` | Projetos/admin | Confirmar visibilidade admin |
+| R02 | `guardian` | responsavel real/teste | Confirmar familias |
+| R03 | `student` | aluno real/teste | Confirmar alunos |
+| R04 | `professor` | professor real/teste | Confirmar professor |
+| R05 | `mother`/`father` | responsavel com papel especifico | Confirmar granularidade |
+| R06 | multiplos roles | admin + guardian | Confirmar OR/AND da UI |
+
+Pergunta a responder: no provider pull, roles devem estar dentro de `targets`, em campo separado, ou nao sao considerados?
+
+Possiveis shapes para testar se necessario:
+
+```json
+{
+  "targets": {
+    "users": [],
+    "members": [],
+    "groups": ["all"],
+    "roles": ["admin"]
+  }
+}
+```
+
+ou:
+
+```json
+{
+  "targets": {
+    "topics": [{ "kind": "tag", "id": "*", "name": "Todos" }],
+    "roles": ["admin"]
+  }
+}
+```
+
+O segundo shape vem da API privada de criacao e so deve ser testado depois que o shape documentado falhar ou ficar incompleto.
+
+### Testes de categoria
+
+Categoria confirmada no HAR para `raizeducacao`:
+
+```json
+{
+  "id": "600099cf22c83b01a046cb39",
+  "name": "Geral",
+  "slug": "geral",
+  "default": true
+}
+```
+
+Testes:
+
+| Teste | `category` retornado | Esperado |
+|---|---|---|
+| C01 | ausente | Ver se UI assume default |
+| C02 | `"Geral"` | Deve ser aceito |
+| C03 | objeto `{ id, name }` | Ver se provider aceita objeto ou so string |
+| C04 | `"Avisos"` | Deve falhar se categoria invalida for ignorada |
+
+### Testes de imagem, anexos e flags
+
+Esses campos aparecem no formulario nativo, mas nao sao essenciais para MVP.
+
+| Area | Teste | Decisao MVP |
+|---|---|---|
+| Imagem do post | cover image ausente vs URL | nao suportar no MVP |
+| Anexos | `attachments: []` vs ausente | usar `[]` |
+| App Agenda | nao testar inicialmente | fora do escopo |
+| Enviar notificacao | nao usar pelo provider | push/email ja cobrem alerta |
+| Permitir solicitacoes | nao usar inicialmente | fora do escopo |
+| Editor rico | HTML simples na descricao | permitir texto simples; HTML depois |
+
+### Procedimento padrao para cada teste
+
+1. Inserir ou atualizar um registro em `comunicados` com titulo unico `CONTRATO Txx - ...`.
+2. Garantir `community_id = 'raizeducacao'`, `status='published'`, `approved=true`.
+3. Chamar `services/call` com `version=1`.
+4. Confirmar que o payload retornou o teste esperado.
+5. Abrir app Comunicados na Layers.
+6. Registrar se apareceu.
+7. Se nao apareceu, verificar log Vercel e repetir com refresh/tempo.
+8. Arquivar o teste quando terminar.
+
+### Criterio para liberar a feature
+
+So iniciar implementacao de Comunicados no dispatch quando estes pontos estiverem comprovados:
+
+- Um comunicado geral por comunidade aparece visualmente.
+- Categoria aceita esta definida: omitida ou `Geral`.
+- Shape de `targets` aceito esta definido.
+- `approved`/author/attachments minimos estao definidos.
+- Comportamento de cache/latencia esta conhecido.
+- `LAYERS_POSTS_SECRET` esta validado em producao.
+- Casos que nao funcionam estao documentados e bloqueados na UI.
