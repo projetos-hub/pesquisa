@@ -5,6 +5,7 @@ import { AdminHubNav } from '../AdminHubNav'
 import LogoutButton from '../LogoutButton'
 import DeleteSurveyButton from './DeleteSurveyButton'
 import DuplicateSurveyButton from './DuplicateSurveyButton'
+import { getEffectiveSurveyStatus } from '@/lib/survey-status'
 
 const nunitoSans = Nunito_Sans({
   subsets: ['latin'],
@@ -117,9 +118,10 @@ export default async function SurveysPage() {
               </thead>
               <tbody className="divide-y divide-white/8">
                 {surveyList.map(s => {
-                  const st = STATUS[s.status] ?? STATUS.rascunho
+                  const effectiveStatus = getEffectiveSurveyStatus(s)
+                  const st = STATUS[effectiveStatus] ?? STATUS.rascunho
                   const count = Array.isArray(s.response_sessions) ? s.response_sessions.length : 0
-                  const hint = schedulingHint(s.open_date, s.close_date, s.status)
+                  const hint = schedulingHint(s.open_date, s.close_date, effectiveStatus)
 
                   return (
                     <tr key={s.id} className="transition-colors hover:bg-white/[0.04]">

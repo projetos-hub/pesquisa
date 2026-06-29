@@ -11,6 +11,7 @@ import {
 } from '@/lib/submit-access'
 import { fetchLayersUser, fetchLayersUserAnyRole } from '@/lib/layers-hub'
 import { getCorrelationId, jsonWithCorrelation, logError, logInfo, logWarn } from '@/lib/observability'
+import { isEffectivelyOpen } from '@/lib/survey-status'
 
 interface RouteContext {
   params: Promise<{ slug: string }>
@@ -79,12 +80,12 @@ export async function POST(req: Request, { params }: RouteContext) {
   // ── 1. Busca survey ativa ──────────────────────────────────────────────────
   const { data: survey } = await supabase
     .from('surveys')
-    .select('id, access_control, target_roles, settings')
+    .select('id, access_control, target_roles, settings, status, open_date, close_date')
     .eq('slug', slug)
     .eq('status', 'ativa')
     .single()
 
-  if (!survey) {
+  if (!survey || !isEffectivelyOpen(survey)) {
     logWarn('submit.survey_not_found', logContext, { slug })
     return json({ error: 'Survey not found' }, { status: 404 })
   }
@@ -116,14 +117,14 @@ export async function POST(req: Request, { params }: RouteContext) {
   if (communityId) {
     const { data: installation } = await supabase
       .from('survey_communities')
-      .select('id')
+      .select('id, status, open_date, close_date')
       .eq('survey_id', survey.id)
       .eq('community_id', communityId)
       .eq('active', true)
       .eq('status', 'ativa')
       .maybeSingle()
 
-    if (!installation) {
+    if (!installation || !isEffectivelyOpen(installation)) {
       logWarn('submit.community_not_authorized', surveyLogContext, { slug, communityId })
       return json(
         { error: 'community_not_authorized', message: 'Comunidade nao autorizada para esta pesquisa' },

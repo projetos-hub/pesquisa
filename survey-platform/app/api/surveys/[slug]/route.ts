@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase-service'
 import { rowsToConfig } from '@/lib/survey-config'
 import type { QuestionRow, OptionRow, InstallationRow } from '@/lib/survey-config'
+import { getEffectiveSurveyStatus } from '@/lib/survey-status'
 
 const COMMUNITY_IDENTITY_KEYS = [
   'nomeEscola',
@@ -74,6 +75,10 @@ const getCachedSurveyConfig = unstable_cache(
       }
 
       installation = inst as InstallationRow
+      installation = {
+        ...installation,
+        status: getEffectiveSurveyStatus(installation),
+      }
 
       // Tema: communities é fonte de verdade para logo/cores; survey_communities só
       // tem overrides per-survey (ex: indicacaoLink). Sempre mesclar nessa ordem.
@@ -108,13 +113,7 @@ const getCachedSurveyConfig = unstable_cache(
     //     Também propaga surveys.settings.theme para que thankyouMessage e outros overrides
     //     cheguem ao respondente mesmo sem communityId.
     if (!installation) {
-      const now = new Date()
-      let respondentStatus = survey.status ?? 'ativa'
-      if (survey.close_date && new Date(survey.close_date) < now) {
-        respondentStatus = 'encerrada'
-      } else if (survey.open_date && new Date(survey.open_date) > now) {
-        respondentStatus = 'nao_aberta'
-      }
+      const respondentStatus = getEffectiveSurveyStatus(survey)
       const surveyTheme = (survey.settings as { theme?: Record<string, unknown> })?.theme ?? {}
       installation = {
         status: respondentStatus,

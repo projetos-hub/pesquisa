@@ -150,8 +150,11 @@ function baseScenario(overrides: Scenario = {}): Scenario {
       access_control: 'aberta',
       target_roles: ['responsavel'],
       settings: {},
+      status: 'ativa',
+      open_date: null,
+      close_date: null,
     },
-    installation: { id: 'installation-1' },
+    installation: { id: 'installation-1', status: 'ativa', open_date: null, close_date: null },
     sessionUpserts: [{ data: [{ id: 'session-1' }], error: null }],
     questions: [{ id: 'question-nps', key: 'nps' }],
     deletes: [],
@@ -199,6 +202,53 @@ describe('submit route controlled flows', () => {
     await expect(res.json()).resolves.toEqual({ duplicate: true })
   })
 
+  it('blocks submission when survey close_date has passed even if status is still active', async () => {
+    const scenario = baseScenario({
+      survey: {
+        id: 'survey-1',
+        access_control: 'aberta',
+        target_roles: ['responsavel'],
+        settings: {},
+        status: 'ativa',
+        open_date: null,
+        close_date: '2000-01-01T00:00:00.000Z',
+      },
+    })
+    state.supabase = createSupabaseMock(scenario)
+
+    const res = await postSubmit({
+      communityId: 'community-1',
+      userId: 'user-1',
+      perfil: 'responsavel',
+      answers: { nps: 9 },
+    })
+
+    expect(res.status).toBe(404)
+    await expect(res.json()).resolves.toEqual({ error: 'Survey not found' })
+  })
+
+  it('blocks submission when community close_date has passed even if status is still active', async () => {
+    const scenario = baseScenario({
+      installation: {
+        id: 'installation-1',
+        status: 'ativa',
+        open_date: null,
+        close_date: '2000-01-01T00:00:00.000Z',
+      },
+    })
+    state.supabase = createSupabaseMock(scenario)
+
+    const res = await postSubmit({
+      communityId: 'community-1',
+      userId: 'user-1',
+      perfil: 'responsavel',
+      answers: { nps: 9 },
+    })
+
+    expect(res.status).toBe(403)
+    await expect(res.json()).resolves.toMatchObject({ error: 'community_not_authorized' })
+  })
+
   it('clears an incomplete duplicate session and retries in the same request', async () => {
     const scenario = baseScenario({
       sessionUpserts: [
@@ -232,6 +282,9 @@ describe('submit route controlled flows', () => {
         access_control: 'amostra',
         target_roles: ['responsavel'],
         settings: {},
+        status: 'ativa',
+        open_date: null,
+        close_date: null,
       },
       sampleRows: [],
     })
