@@ -1,4 +1,5 @@
-﻿import type { Dispatch, SetStateAction } from 'react'
+import { useMemo, type Dispatch, type SetStateAction } from 'react'
+import { resolveCommunityPrimaryName } from '@/lib/community-identity'
 
 import {
   KNOWN_COMMUNITIES,
@@ -62,6 +63,17 @@ export function TargetingSection({
   setPreview,
   fetchPreview,
 }: TargetingSectionProps) {
+  const communityById = useMemo(() => new Map(communities.map(community => [community.id, community])), [communities])
+  const communityName = (communityId: string) => {
+    const community = communityById.get(communityId)
+    return resolveCommunityPrimaryName({
+      community_id: communityId,
+      nome_escola: community?.nome,
+      marca: community?.marca,
+      unidade: community?.unidade,
+    })
+  }
+
   return (
     <section className="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-3">
       <h3 className="text-sm font-semibold text-gray-700">1. Quem recebe</h3>
@@ -69,7 +81,7 @@ export function TargetingSection({
       <div className="flex gap-3 flex-wrap">
         {([
           ['all', 'Todas as comunidades'],
-          ['communities', 'Comunidades especÃ­ficas'],
+          ['communities', 'Comunidades especÃƒÂ­ficas'],
           ['group', 'Uma turma'],
           ['sample', 'Amostra'],
         ] as const).map(([value, label]) => (
@@ -134,7 +146,7 @@ export function TargetingSection({
                       }}
                       className="text-[#F7941D]"
                     />
-                    <span className="flex-1">{community.nome}</span>
+                    <span className="flex-1">{resolveCommunityPrimaryName({ community_id: community.community_id, nome_escola: community.nome, marca: community.marca, unidade: community.unidade })}</span>
                     <span className="text-gray-400">{community.resolved} resolvidos</span>
                   </label>
                 ))}
@@ -150,7 +162,7 @@ export function TargetingSection({
           {sampleGroups.length > 0 && (
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                Grupo de destinatÃ¡rios <span className="text-gray-400">(opcional - vazio = toda a amostra)</span>
+                Grupo de destinatÃƒÂ¡rios <span className="text-gray-400">(opcional - vazio = toda a amostra)</span>
               </label>
               <div className="flex flex-wrap gap-1.5">
                 <button
@@ -191,16 +203,17 @@ export function TargetingSection({
           <label className="text-xs text-gray-500">Comunidades selecionadas</label>
           <div className="flex gap-2 flex-wrap">
             {selectedComms.map(communityId => (
-              <span key={communityId} className="inline-flex items-center gap-1 bg-[#F7941D]/10 text-[#D97B10] text-xs rounded-full px-2.5 py-0.5 font-mono">
-                {communityId}
-                <button type="button" onClick={() => setSelectedComms(current => current.filter(id => id !== communityId))} className="hover:text-red-500">Ã—</button>
+              <span key={communityId} className="inline-flex items-center gap-1 bg-[#F7941D]/10 text-[#D97B10] text-xs rounded-full px-2.5 py-0.5">
+                <span>{communityName(communityId)}</span>
+                <span className="font-mono text-[10px] opacity-60">{communityId}</span>
+                <button type="button" onClick={() => setSelectedComms(current => current.filter(id => id !== communityId))} className="hover:text-red-500">x</button>
               </span>
             ))}
           </div>
           <div className="flex gap-2">
             <input
               list="comm-list-specific"
-              placeholder="ID da comunidade"
+              placeholder="Buscar por marca, unidade ou ID"
               className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
               onKeyDown={event => {
                 if (event.key === 'Enter') {
@@ -216,7 +229,7 @@ export function TargetingSection({
             />
             <datalist id="comm-list-specific">
               {[...new Set([...communities.map(community => community.id), ...KNOWN_COMMUNITIES])].map(communityId =>
-                <option key={communityId} value={communityId} />
+                <option key={communityId} value={communityId} label={communityName(communityId)} />
               )}
             </datalist>
           </div>
@@ -233,7 +246,7 @@ export function TargetingSection({
               onChange={event => { setGroupComm(event.target.value); setPreview(null) }}
               className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
             >
-              {communities.map(community => <option key={community.id} value={community.id}>{community.nome || community.id}</option>)}
+              {communities.map(community => <option key={community.id} value={community.id}>{communityName(community.id)}</option>)}
             </select>
           </div>
           <div>
@@ -249,9 +262,9 @@ export function TargetingSection({
       )}
 
       <div>
-        <label className="text-xs text-gray-500 mb-1.5 block">Perfil dos destinatÃ¡rios</label>
+        <label className="text-xs text-gray-500 mb-1.5 block">Perfil dos destinatÃƒÂ¡rios</label>
         <div className="flex gap-4">
-          {[['guardian', 'ResponsÃ¡veis'], ['student', 'Alunos'], ['admin', 'Admins']].map(([value, label]) => (
+          {[['guardian', 'ResponsÃƒÂ¡veis'], ['student', 'Alunos'], ['admin', 'Admins']].map(([value, label]) => (
             <label key={value} className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
               <input type="checkbox" checked={roles.includes(value)} onChange={() => toggleRole(value)} className="rounded border-gray-300 text-[#F7941D]" />
               {label}
@@ -269,7 +282,7 @@ export function TargetingSection({
       </button>
       {preview && (
         <p className="text-xs text-gray-600 bg-[#F7941D]/5 rounded-lg px-3 py-2">
-          {preview.community_count} comunidade(s) serÃ£o notificadas
+          {preview.community_count} comunidade(s) serÃƒÂ£o notificadas
           {personalized && preview.personalized_estimate_min > 0
             ? ` - estimativa personalizado: ~${preview.personalized_estimate_min} min`
             : ''}

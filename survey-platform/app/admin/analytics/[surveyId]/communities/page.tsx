@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-service'
 import { notFound } from 'next/navigation'
 import { CommunityTable } from '@/components/analytics/CommunityTable'
+import { resolveCommunityPrimaryName } from '@/lib/community-identity'
 
 interface PageProps {
   params: Promise<{ surveyId: string }>
@@ -81,14 +82,10 @@ export default async function CommunitiesPage({ params }: PageProps) {
   const { data: communities } = schoolIds.length > 0
     ? await db
         .from('communities')
-        .select('community_id, nome_escola')
+        .select('community_id, nome_escola, marca, unidade')
         .in('community_id', schoolIds)
     : { data: [] }
-
-  const nameMap = new Map<string, string>()
-  for (const c of communities ?? []) {
-    nameMap.set(c.community_id, c.nome_escola ?? c.community_id)
-  }
+  const identityMap = new Map((communities ?? []).map(c => [c.community_id, c]))
 
   const tableData = [...bySchool.entries()].map(([community_id, stats]) => {
     const nps_score: number | null = stats.total_nps > 0
@@ -96,7 +93,9 @@ export default async function CommunitiesPage({ params }: PageProps) {
       : null
     return {
       community_id,
-      nome_escola: nameMap.get(community_id) ?? community_id,
+      nome_escola: resolveCommunityPrimaryName(identityMap.get(community_id) ?? { community_id }),
+      marca: identityMap.get(community_id)?.marca ?? null,
+      unidade: identityMap.get(community_id)?.unidade ?? null,
       ...stats,
       nps_score,
     }

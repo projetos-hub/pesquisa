@@ -5,6 +5,8 @@ import { useState } from 'react'
 interface CommunityRow {
   community_id: string
   nome_escola: string
+  marca?: string | null
+  unidade?: string | null
   total_sessions: number
   nps_score: number | null
   promotores: number
@@ -54,8 +56,8 @@ export function CommunityTable({ data }: CommunityTableProps) {
   })
 
   function sortIcon(col: SortKey) {
-    if (sortKey !== col) return <span className="ml-1 text-gray-300">↕</span>
-    return <span className="ml-1 text-blue-500">{sortDir === 'asc' ? '↑' : '↓'}</span>
+    if (sortKey !== col) return <span className="ml-1 text-gray-300">{'\u2195'}</span>
+    return <span className="ml-1 text-blue-500">{sortDir === 'asc' ? '\u2191' : '\u2193'}</span>
   }
 
   if (!data.length) {
@@ -104,8 +106,11 @@ export function CommunityTable({ data }: CommunityTableProps) {
               : 0
             return (
               <tr key={row.community_id} className="hover:bg-gray-50">
-                <td className="px-4 py-2.5 text-gray-900 max-w-[220px] truncate">
-                  {row.nome_escola}
+                <td className="px-4 py-2.5 text-gray-900 max-w-[220px]">
+                  <div className="truncate font-medium">{row.nome_escola}</div>
+                  {row.community_id !== row.nome_escola ? (
+                    <div className="mt-0.5 truncate font-mono text-[11px] text-gray-400">{row.community_id}</div>
+                  ) : null}
                 </td>
                 <td className="px-4 py-2.5 text-right text-gray-700 font-medium">
                   {row.total_sessions}
@@ -113,7 +118,7 @@ export function CommunityTable({ data }: CommunityTableProps) {
                 <td className={`px-4 py-2.5 text-right font-semibold ${npsColor(row.nps_score)}`}>
                   {row.nps_score !== null
                     ? (row.nps_score > 0 ? `+${row.nps_score}` : row.nps_score)
-                    : '—'}
+                    : '-'}
                 </td>
                 <td className="px-4 py-2.5 text-center text-xs text-gray-500">
                   <span className="text-green-600">{row.promotores}</span>

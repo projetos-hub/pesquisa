@@ -1,4 +1,4 @@
-export interface Community { id: string; nome: string }
+export interface Community { id: string; nome: string; marca?: string | null; unidade?: string | null }
 
 export interface SequenceStep {
   key:            string
@@ -43,6 +43,8 @@ export interface DispatchFormProps {
 export interface SampleCommunity {
   community_id: string
   nome:         string
+  marca?:       string | null
+  unidade?:     string | null
   total:        number
   resolved:     number
 }

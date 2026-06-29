@@ -23,7 +23,9 @@ const survey: SurveyMeta = {
 const npsRows: NpsRow[] = [{
   session_id: 'session-1',
   school: 'school-1',
-  nome_escola: 'Escola 1',
+  nome_escola: 'Colegio Qi Valqueire',
+  marca: 'Colegio Qi',
+  unidade: 'Valqueire',
   perfil: 'responsavel',
   serie: '3A',
   onda: '1',
@@ -36,7 +38,9 @@ const npsRows: NpsRow[] = [{
 
 const scaleRows: ScaleAverageRow[] = [{
   school: 'school-1',
-  nome_escola: 'Escola 1',
+  nome_escola: 'Colegio Qi Valqueire',
+  marca: 'Colegio Qi',
+  unidade: 'Valqueire',
   eixo: 'Pedagogico',
   n_respostas: 1,
   media: 4.5,
@@ -56,6 +60,9 @@ const sessions: SessionRow[] = [{
   id: 'session-1',
   survey_id: 'survey-1',
   community_id: 'community-1',
+  nome_escola: 'Colegio Qi Valqueire',
+  marca: 'Colegio Qi',
+  unidade: 'Valqueire',
   user_id: 'user-1',
   submitted_at: '2026-06-23T10:00:00.000Z',
   perfil: 'responsavel',
@@ -81,7 +88,7 @@ describe('buildAdvancedXlsx', () => {
       sessions,
       questions,
       options,
-      communityMap: new Map([['school-1', 'Escola 1']]),
+      communityMap: new Map([['school-1', 'Colegio Qi Valqueire']]),
       compareData: [{ survey, npsMetrics: { total: 1, promotores: 1, neutros: 0, detratores: 0, nps: 100 } }],
     })
 
@@ -91,7 +98,7 @@ describe('buildAdvancedXlsx', () => {
     expect(workbook.worksheets.map(sheet => sheet.name)).toEqual([
       'Resumo Executivo',
       'NPS Breakdown',
-      'Médias por Eixo',
+      'M\u00e9dias por Eixo',
       'Respostas Brutas',
       'Comparativo',
     ])
@@ -104,28 +111,39 @@ describe('buildAdvancedXlsx', () => {
     const nps = workbook.getWorksheet('NPS Breakdown')
     expect(nps?.getRow(1).values).toContain('Nota NPS')
     expect(nps?.getCell('A2').value).toBe('Maria')
-    expect(nps?.getCell('G2').value).toBe(10)
-    expect(nps?.getCell('H2').value).toBe('promotor')
+    expect(nps?.getCell('C2').value).toBe('Colegio Qi')
+    expect(nps?.getCell('D2').value).toBe('Valqueire')
+    expect(nps?.getCell('E2').value).toBe('Colegio Qi Valqueire')
+    expect(nps?.getCell('I2').value).toBe(10)
+    expect(nps?.getCell('J2').value).toBe('promotor')
 
-    const medias = workbook.getWorksheet('Médias por Eixo')
-    expect(medias?.getCell('A2').value).toBe('Escola 1')
-    expect(medias?.getCell('B2').value).toBe(4.5)
+    const medias = workbook.getWorksheet('M\u00e9dias por Eixo')
+    expect(medias?.getCell('A2').value).toBe('Colegio Qi')
+    expect(medias?.getCell('B2').value).toBe('Valqueire')
+    expect(medias?.getCell('C2').value).toBe('Colegio Qi Valqueire')
+    expect(medias?.getCell('D2').value).toBe(4.5)
 
     const raw = workbook.getWorksheet('Respostas Brutas')
     expect(raw?.getRow(1).values).toEqual(expect.arrayContaining([
       'postId',
-      'escola',
+      'Marca',
+      'Unidade',
+      'Nome da Comunidade',
+      'community_id',
       'categoriaNPS',
       'NPS',
       'Clareza',
       'Comentario',
     ]))
     expect(raw?.getCell('A2').value).toBe('session-1')
-    expect(raw?.getCell('C2').value).toBe('Escola 1')
-    expect(raw?.getCell('K2').value).toBe('promotor')
-    expect(raw?.getCell('M2').value).toBe(10)
-    expect(raw?.getCell('N2').value).toBe(5)
-    expect(raw?.getCell('O2').value).toBe('Otimo atendimento')
+    expect(raw?.getCell('C2').value).toBe('Colegio Qi')
+    expect(raw?.getCell('D2').value).toBe('Valqueire')
+    expect(raw?.getCell('E2').value).toBe('Colegio Qi Valqueire')
+    expect(raw?.getCell('F2').value).toBe('community-1')
+    expect(raw?.getCell('M2').value).toBe('promotor')
+    expect(raw?.getCell('O2').value).toBe(10)
+    expect(raw?.getCell('P2').value).toBe(5)
+    expect(raw?.getCell('Q2').value).toBe('Otimo atendimento')
 
     const compare = workbook.getWorksheet('Comparativo')
     expect(compare?.getCell('A2').value).toBe('Pesquisa CSAT')

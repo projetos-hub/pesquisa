@@ -3,6 +3,7 @@
 
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-service'
+import { resolveCommunityPrimaryName } from '@/lib/community-identity'
 
 const PAGE_SIZE = 1000
 
@@ -61,20 +62,22 @@ export async function GET(
     const communityIds = [...map.keys()]
     const { data: communityRows } = await supabase
       .from('communities')
-      .select('community_id, nome_escola')
+      .select('community_id, nome_escola, marca, unidade')
       .in('community_id', communityIds)
 
-    const nomeMap = new Map<string, string>()
-    for (const community of communityRows ?? []) {
-      nomeMap.set(community.community_id, community.nome_escola ?? community.community_id)
-    }
+    const identityMap = new Map((communityRows ?? []).map(community => [community.community_id, community]))
 
-    const communities = communityIds.map(cid => ({
-      community_id: cid,
-      nome: nomeMap.get(cid) ?? cid,
-      total: map.get(cid)!.total,
-      resolved: map.get(cid)!.resolved,
-    })).sort((a, b) => b.resolved - a.resolved)
+    const communities = communityIds.map(cid => {
+      const identity = identityMap.get(cid)
+      return {
+        community_id: cid,
+        nome: resolveCommunityPrimaryName(identity ?? { community_id: cid }),
+        marca: identity?.marca ?? null,
+        unidade: identity?.unidade ?? null,
+        total: map.get(cid)!.total,
+        resolved: map.get(cid)!.resolved,
+      }
+    }).sort((a, b) => b.resolved - a.resolved)
 
     return Response.json({ communities })
   } catch (err) {

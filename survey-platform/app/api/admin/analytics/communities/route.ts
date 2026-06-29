@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-service'
 import { adminAuthErrorResponse, requireAdmin } from '@/lib/admin-auth'
+import { resolveCommunityPrimaryName } from '@/lib/community-identity'
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
@@ -37,7 +38,7 @@ export async function GET(req: Request) {
         .in('session_id', sessionIds)).data ?? []
     : []
 
-  // Map session_id → school
+  // Map session_id Ã¢â€ â€™ school
   const sessionSchool = new Map<string, string>()
   for (const s of sessionList) {
     if (s.school) sessionSchool.set(s.id, s.school)
@@ -77,18 +78,14 @@ export async function GET(req: Request) {
 
   // Fetch community names
   const schoolIds = [...bySchool.keys()].filter(k => k !== 'sem_escola')
-  type CommRow = { community_id: string; nome_escola: string | null }
+  type CommRow = { community_id: string; nome_escola: string | null; marca: string | null; unidade: string | null }
   const communities: CommRow[] = schoolIds.length > 0
     ? (await db
         .from('communities')
-        .select('community_id, nome_escola')
+        .select('community_id, nome_escola, marca, unidade')
         .in('community_id', schoolIds)).data ?? []
     : []
-
-  const nameMap = new Map<string, string>()
-  for (const c of communities) {
-    nameMap.set(c.community_id, c.nome_escola ?? c.community_id)
-  }
+  const identityMap = new Map(communities.map(c => [c.community_id, c]))
 
   const result = [...bySchool.entries()]
     .map(([community_id, stats]) => {
@@ -97,7 +94,9 @@ export async function GET(req: Request) {
         : null
       return {
         community_id,
-        nome_escola: nameMap.get(community_id) ?? community_id,
+        nome_escola: resolveCommunityPrimaryName(identityMap.get(community_id) ?? { community_id }),
+        marca: identityMap.get(community_id)?.marca ?? null,
+        unidade: identityMap.get(community_id)?.unidade ?? null,
         ...stats,
         nps_score,
       }

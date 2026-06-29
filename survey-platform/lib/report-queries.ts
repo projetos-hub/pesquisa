@@ -1,15 +1,48 @@
 /**
  * lib/report-queries.ts
- * Tipos e funções de fetch para os Relatórios Avançados.
+ * Tipos e funcoes de fetch para os Relatorios Avancados.
  * Usado por: app/api/admin/reports/[surveyId]/route.ts
  *            app/api/admin/reports/compare/route.ts
  *            app/admin/reports/actions.ts
  */
 
 import { createServiceClient } from '@/lib/supabase-service'
+import { resolveCommunityPrimaryName } from '@/lib/community-identity'
 export { calcNPS, npsCategoria, type NpsMetrics } from '@/lib/report-metrics'
+type CommunityIdentityRow = {
+  community_id: string
+  nome_escola: string | null
+  marca: string | null
+  unidade: string | null
+}
 
-// ─── Tipos ────────────────────────────────────────────────────────────────
+async function fetchCommunityIdentityMap(communityIds: string[]): Promise<Map<string, CommunityIdentityRow>> {
+  const ids = [...new Set(communityIds.filter(Boolean))]
+  if (ids.length === 0) return new Map()
+
+  const sb = createServiceClient()
+  const { data } = await sb
+    .from('communities')
+    .select('community_id, nome_escola, marca, unidade')
+    .in('community_id', ids)
+
+  return new Map(((data ?? []) as CommunityIdentityRow[]).map(row => [row.community_id, row]))
+}
+
+function enrichCommunityFields<T extends { school: string; nome_escola?: string }>(
+  row: T,
+  identityMap: Map<string, CommunityIdentityRow>
+): T & { nome_escola: string; marca: string; unidade: string } {
+  const identity = identityMap.get(row.school)
+  return {
+    ...row,
+    nome_escola: resolveCommunityPrimaryName(identity ?? { community_id: row.school, nome_escola: row.nome_escola }),
+    marca: identity?.marca ?? '',
+    unidade: identity?.unidade ?? '',
+  }
+}
+
+// Tipos
 
 export interface ReportFilters {
   communityIds?: string[]   // filtra por school (IDs)
@@ -25,6 +58,8 @@ export interface NpsRow {
   session_id: string
   school: string
   nome_escola: string
+  marca: string
+  unidade: string
   perfil: string
   serie: string | null
   onda: string | null
@@ -38,6 +73,8 @@ export interface NpsRow {
 export interface ScaleAverageRow {
   school: string
   nome_escola: string
+  marca: string
+  unidade: string
   eixo: string
   n_respostas: number
   media: number
@@ -56,6 +93,9 @@ export interface SessionRow {
   id: string
   survey_id: string
   community_id: string
+  nome_escola?: string
+  marca?: string
+  unidade?: string
   user_id: string
   submitted_at: string
   perfil: string
@@ -83,15 +123,15 @@ export interface OptionRow {
 }
 
 export interface FilterOptions {
-  communities: { id: string; nome: string }[]
+  communities: { id: string; nome: string; marca?: string | null; unidade?: string | null }[]
   series: string[]
   ondas: string[]
   perfis: string[]
 }
 
-// ─── NPS helpers ──────────────────────────────────────────────────────────
+// NPS helpers
 
-// ─── Fetch: NPS Breakdown ─────────────────────────────────────────────────
+// Fetch: NPS Breakdown
 
 export async function fetchNpsBreakdown(
   surveyId: string,
@@ -109,10 +149,12 @@ export async function fetchNpsBreakdown(
     p_nps_key:       filters.npsKey ?? 'nps',
   })
   if (error) throw new Error(`rpc_nps_breakdown: ${error.message}`)
-  return (data ?? []) as NpsRow[]
+  const rows = (data ?? []) as NpsRow[]
+  const identityMap = await fetchCommunityIdentityMap(rows.map(row => row.school))
+  return rows.map(row => enrichCommunityFields(row, identityMap))
 }
 
-// ─── Fetch: Scale Averages ────────────────────────────────────────────────
+// Fetch: Scale Averages
 
 export async function fetchScaleAverages(
   surveyId: string,
@@ -129,10 +171,12 @@ export async function fetchScaleAverages(
     p_onda:          filters.onda ?? null,
   })
   if (error) throw new Error(`rpc_scale_averages: ${error.message}`)
-  return (data ?? []) as ScaleAverageRow[]
+  const rows = (data ?? []) as ScaleAverageRow[]
+  const identityMap = await fetchCommunityIdentityMap(rows.map(row => row.school))
+  return rows.map(row => enrichCommunityFields(row, identityMap))
 }
 
-// ─── Fetch: Raw Sessions ──────────────────────────────────────────────────
+// Fetch: Raw Sessions
 
 export async function fetchRawSessions(
   surveyId: string,
@@ -166,10 +210,22 @@ export async function fetchRawSessions(
 
   const { data, error } = await q
   if (error) throw new Error(`fetchRawSessions: ${error.message}`)
-  return (data ?? []) as SessionRow[]
+
+  const rows = (data ?? []) as SessionRow[]
+  const identityMap = await fetchCommunityIdentityMap(rows.map(row => row.school || row.community_id))
+  return rows.map(row => {
+    const communityKey = row.school || row.community_id
+    const identity = identityMap.get(communityKey)
+    return {
+      ...row,
+      nome_escola: resolveCommunityPrimaryName(identity ?? { community_id: communityKey }),
+      marca: identity?.marca ?? '',
+      unidade: identity?.unidade ?? '',
+    }
+  })
 }
 
-// ─── Fetch: Survey metadata ───────────────────────────────────────────────
+// Fetch: Survey metadata
 
 export async function fetchSurveyMeta(surveyId: string): Promise<SurveyMeta> {
   const sb = createServiceClient()
@@ -182,7 +238,7 @@ export async function fetchSurveyMeta(surveyId: string): Promise<SurveyMeta> {
   return data as SurveyMeta
 }
 
-// ─── Fetch: Questions + Options ───────────────────────────────────────────
+// Fetch: Questions + Options
 
 export async function fetchQuestionsAndOptions(surveyId: string): Promise<{
   questions: QuestionRow[]
@@ -211,7 +267,7 @@ export async function fetchQuestionsAndOptions(surveyId: string): Promise<{
   }
 }
 
-// ─── Fetch: All surveys (for selector) ───────────────────────────────────
+// Fetch: All surveys (for selector)
 
 export async function fetchAllSurveys(): Promise<SurveyMeta[]> {
   const sb = createServiceClient()
@@ -223,7 +279,7 @@ export async function fetchAllSurveys(): Promise<SurveyMeta[]> {
   return (data ?? []) as SurveyMeta[]
 }
 
-// ─── Fetch: Filter options for a survey ───────────────────────────────────
+// Fetch: Filter options for a survey
 
 export async function getFilterOptions(surveyId: string): Promise<FilterOptions> {
   const sb = createServiceClient()
@@ -244,11 +300,13 @@ export async function getFilterOptions(surveyId: string): Promise<FilterOptions>
   if (schoolIds.length > 0) {
     const { data: communityRows } = await sb
       .from('communities')
-      .select('community_id, nome_escola')
+      .select('community_id, nome_escola, marca, unidade')
       .in('community_id', schoolIds)
-    communities = (communityRows ?? []).map((c: { community_id: string; nome_escola: string }) => ({
+    communities = (communityRows ?? []).map((c: { community_id: string; nome_escola: string | null; marca: string | null; unidade: string | null }) => ({
       id: c.community_id,
-      nome: c.nome_escola ?? c.community_id,
+      nome: resolveCommunityPrimaryName(c),
+      marca: c.marca,
+      unidade: c.unidade,
     }))
   }
 

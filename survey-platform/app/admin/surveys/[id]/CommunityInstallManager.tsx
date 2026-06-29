@@ -9,38 +9,34 @@ import {
 } from './install-actions'
 import { updateCommunityDates } from './communities/actions'
 import { CommunityDisplay } from '@/lib/community-name'
+import { resolveCommunityPrimaryName } from '@/lib/community-identity'
 
 interface CommunityInstall {
   community_id: string
   status: string
   active: boolean
   nomeEscola?: string | null
+  marca?: string | null
+  unidade?: string | null
   open_date?: string | null
   close_date?: string | null
 }
 
-const KNOWN_COMMUNITIES = [
-  'americano', 'yf24y2k7', 'fwnash24', 'apogeu-santoantonio-i', 'apogeu-santoantonio-ii',
-  'wmfkn49h', 'ns8z5w8m', 'yxak8s0k', 'k4ys44r2', 'leonardodavinci-alfa', 'leonardodavinci-beta',
-  'leonardodavinci-gama', 'n6k47n81', 'w9593n19', 'rf3zk695', 'w95k0s77', 'globaltree-abm',
-  'matriz-bangu', 'matriz-campogrande', 'matriz-caxias', 'matriz-madureira', 'matriz-novaiguacu',
-  'matriz-rochamiranda', 'matriz-retirodosartistas', 'matriz-saojoaodemeriti', 'matriz-taquara',
-  'matriz-tijuca', 'qi-freguesia', 'qi-metropolitano', 'qi-recreio', 'qi-rio2', 'qi-tijuca',
-  'az51800x', 'w213sfza', 'xa7y5zam', 'sap', 'sarahdawsey-juizdefora', 'y9490m37',
-  'uniao', 'unificado-zonasul', 'raizeducacao',
-]
+interface AvailableCommunity {
+  community_id: string
+  nomeEscola?: string | null
+  marca?: string | null
+  unidade?: string | null
+}
 
 const STATUS_OPTIONS = [
   { value: 'ativa',      label: 'Ativa' },
   { value: 'pausada',    label: 'Pausada' },
-  { value: 'nao_aberta', label: 'Não aberta' },
+  { value: 'nao_aberta', label: 'Nao aberta' },
   { value: 'encerrada',  label: 'Encerrada' },
 ]
 
-function communitySchedulingHint(
-  openDate: string | null,
-  status: string
-): string | null {
+function communitySchedulingHint(openDate: string | null, status: string): string | null {
   if (!openDate) return null
   if (status !== 'nao_aberta' && status !== 'pausada') return null
   const now = new Date()
@@ -48,22 +44,33 @@ function communitySchedulingHint(
   if (open <= now) return null
   const diffDays = Math.ceil((open.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
   if (diffDays === 0) return 'Abre hoje'
-  if (diffDays === 1) return 'Abre amanhã'
+  if (diffDays === 1) return 'Abre amanha'
   return `Abre em ${diffDays} dias`
+}
+
+function communityLabel(community: AvailableCommunity) {
+  return resolveCommunityPrimaryName({
+    community_id: community.community_id,
+    nome_escola: community.nomeEscola,
+    marca: community.marca,
+    unidade: community.unidade,
+  })
 }
 
 export default function CommunityInstallManager({
   surveyId,
   installs,
+  availableCommunities,
 }: {
   surveyId: string
   installs: CommunityInstall[]
+  availableCommunities: AvailableCommunity[]
 }) {
   const [isPending, startTransition] = useTransition()
   const [formError, setFormError] = useState<string | null>(null)
+  const [selectedCommunityId, setSelectedCommunityId] = useState('')
   const formRef = useRef<HTMLFormElement>(null)
 
-  // Estado local das datas (community_id → { open_date, close_date })
   const [localDates, setLocalDates] = useState<
     Record<string, { open_date: string | null; close_date: string | null }>
   >(() =>
@@ -75,18 +82,15 @@ export default function CommunityInstallManager({
     )
   )
 
-  // Debounce ref por comunidade
   const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   const handleDateChange = useCallback(
     (communityId: string, field: 'open_date' | 'close_date', value: string | null) => {
-      // Atualiza estado local imediatamente (UI responsiva)
       setLocalDates(prev => ({
         ...prev,
         [communityId]: { ...prev[communityId], [field]: value || null },
       }))
 
-      // Debounce de 800ms antes de salvar
       if (debounceTimers.current[communityId]) {
         clearTimeout(debounceTimers.current[communityId])
       }
@@ -117,6 +121,7 @@ export default function CommunityInstallManager({
       if (result?.error) {
         setFormError(result.error)
       } else {
+        setSelectedCommunityId('')
         formRef.current?.reset()
       }
     })
@@ -124,113 +129,116 @@ export default function CommunityInstallManager({
 
   return (
     <div className="space-y-3">
-      {/* Lista de comunidades instaladas */}
       {installs.length > 0 ? (
         <div>
-          {installs.map(inst => (
-            <div key={inst.community_id} className="py-2.5 border-b border-gray-100 last:border-0">
-              {/* Linha principal: nome, status, ativo, remover */}
-              <div className="flex items-center gap-3">
-                <CommunityDisplay
-                  communityId={inst.community_id}
-                  nomeEscola={inst.nomeEscola}
-                  className="flex-1 min-w-0"
-                />
-
-                {/* Status */}
-                <select
-                  defaultValue={inst.status}
-                  disabled={isPending}
-                  onChange={e => startTransition(async () => {
-                    await updateCommunityStatus(surveyId, inst.community_id, e.target.value)
-                  })}
-                  className="border border-gray-200 rounded-lg text-xs px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#F7941D] disabled:opacity-50"
-                >
-                  {STATUS_OPTIONS.map(o => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-
-                {/* Ativo/Inativo toggle */}
-                <button
-                  type="button"
-                  disabled={isPending}
-                  onClick={() => startTransition(async () => {
-                    await toggleCommunityActive(surveyId, inst.community_id, !inst.active)
-                  })}
-                  className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors disabled:opacity-50 ${
-                    inst.active
-                      ? 'bg-green-100 text-green-700 hover:bg-red-50 hover:text-red-600'
-                      : 'bg-gray-100 text-gray-500 hover:bg-green-100 hover:text-green-700'
-                  }`}
-                >
-                  {inst.active ? 'Ativo' : 'Inativo'}
-                </button>
-
-                {/* Remover */}
-                <button
-                  type="button"
-                  disabled={isPending}
-                  onClick={() => {
-                    if (!confirm(`Remover "${inst.community_id}" desta pesquisa?`)) return
-                    startTransition(async () => {
-                      await removeCommunity(surveyId, inst.community_id)
-                    })
-                  }}
-                  className="text-gray-300 hover:text-red-500 transition-colors text-sm disabled:opacity-50 px-1"
-                  title="Remover"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Datas — alinhadas sob o nome da escola */}
-              <div className="flex items-center gap-4 mt-1.5 pl-0">
-                <span className="text-xs text-gray-400 w-16 shrink-0">Período</span>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-gray-400">De</span>
-                  <input
-                    type="datetime-local"
-                    value={localDates[inst.community_id]?.open_date?.slice(0, 16) ?? ''}
-                    disabled={isPending}
-                    onChange={e =>
-                      handleDateChange(inst.community_id, 'open_date', e.target.value || null)
-                    }
-                    className="border border-gray-200 bg-gray-50 rounded-[4.8px] px-2 py-0.5 text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-[#F7941D] focus:bg-white disabled:opacity-50"
+          {installs.map(inst => {
+            const displayName = resolveCommunityPrimaryName({
+              community_id: inst.community_id,
+              nome_escola: inst.nomeEscola,
+              marca: inst.marca,
+              unidade: inst.unidade,
+            })
+            return (
+              <div key={inst.community_id} className="py-2.5 border-b border-gray-100 last:border-0">
+                <div className="flex items-center gap-3">
+                  <CommunityDisplay
+                    communityId={inst.community_id}
+                    nomeEscola={inst.nomeEscola}
+                    marca={inst.marca}
+                    unidade={inst.unidade}
+                    className="flex-1 min-w-0"
                   />
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-gray-400">até</span>
-                  <input
-                    type="datetime-local"
-                    value={localDates[inst.community_id]?.close_date?.slice(0, 16) ?? ''}
+
+                  <select
+                    defaultValue={inst.status}
                     disabled={isPending}
-                    onChange={e =>
-                      handleDateChange(inst.community_id, 'close_date', e.target.value || null)
-                    }
-                    className="border border-gray-200 bg-gray-50 rounded-[4.8px] px-2 py-0.5 text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-[#F7941D] focus:bg-white disabled:opacity-50"
-                  />
+                    onChange={e => startTransition(async () => {
+                      await updateCommunityStatus(surveyId, inst.community_id, e.target.value)
+                    })}
+                    className="border border-gray-200 rounded-lg text-xs px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#F7941D] disabled:opacity-50"
+                  >
+                    {STATUS_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => startTransition(async () => {
+                      await toggleCommunityActive(surveyId, inst.community_id, !inst.active)
+                    })}
+                    className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors disabled:opacity-50 ${
+                      inst.active
+                        ? 'bg-green-100 text-green-700 hover:bg-red-50 hover:text-red-600'
+                        : 'bg-gray-100 text-gray-500 hover:bg-green-100 hover:text-green-700'
+                    }`}
+                  >
+                    {inst.active ? 'Ativo' : 'Inativo'}
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => {
+                      if (!confirm(`Remover "${displayName}" desta pesquisa?`)) return
+                      startTransition(async () => {
+                        await removeCommunity(surveyId, inst.community_id)
+                      })
+                    }}
+                    className="text-gray-300 hover:text-red-500 transition-colors text-sm disabled:opacity-50 px-1"
+                    title="Remover"
+                  >
+                    x
+                  </button>
                 </div>
-                {communitySchedulingHint(
-                  localDates[inst.community_id]?.open_date ?? null,
-                  inst.status
-                ) && (
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600">
-                    {communitySchedulingHint(
-                      localDates[inst.community_id]?.open_date ?? null,
-                      inst.status
-                    )}
-                  </span>
-                )}
+
+                <div className="flex items-center gap-4 mt-1.5 pl-0">
+                  <span className="text-xs text-gray-400 w-16 shrink-0">Periodo</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-400">De</span>
+                    <input
+                      type="datetime-local"
+                      value={localDates[inst.community_id]?.open_date?.slice(0, 16) ?? ''}
+                      disabled={isPending}
+                      onChange={e =>
+                        handleDateChange(inst.community_id, 'open_date', e.target.value || null)
+                      }
+                      className="border border-gray-200 bg-gray-50 rounded-[4.8px] px-2 py-0.5 text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-[#F7941D] focus:bg-white disabled:opacity-50"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-400">ate</span>
+                    <input
+                      type="datetime-local"
+                      value={localDates[inst.community_id]?.close_date?.slice(0, 16) ?? ''}
+                      disabled={isPending}
+                      onChange={e =>
+                        handleDateChange(inst.community_id, 'close_date', e.target.value || null)
+                      }
+                      className="border border-gray-200 bg-gray-50 rounded-[4.8px] px-2 py-0.5 text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-[#F7941D] focus:bg-white disabled:opacity-50"
+                    />
+                  </div>
+                  {communitySchedulingHint(
+                    localDates[inst.community_id]?.open_date ?? null,
+                    inst.status
+                  ) && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600">
+                      {communitySchedulingHint(
+                        localDates[inst.community_id]?.open_date ?? null,
+                        inst.status
+                      )}
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       ) : (
         <p className="text-sm text-gray-400 py-2">Nenhuma comunidade instalada.</p>
       )}
 
-      {/* Formulário para adicionar */}
       <form
         ref={formRef}
         onSubmit={handleInstall}
@@ -241,18 +249,25 @@ export default function CommunityInstallManager({
             {formError}
           </p>
         )}
-        <div className="flex-1 min-w-[160px]">
+        <div className="flex-1 min-w-[220px]">
           <input
             name="communityId"
             list="community-list"
-            placeholder="ID da comunidade"
+            placeholder="Buscar por marca, unidade ou ID"
             required
             disabled={isPending}
+            value={selectedCommunityId}
+            onChange={event => setSelectedCommunityId(event.target.value)}
             className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D] disabled:opacity-50"
           />
           <datalist id="community-list">
-            {KNOWN_COMMUNITIES.map(c => <option key={c} value={c} />)}
+            {availableCommunities.map(c => (
+              <option key={c.community_id} value={c.community_id} label={communityLabel(c)} />
+            ))}
           </datalist>
+          <p className="mt-1 text-[11px] text-gray-400">
+            Escolha pelo nome da marca/unidade. O ID tecnico sera preenchido automaticamente.
+          </p>
         </div>
         <select
           name="status"

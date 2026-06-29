@@ -1,6 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { CommunityDisplay } from '@/lib/community-name'
+import type { Community } from './dispatch-form-utils'
 
 interface Job {
   id: string
@@ -158,15 +160,18 @@ function ProgressBar({ value, tone = 'amber' }: { value: number; tone?: 'amber' 
 export default function DispatchHistory({
   dispatches: initial,
   surveyId,
+  communities,
 }: {
   dispatches: Dispatch[]
   surveyId: string
+  communities: Community[]
 }) {
   const [dispatches, setDispatches] = useState<Dispatch[]>(initial)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [retrying, setRetrying] = useState<string | null>(null)
   const [auditTab, setAuditTab] = useState<Record<string, 'jobs' | 'emails'>>({})
   const [auditData, setAuditData] = useState<Record<string, AuditData>>({})
+  const communityById = useMemo(() => new Map(communities.map(community => [community.id, community])), [communities])
 
   const loadAudit = useCallback(async (dispatchId: string) => {
     if (auditData[dispatchId]?.logs.length > 0) return
@@ -361,7 +366,13 @@ export default function DispatchHistory({
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <JobStatusBadge status={job.status} />
-                            <span className="truncate font-mono text-gray-700">{job.community_id}</span>
+                            <CommunityDisplay
+                              communityId={job.community_id}
+                              nomeEscola={communityById.get(job.community_id)?.nome}
+                              marca={communityById.get(job.community_id)?.marca}
+                              unidade={communityById.get(job.community_id)?.unidade}
+                              className="min-w-0 flex-1 text-gray-700"
+                            />
                           </div>
                           {job.error && (
                             <p className="mt-1 truncate text-red-600" title={job.error}>

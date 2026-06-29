@@ -64,6 +64,9 @@ describe('report-xlsx-schema', () => {
       id: 'session-1',
       survey_id: 'survey-1',
       community_id: 'school-1',
+      nome_escola: 'Colegio Qi Valqueire',
+      marca: 'Colegio Qi',
+      unidade: 'Valqueire',
       user_id: 'user-1',
       submitted_at: '2026-06-23T10:00:00Z',
       nome_responsavel: 'Maria',
@@ -75,10 +78,25 @@ describe('report-xlsx-schema', () => {
       responses: [],
     } satisfies Omit<SessionRow, 'perfil'>
 
-    expect(META_HEADERS).toContain('tipoRespondente')
+    expect(META_HEADERS).toEqual([
+      'postId',
+      'title',
+      'Marca',
+      'Unidade',
+      'Nome da Comunidade',
+      'community_id',
+      'userId',
+      'userName',
+      'userEmail',
+      'tipoRespondente',
+      'answeredAt',
+    ])
     expect(getMetaValues({ ...base, perfil: 'aluno' }, 'Pesquisa')).toEqual([
       'session-1',
       'Pesquisa',
+      'Colegio Qi',
+      'Valqueire',
+      'Colegio Qi Valqueire',
       'school-1',
       'user-1',
       'Joao',
@@ -86,7 +104,7 @@ describe('report-xlsx-schema', () => {
       'estudante',
       '2026-06-23T10:00:00Z',
     ])
-    expect(getMetaValues({ ...base, perfil: 'responsavel' }, 'Pesquisa')[4]).toBe('Maria')
+    expect(getMetaValues({ ...base, perfil: 'responsavel' }, 'Pesquisa')[7]).toBe('Maria')
   })
 
   it('maps scale averages to color bands', () => {

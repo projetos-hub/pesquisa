@@ -5,6 +5,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import DisparoForm from './DisparoForm'
 import { getBroadcasts } from './actions'
 import { formatCommunityId } from '@/lib/community-name'
+import { resolveCommunityPrimaryName } from '@/lib/community-identity'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -46,10 +47,10 @@ export default async function DisparosPage({ params }: PageProps) {
   const { data: communityRows } = communityIds.length > 0
     ? await supabase
         .from('communities')
-        .select('community_id, nome_escola')
+        .select('community_id, nome_escola, marca, unidade')
         .in('community_id', communityIds)
     : { data: [] }
-  const nameByCommunity = new Map((communityRows ?? []).map(c => [c.community_id, c.nome_escola ?? c.community_id]))
+  const nameByCommunity = new Map((communityRows ?? []).map(c => [c.community_id, resolveCommunityPrimaryName(c)]))
 
   const communityOptions = (communities ?? []).map(c => ({
     id: c.community_id,
@@ -57,7 +58,7 @@ export default async function DisparosPage({ params }: PageProps) {
     status: c.status,
   }))
 
-  // Mapa community_id → nome legível para o histórico de disparos
+  // Mapa community_id â†’ nome legÃ­vel para o histÃ³rico de disparos
   const communityNameMap = Object.fromEntries(communityOptions.map(c => [c.id, c.label]))
 
   return (
@@ -65,7 +66,7 @@ export default async function DisparosPage({ params }: PageProps) {
       <div className="rounded-3xl border border-white/12 bg-[#12151d]/88 p-5 text-gray-900 shadow-[0_30px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl">
       {/* Breadcrumb */}
       <div className="flex items-center gap-3 mb-6">
-        <Link href="/admin/surveys" className="text-gray-400 hover:text-gray-600 text-sm">← Pesquisas</Link>
+        <Link href="/admin/surveys" className="text-gray-400 hover:text-gray-600 text-sm">â† Pesquisas</Link>
         <span className="text-gray-300">/</span>
         <Link href={`/admin/surveys/${id}`} className="text-gray-400 hover:text-gray-600 text-sm truncate max-w-xs">{survey.title}</Link>
         <span className="text-gray-300">/</span>
@@ -73,7 +74,7 @@ export default async function DisparosPage({ params }: PageProps) {
       </div>
 
       <div className="grid gap-6">
-        {/* Formulário de novo disparo */}
+        {/* FormulÃ¡rio de novo disparo */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Novo disparo</h3>
           <DisparoForm
@@ -84,11 +85,11 @@ export default async function DisparosPage({ params }: PageProps) {
           />
         </div>
 
-        {/* Histórico de disparos */}
+        {/* HistÃ³rico de disparos */}
         {broadcasts.length > 0 && (
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100">
-              <h3 className="text-sm font-semibold text-gray-700">Histórico de disparos</h3>
+              <h3 className="text-sm font-semibold text-gray-700">HistÃ³rico de disparos</h3>
             </div>
             <table className="w-full text-sm">
               <thead>
@@ -126,7 +127,7 @@ export default async function DisparosPage({ params }: PageProps) {
                       )}
                     </td>
                     <td className="px-4 py-2.5 text-right font-medium text-gray-900">
-                      {b.recipient_count ?? '—'}
+                      {b.recipient_count ?? 'â€”'}
                     </td>
                   </tr>
                 ))}

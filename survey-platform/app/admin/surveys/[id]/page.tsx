@@ -5,7 +5,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import SurveyEditForm from './SurveyEditForm'
 import QuestionEditor from './QuestionEditor'
 import CommunityInstallManager from './CommunityInstallManager'
-import { formatCommunityId } from '@/lib/community-name'
+import { resolveCommunityPrimaryName } from '@/lib/community-identity'
 import DuplicateSurveyButton from '../DuplicateSurveyButton'
 
 interface PageProps {
@@ -25,7 +25,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
 
   if (!survey) notFound()
 
-  // Busca perguntas com opções
+  // Busca perguntas com opÃƒÂ§ÃƒÂµes
   const { data: questionsRaw } = await supabase
     .from('questions')
     .select('id, order_index, type, key, title, description, required, settings')
@@ -56,10 +56,22 @@ export default async function SurveyDetailPage({ params }: PageProps) {
   const { data: communityRows } = installedCommunityIds.length > 0
     ? await supabase
         .from('communities')
-        .select('community_id, nome_escola')
+        .select('community_id, nome_escola, marca, unidade')
         .in('community_id', installedCommunityIds)
     : { data: [] }
-  const nameByCommunity = new Map((communityRows ?? []).map(c => [c.community_id, c.nome_escola ?? null]))
+  const identityByCommunity = new Map((communityRows ?? []).map(c => [c.community_id, c]))
+  const { data: allCommunityRows } = await supabase
+    .from('communities')
+    .select('community_id, nome_escola, marca, unidade')
+    .order('marca', { ascending: true })
+    .order('unidade', { ascending: true })
+
+  const availableCommunities = (allCommunityRows ?? []).map(c => ({
+    community_id: c.community_id,
+    nomeEscola: c.nome_escola ?? null,
+    marca: c.marca ?? null,
+    unidade: c.unidade ?? null,
+  }))
 
   // Stats de respostas
   const { data: sessions } = await supabase
@@ -90,7 +102,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
       {/* Breadcrumb */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/admin/surveys" className="text-gray-400 hover:text-gray-600 text-sm">
-          ← Pesquisas
+          Ã¢â€ Â Pesquisas
         </Link>
         <span className="text-gray-300">/</span>
         <h2 className="text-lg font-semibold text-gray-900 truncate">{survey.title}</h2>
@@ -101,7 +113,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
         <div className="grid grid-cols-3 gap-4">
           {[
             { label: 'Total de respostas', value: total,       color: 'text-[#F7941D]' },
-            { label: 'Responsáveis',       value: responsaveis, color: 'text-blue-600' },
+            { label: 'ResponsÃƒÂ¡veis',       value: responsaveis, color: 'text-blue-600' },
             { label: 'Alunos',            value: alunos,       color: 'text-purple-600' },
           ].map(({ label, value, color }) => (
             <div key={label} className="bg-white rounded-xl border border-gray-200 p-4">
@@ -118,7 +130,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
             <div className="space-y-2">
               {topSchools.map(([school, count]) => (
                 <div key={school} className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600 text-xs">{formatCommunityId(school)}</span>
+                  <span className="text-gray-600 text-xs">{resolveCommunityPrimaryName(identityByCommunity.get(school) ?? { community_id: school })}</span>
                   <div className="flex items-center gap-2">
                     <div
                       className="h-1.5 bg-[#F7941D]/30 rounded-full"
@@ -140,11 +152,14 @@ export default async function SurveyDetailPage({ params }: PageProps) {
           </p>
           <CommunityInstallManager
             surveyId={id}
+            availableCommunities={availableCommunities}
             installs={(installs ?? []).map(i => ({
               community_id: i.community_id,
               status:       i.status,
               active:       i.active,
-              nomeEscola:   nameByCommunity.get(i.community_id) ?? null,
+              nomeEscola:   identityByCommunity.get(i.community_id)?.nome_escola ?? null,
+              marca:        identityByCommunity.get(i.community_id)?.marca ?? null,
+              unidade:      identityByCommunity.get(i.community_id)?.unidade ?? null,
               open_date:    i.open_date as string | null ?? null,
               close_date:   i.close_date as string | null ?? null,
             }))}
@@ -157,14 +172,14 @@ export default async function SurveyDetailPage({ params }: PageProps) {
             <div>
               <h3 className="text-sm font-semibold text-gray-700">Amostra Segmentada</h3>
               <p className="text-xs text-gray-400 mt-0.5">
-                Faça upload de uma lista de usuários para segmentar esta pesquisa.
+                FaÃƒÂ§a upload de uma lista de usuÃƒÂ¡rios para segmentar esta pesquisa.
               </p>
             </div>
             <Link
               href={`/admin/surveys/${id}/sample`}
               className="bg-[#F7941D] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#D97B10] transition-colors font-medium"
             >
-              📋 Gerenciar
+              Ã°Å¸â€œâ€¹ Gerenciar
             </Link>
           </div>
         </div>
@@ -175,14 +190,14 @@ export default async function SurveyDetailPage({ params }: PageProps) {
             <div>
               <h3 className="text-sm font-semibold text-gray-700">Disparos</h3>
               <p className="text-xs text-gray-400 mt-0.5">
-                Envie notificações push e email para as famílias via Layers.
+                Envie notificaÃƒÂ§ÃƒÂµes push e email para as famÃƒÂ­lias via Layers.
               </p>
             </div>
             <Link
               href={`/admin/surveys/${id}/dispatch`}
               className="bg-[#F7941D] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#D97B10] transition-colors font-medium"
             >
-              📢 Disparar
+              Ã°Å¸â€œÂ¢ Disparar
             </Link>
           </div>
         </div>
@@ -193,25 +208,25 @@ export default async function SurveyDetailPage({ params }: PageProps) {
             href={`/admin/surveys/${id}/communities`}
             className="text-sm text-[#F7941D] hover:text-[#D97B10] font-medium"
           >
-            Identidade Visual →
+            Identidade Visual Ã¢â€ â€™
           </Link>
           {total > 0 && (
             <Link
               href={`/admin/surveys/${id}/responses`}
               className="text-sm text-[#F7941D] hover:text-[#D97B10] font-medium"
             >
-              Ver todas as respostas →
+              Ver todas as respostas Ã¢â€ â€™
             </Link>
           )}
           <Link
             href={`/admin/surveys/${id}/disparos`}
             className="text-sm text-[#F7941D] hover:text-[#D97B10] font-medium"
           >
-            Disparos →
+            Disparos Ã¢â€ â€™
           </Link>
         </div>
 
-        {/* Formulário de edição */}
+        {/* FormulÃƒÂ¡rio de ediÃƒÂ§ÃƒÂ£o */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Metadados</h3>
           <SurveyEditForm survey={survey} settings={survey.settings as Record<string, unknown> | null} />

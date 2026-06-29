@@ -4,7 +4,7 @@ import { adminAuthErrorResponse, requireAdmin } from '@/lib/admin-auth'
 import { createServiceClient } from '@/lib/supabase-service'
 import ExcelJS from 'exceljs'
 import { buildColumnSchema, META_HEADERS, getMetaValues } from '@/lib/report-xlsx'
-import type { SessionRow, QuestionRow, OptionRow } from '@/lib/report-queries'
+import { fetchRawSessions, type SessionRow, type QuestionRow, type OptionRow } from '@/lib/report-queries'
 
 export async function GET(request: Request) {
   try {
@@ -56,19 +56,8 @@ export async function GET(request: Request) {
 
     const options = (optionsRaw ?? []) as OptionRow[]
 
-    // All sessions + responses
-    const { data: sessions, error: sessionsError } = await serviceSupabase
-      .from('response_sessions')
-      .select('id, survey_id, community_id, user_id, submitted_at, perfil, nome_responsavel, nome_aluno, serie, email, school, onda, responses(id, question_key, value)')
-      .eq('survey_id', surveyId)
-      .order('submitted_at', { ascending: false }) as { data: SessionRow[] | null; error: unknown }
-
-    if (sessionsError || !sessions) {
-      return new Response(JSON.stringify({ error: 'Failed to fetch sessions' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }
+    // All sessions + responses, enriched with Marca/Unidade/Nome da Comunidade.
+    const sessions: SessionRow[] = await fetchRawSessions(surveyId)
 
     // Build column schema from questions
     const columnSchema = buildColumnSchema(questions, options)

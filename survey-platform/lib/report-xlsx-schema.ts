@@ -8,7 +8,10 @@ export type ColDef = {
 export const META_HEADERS = [
   'postId',
   'title',
-  'community',
+  'Marca',
+  'Unidade',
+  'Nome da Comunidade',
+  'community_id',
   'userId',
   'userName',
   'userEmail',
@@ -88,6 +91,9 @@ export function getMetaValues(s: SessionRow, surveyTitle: string): unknown[] {
   return [
     s.id,
     surveyTitle,
+    s.marca ?? '',
+    s.unidade ?? '',
+    s.nome_escola ?? s.school ?? s.community_id,
     s.community_id,
     s.user_id,
     s.perfil === 'aluno' ? s.nome_aluno || '' : s.nome_responsavel || '',

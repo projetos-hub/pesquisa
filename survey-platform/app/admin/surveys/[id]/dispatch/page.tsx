@@ -7,6 +7,7 @@ import DispatchForm    from './DispatchForm'
 import DispatchHistory from './DispatchHistory'
 import ManualDispatch  from './ManualDispatch'
 import SamplePanel     from './SamplePanel'
+import { resolveCommunityPrimaryName } from '@/lib/community-identity'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -43,14 +44,16 @@ export default async function DispatchPage({ params }: PageProps) {
   const { data: communityRows } = communityIds.length > 0
     ? await service
         .from('communities')
-        .select('community_id, nome_escola')
+        .select('community_id, nome_escola, marca, unidade')
         .in('community_id', communityIds)
     : { data: [] }
-  const nameByCommunity = new Map((communityRows ?? []).map(c => [c.community_id, c.nome_escola ?? c.community_id]))
+  const identityByCommunity = new Map((communityRows ?? []).map(c => [c.community_id, c]))
 
   const communities = (installRows ?? []).map((r: { community_id: string }) => ({
     id:   r.community_id,
-    nome: nameByCommunity.get(r.community_id) ?? r.community_id,
+    nome: resolveCommunityPrimaryName(identityByCommunity.get(r.community_id) ?? { community_id: r.community_id }),
+    marca: identityByCommunity.get(r.community_id)?.marca ?? null,
+    unidade: identityByCommunity.get(r.community_id)?.unidade ?? null,
   }))
 
   // Templates salvos
@@ -87,7 +90,7 @@ export default async function DispatchPage({ params }: PageProps) {
   ])
   const sampleCount = sampleResolved ?? 0
 
-  // Histórico de disparos (não templates)
+  // HistÃƒÂ³rico de disparos (nÃƒÂ£o templates)
   const { data: dispatches } = await service
     .from('survey_dispatches')
     .select(`
@@ -108,7 +111,7 @@ export default async function DispatchPage({ params }: PageProps) {
       {/* Breadcrumb */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/admin/surveys" className="text-gray-400 hover:text-gray-600 text-sm">
-          ← Pesquisas
+          Ã¢â€ Â Pesquisas
         </Link>
         <span className="text-gray-300">/</span>
         <Link href={`/admin/surveys/${surveyId}`} className="text-gray-400 hover:text-gray-600 text-sm truncate max-w-[200px]">
@@ -119,7 +122,7 @@ export default async function DispatchPage({ params }: PageProps) {
       </div>
 
       <div className="grid gap-6">
-        {/* Formulário */}
+        {/* FormulÃƒÂ¡rio */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Novo disparo</h3>
           {communities.length === 0 ? (
@@ -153,15 +156,15 @@ export default async function DispatchPage({ params }: PageProps) {
           }}
         />
 
-        {/* Disparo rápido */}
+        {/* Disparo rÃƒÂ¡pido */}
         {communities.length > 0 && (
           <ManualDispatch surveyId={surveyId} communities={communities} />
         )}
 
-        {/* Histórico */}
+        {/* HistÃƒÂ³rico */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-gray-700">Histórico de disparos</h3>
+            <h3 className="text-sm font-semibold text-gray-700">HistÃƒÂ³rico de disparos</h3>
             {(dispatches?.length ?? 0) > 0 && (
               <span className="text-xs text-gray-400">{dispatches?.length} registro(s)</span>
             )}
@@ -169,6 +172,7 @@ export default async function DispatchPage({ params }: PageProps) {
           <DispatchHistory
             dispatches={(dispatches ?? []) as Parameters<typeof DispatchHistory>[0]['dispatches']}
             surveyId={surveyId}
+            communities={communities}
           />
         </div>
       </div>

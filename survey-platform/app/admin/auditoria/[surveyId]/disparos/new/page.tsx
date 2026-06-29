@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { AdminPageShell } from '../../../../AdminPageShell'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-service'
+import { resolveCommunityPrimaryName } from '@/lib/community-identity'
 import NovoDisparoForm from './NovoDisparoForm'
 
 interface PageProps {
@@ -45,17 +46,17 @@ export default async function NovoDisparoPage({ params }: PageProps) {
   const { data: communityRows } = communityIds.length > 0
     ? await db
         .from('communities')
-        .select('community_id, nome_escola')
+        .select('community_id, nome_escola, marca, unidade')
         .in('community_id', communityIds)
     : { data: [] }
-  const nameByCommunity = new Map((communityRows ?? []).map(c => [c.community_id, c.nome_escola ?? c.community_id]))
+  const nameByCommunity = new Map((communityRows ?? []).map(c => [c.community_id, resolveCommunityPrimaryName(c)]))
 
   const communities = (commData ?? []).map(c => ({
     id: c.community_id,
     label: nameByCommunity.get(c.community_id) ?? c.community_id,
   }))
 
-  // Default = agora no fuso de Brasília (servidor roda em UTC, enviamos UTC-3)
+  // Default = agora no fuso de BrasÃ­lia (servidor roda em UTC, enviamos UTC-3)
   const nowBR = new Date()
   nowBR.setHours(nowBR.getHours() - 3)
   const defaultFiredAt = toDatetimeLocalString(nowBR)
@@ -66,7 +67,7 @@ export default async function NovoDisparoPage({ params }: PageProps) {
       {/* Breadcrumb */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/admin/auditoria" className="text-gray-400 hover:text-gray-600 text-sm">
-          ← Auditoria
+          â† Auditoria
         </Link>
         <span className="text-gray-300">/</span>
         <Link
