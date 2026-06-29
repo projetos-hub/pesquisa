@@ -202,3 +202,28 @@ Ajustes:
 - Toda base de respostas exportada contem `Marca`, `Unidade`, `Nome da Comunidade`, `community_id`.
 - Nenhum payload tecnico para Layers troca `community_id` por nome humano; APIs externas continuam recebendo o ID correto.
 
+## Execucao concluida em 2026-06-29
+
+Commit publicado:
+- `3006c8b feat: exibir marca e unidade nas comunidades`
+
+Entregue:
+- Helper compartilhado para resolver nome principal por `marca + unidade`, com fallback para `nome_escola` e `community_id`.
+- `CommunityDisplay` atualizado para mostrar nome humano como principal e `community_id` como subtitulo tecnico.
+- Configuracao de pesquisa, dispatch, amostras, respostas, auditoria e analytics usando nome humano nas superficies principais.
+- Exportacoes XLSX/CSV/JSON com `Marca`, `Unidade`, `Nome da Comunidade` e `community_id`.
+- `/api/admin/export` passou a usar `fetchRawSessions`, recebendo sessoes enriquecidas com identidade de comunidade.
+- Testes unitarios atualizados para o novo contrato de XLSX.
+
+Validado:
+
+```bash
+cd survey-platform
+npm run test:unit   # passou: 19 files, 89 tests
+npm run typecheck   # passou
+npm run lint        # passou com warnings conhecidos de <img>
+```
+
+Fora do commit:
+- Alteracoes locais preexistentes em docs, HAR, `tmp`, `node_modules/.vite` e arquivos com remocao isolada de BOM.
+- O plano P2 de sincronizacao externa/Google Sheets ficou como proximo cuidado, caso o espelho ainda esteja ativo.
