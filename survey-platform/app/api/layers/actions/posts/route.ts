@@ -1,88 +1,31 @@
-import { createServiceClient } from '@/lib/supabase-service'
 import { NextResponse } from 'next/server'
+import { createServiceClient } from '@/lib/supabase-service'
+
+function getClientHint(request: Request): string {
+  const forwardedFor = request.headers.get('x-forwarded-for') ?? ''
+  const firstIp = forwardedFor.split(',')[0]?.trim()
+  if (!firstIp) return 'unknown'
+
+  const parts = firstIp.split('.')
+  if (parts.length === 4) return `${parts[0]}.${parts[1]}.x.x`
+
+  return firstIp.slice(0, 16)
+}
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
 
     const community: string = body?.context?.community
-    const after: string = body?.data?.after ?? '2000-01-01T00:00:00Z'
-    const limit: number = body?.data?.limit ?? 20
+    const after: string = body?.after ?? body?.data?.after ?? '2000-01-01T00:00:00Z'
+    const limit = Math.min(Number(body?.limit ?? body?.data?.limit ?? 20) || 20, 100)
+    const sourceShape = body?.after ? 'top-level' : body?.data?.after ? 'data' : 'default'
+    const userAgent = request.headers.get('user-agent') ?? 'unknown'
+    const clientHint = getClientHint(request)
 
     if (!community) {
-      return NextResponse.json({ error: 'community obrigatório' }, { status: 400 })
-    }
-
-    // TEMP 2026-06-26: contrato HAR-like para validar se a UI real de
-    // Comunicados renderiza payloads mais proximos da API privada capturada.
-    // Remover apos o teste visual em raizeducacao.
-    if (community === 'raizeducacao') {
-      const now = new Date().toISOString()
-      const result = [
-        {
-          id: '_contrato_t15_har_like_provider',
-          _id: '_contrato_t15_har_like_provider',
-          active: true,
-          allowTickets: false,
-          approved: true,
-          approvedAt: now,
-          approvedBy: {
-            id: '6377844ce70782001c8b06fc',
-            name: 'Projetos',
-          },
-          attachments: [],
-          author: {
-            id: '6377844ce70782001c8b06fc',
-            name: 'Raiz Educacao',
-          },
-          category: {
-            color: 'gray-60',
-            community: 'raizeducacao',
-            id: '600099cf22c83b01a046cb39',
-            name: 'Geral',
-          },
-          community: 'raizeducacao',
-          coverImage: null,
-          createdAt: now,
-          description: '<p>Teste T15: payload HAR-like via provider API Hub.</p>',
-          generatedByLIA: false,
-          isParent: false,
-          kind: 'informative',
-          mailMergeEnabled: false,
-          needsPostAnswer: false,
-          notifications: [],
-          notifyChannels: ['pushNotification'],
-          published: true,
-          publishedAt: now,
-          scheduled: false,
-          targets: {
-            topics: [
-              {
-                id: '69ab230abae85b0f3f55b374',
-                kind: 'group',
-                name: 'Teste Pesquisa',
-                community: 'raizeducacao',
-              },
-            ],
-            roles: ['admin'],
-            tags: [
-              'author:6377844ce70782001c8b06fc',
-              'group:69ab230abae85b0f3f55b374',
-            ],
-            pastRoles: ['admin'],
-            pastTags: [
-              'author:6377844ce70782001c8b06fc',
-              'group:69ab230abae85b0f3f55b374',
-            ],
-            _id: '_contrato_t15_targets',
-          },
-          title: 'CONTRATO T15 - HAR-like provider',
-          updatedAt: now,
-        },
-      ]
-
-      console.log(`[layers/posts] TEMP HAR-like community=${community} after=${after} retornando ${result.length} comunicado`)
-      return NextResponse.json({ result })
+      console.warn(`[layers/posts] missing community ua=${userAgent} ip=${clientHint}`)
+      return NextResponse.json({ error: 'community obrigatorio' }, { status: 400 })
     }
 
     const supabase = createServiceClient()
@@ -107,16 +50,20 @@ export async function POST(request: Request) {
       description: c.description,
       createdAt:   c.created_at,
       updatedAt:   c.updated_at,
-      category:    c.category ?? 'Avisos',
+      category:    c.category ?? 'Geral',
       attachments: c.attachments ?? [],
       targets:     c.targets,
-      author:      { name: c.author_name ?? 'Raiz Educação' },
+      author:      { name: c.author_name ?? 'Raiz Educacao' },
       approved:    c.approved,
     }))
 
-    console.log(`[layers/posts] community=${community} after=${after} retornando ${result.length} comunicados`)
-    return NextResponse.json({ result })
+    console.log(
+      `[layers/posts] community=${community} after=${after} limit=${limit} shape=${sourceShape} ` +
+      `action=${body?.context?.action ?? 'unknown'} version=${body?.context?.version ?? 'unknown'} ` +
+      `ua=${userAgent} ip=${clientHint} returned=${result.length}`
+    )
 
+    return NextResponse.json({ result })
   } catch (err) {
     console.error('[layers/posts] erro inesperado:', err)
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
