@@ -12,6 +12,37 @@ function getClientHint(request: Request): string {
   return firstIp.slice(0, 16)
 }
 
+async function auditProviderCall(input: {
+  community: string
+  after: string
+  limit: number
+  sourceShape: string
+  action: string
+  version: string
+  userAgent: string
+  clientHint: string
+  returnedCount: number
+}) {
+  const supabase = createServiceClient()
+  const { error } = await supabase
+    .from('layers_posts_provider_calls')
+    .insert({
+      community_id:   input.community,
+      after_value:    input.after,
+      limit_value:    input.limit,
+      source_shape:   input.sourceShape,
+      action:         input.action,
+      version:        input.version,
+      user_agent:     input.userAgent.slice(0, 500),
+      client_hint:    input.clientHint,
+      returned_count: input.returnedCount,
+    })
+
+  if (error) {
+    console.warn('[layers/posts] audit insert failed:', error.message)
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -22,6 +53,8 @@ export async function POST(request: Request) {
     const sourceShape = body?.after ? 'top-level' : body?.data?.after ? 'data' : 'default'
     const userAgent = request.headers.get('user-agent') ?? 'unknown'
     const clientHint = getClientHint(request)
+    const action = body?.context?.action ?? 'unknown'
+    const version = String(body?.context?.version ?? 'unknown')
 
     if (!community) {
       console.warn(`[layers/posts] missing community ua=${userAgent} ip=${clientHint}`)
@@ -57,9 +90,21 @@ export async function POST(request: Request) {
       approved:    c.approved,
     }))
 
+    await auditProviderCall({
+      community,
+      after,
+      limit,
+      sourceShape,
+      action,
+      version,
+      userAgent,
+      clientHint,
+      returnedCount: result.length,
+    })
+
     console.log(
       `[layers/posts] community=${community} after=${after} limit=${limit} shape=${sourceShape} ` +
-      `action=${body?.context?.action ?? 'unknown'} version=${body?.context?.version ?? 'unknown'} ` +
+      `action=${action} version=${version} ` +
       `ua=${userAgent} ip=${clientHint} returned=${result.length}`
     )
 
