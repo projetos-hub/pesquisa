@@ -12,6 +12,22 @@ function getClientHint(request: Request): string {
   return firstIp.slice(0, 16)
 }
 
+function shouldReturnMinimalPost(targets: unknown): boolean {
+  return Boolean(
+    targets &&
+    typeof targets === 'object' &&
+    !Array.isArray(targets) &&
+    (targets as { __responseMode?: unknown }).__responseMode === 'minimal'
+  )
+}
+
+function stripResponseMode(targets: unknown): unknown {
+  if (!targets || typeof targets !== 'object' || Array.isArray(targets)) return targets
+
+  const sanitized = { ...(targets as Record<string, unknown>) }
+  delete sanitized.__responseMode
+  return sanitized
+}
 async function auditProviderCall(input: {
   community: string
   after: string
@@ -77,18 +93,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
     }
 
-    const result = (data ?? []).map((c) => ({
-      id:          c.id,
-      title:       c.title,
-      description: c.description,
-      createdAt:   c.created_at,
-      updatedAt:   c.updated_at,
-      category:    c.category ?? 'Geral',
-      attachments: c.attachments ?? [],
-      targets:     c.targets,
-      author:      { name: c.author_name ?? 'Raiz Educacao' },
-      approved:    c.approved,
-    }))
+    const result = (data ?? []).map((c) => {
+      const minimal = shouldReturnMinimalPost(c.targets)
+      const post: Record<string, unknown> = {
+        id:          c.id,
+        title:       c.title,
+        description: c.description,
+        createdAt:   c.created_at,
+        updatedAt:   c.updated_at,
+        targets:     stripResponseMode(c.targets),
+      }
+
+      if (!minimal) {
+        post.category = c.category ?? 'Geral'
+        post.attachments = c.attachments ?? []
+        post.author = { name: c.author_name ?? 'Raiz Educacao' }
+        post.approved = c.approved
+      }
+
+      return post
+    })
 
     await auditProviderCall({
       community,
@@ -114,3 +138,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
   }
 }
+
