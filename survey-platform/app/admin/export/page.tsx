@@ -1,8 +1,9 @@
 import { Fragment } from 'react'
 import { AdminPageShell } from '../AdminPageShell'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { disablePublicResponseLink } from './actions'
+import { disablePublicResponseLink, regeneratePublicResponseLinkAccessKey } from './actions'
 import { PublicLinkCreateForm } from './PublicLinkCreateForm'
+import { PublicJsonPreview } from './PublicJsonPreview'
 import { normalizePublicResponseScope, publicResponseScopeLabel, type PublicResponseScope } from '@/lib/public-responses'
 
 interface Survey {
@@ -20,6 +21,7 @@ interface PublicResponseLink {
   enabled: boolean
   include_pii: boolean
   access_key_hash: string | null
+  access_key: string | null
   created_at: string
   scope: PublicResponseScope
 }
@@ -51,7 +53,7 @@ export default async function ExportPage() {
 
   const { data: publicLinks } = await supabase
     .from('public_response_links')
-    .select('id, survey_id, token, enabled, include_pii, access_key_hash, created_at, scope')
+    .select('id, survey_id, token, enabled, include_pii, access_key_hash, access_key, created_at, scope')
     .order('created_at', { ascending: false }) as { data: PublicResponseLink[] | null }
 
   const { data: communities } = await supabase
@@ -132,43 +134,107 @@ export default async function ExportPage() {
                     </td>
                   </tr>
 
-                  {survey.publicLinks.map(link => {
-                    const publicUrl = `/public/responses/${link.token}`
-                    const absolutePublicUrl = `${appUrl}${publicUrl}`
-                    return (
-                      <tr key={link.id} className="bg-slate-50">
-                        <td colSpan={4} className="px-4 py-3">
-                          <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-700 lg:flex-row lg:items-center lg:justify-between">
+                  {survey.publicLinks.length > 0 && (
+                    <tr className="bg-slate-50">
+                      <td colSpan={4} className="px-4 py-3">
+                        <details className="group rounded-lg border border-slate-200 bg-white text-xs text-slate-700">
+                          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 marker:hidden">
                             <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className={`rounded-full px-2 py-0.5 font-bold ${link.enabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'}`}>
-                                  {link.enabled ? 'ativo' : 'desativado'}
-                                </span>
-                                <span>{link.access_key_hash ? 'com senha' : 'sem senha antiga'}</span>
-                                <span>{link.include_pii ? 'com dados pessoais' : 'sem dados pessoais'}</span>
-                                <span>{publicResponseScopeLabel(link.scope)}</span>
-                                <span>{new Date(link.created_at).toLocaleString('pt-BR')}</span>
-                              </div>
-                              <div className="mt-2 flex flex-col gap-1 font-mono text-[11px]">
-                                <a className="truncate text-blue-700 hover:underline" href={publicUrl} target="_blank" rel="noreferrer">
-                                  {absolutePublicUrl}
-                                </a>
-                                <span className="truncate text-slate-500">Sheets: use a senha/key gerada como parametro ?key=...</span>
-                              </div>
+                              <span className="font-bold text-slate-900">Links criados</span>
+                              <span className="ml-2 text-slate-500">
+                                {survey.publicLinks.length} {survey.publicLinks.length === 1 ? 'link' : 'links'} para esta pesquisa
+                              </span>
                             </div>
-                            {link.enabled && (
-                              <form action={disablePublicResponseLink}>
-                                <input type="hidden" name="linkId" value={link.id} />
-                                <button type="submit" className="rounded-lg border border-red-200 px-3 py-1.5 font-bold text-red-700 hover:bg-red-50">
-                                  Desativar
-                                </button>
-                              </form>
-                            )}
+                            <span className="shrink-0 rounded-md border border-slate-200 px-2 py-1 text-[11px] font-bold text-slate-600 group-open:hidden">
+                              Ver
+                            </span>
+                            <span className="hidden shrink-0 rounded-md border border-slate-200 px-2 py-1 text-[11px] font-bold text-slate-600 group-open:inline-flex">
+                              Ocultar
+                            </span>
+                          </summary>
+
+                          <div className="space-y-2 border-t border-slate-100 p-3">
+                            {survey.publicLinks.map(link => {
+                              const publicUrl = `/public/responses/${link.token}`
+                              const absolutePublicUrl = `${appUrl}${publicUrl}`
+                              const keyQuery = link.access_key ? `?key=${encodeURIComponent(link.access_key)}` : ''
+                              const jsonPath = `/api/public/responses/${link.token}.json${keyQuery}`
+                              const jsonUrl = `${appUrl}${jsonPath}`
+                              const csvUrl = `${appUrl}/api/public/responses/${link.token}.csv${keyQuery}`
+                              const sheetsFormula = link.access_key ? `=IMPORTDATA("${csvUrl}")` : null
+
+                              return (
+                                <div key={link.id} className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 lg:flex-row lg:items-start lg:justify-between">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className={`rounded-full px-2 py-0.5 font-bold ${link.enabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'}`}>
+                                        {link.enabled ? 'ativo' : 'desativado'}
+                                      </span>
+                                      <span>{link.access_key ? 'senha visivel' : link.access_key_hash ? 'senha antiga nao armazenada' : 'sem senha antiga'}</span>
+                                      <span>{link.include_pii ? 'com dados pessoais' : 'sem dados pessoais'}</span>
+                                      <span>{publicResponseScopeLabel(link.scope)}</span>
+                                      <span>{new Date(link.created_at).toLocaleString('pt-BR')}</span>
+                                    </div>
+
+                                    <div className="mt-2 grid gap-1 font-mono text-[11px] text-slate-600">
+                                      <p className="min-w-0 truncate">
+                                        <span className="font-sans font-bold text-slate-500">Link: </span>
+                                        <a className="text-blue-700 hover:underline" href={publicUrl} target="_blank" rel="noreferrer">
+                                          {absolutePublicUrl}
+                                        </a>
+                                      </p>
+                                      <p className="min-w-0 truncate">
+                                        <span className="font-sans font-bold text-slate-500">Senha/key: </span>
+                                        {link.access_key ?? 'nao armazenada; gere uma nova senha'}
+                                      </p>
+                                      <p className="min-w-0 truncate">
+                                        <span className="font-sans font-bold text-slate-500">API JSON: </span>
+                                        {link.access_key ? jsonUrl : 'gere uma nova senha para habilitar URL pronta'}
+                                      </p>
+                                      <p className="min-w-0 truncate">
+                                        <span className="font-sans font-bold text-slate-500">CSV: </span>
+                                        {link.access_key ? csvUrl : 'gere uma nova senha para habilitar URL pronta'}
+                                      </p>
+                                      <p className="min-w-0 truncate">
+                                        <span className="font-sans font-bold text-slate-500">Sheets: </span>
+                                        {sheetsFormula ?? 'gere uma nova senha para habilitar formula pronta'}
+                                      </p>
+                                    </div>
+
+                                    <div className="mt-3">
+                                      <PublicJsonPreview
+                                        fetchUrl={link.access_key ? jsonPath : null}
+                                        displayUrl={link.access_key ? jsonUrl : null}
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                                    {!link.access_key && link.enabled && (
+                                      <form action={regeneratePublicResponseLinkAccessKey}>
+                                        <input type="hidden" name="linkId" value={link.id} />
+                                        <button type="submit" className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-100">
+                                          Gerar nova senha
+                                        </button>
+                                      </form>
+                                    )}
+                                    {link.enabled && (
+                                      <form action={disablePublicResponseLink}>
+                                        <input type="hidden" name="linkId" value={link.id} />
+                                        <button type="submit" className="rounded-lg border border-red-200 px-3 py-1.5 font-bold text-red-700 hover:bg-red-50">
+                                          Desativar
+                                        </button>
+                                      </form>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            })}
                           </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
+                        </details>
+                      </td>
+                    </tr>
+                  )}
                 </Fragment>
               ))}
 

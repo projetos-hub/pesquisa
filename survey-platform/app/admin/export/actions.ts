@@ -92,6 +92,7 @@ export async function createPublicResponseLink(
     .insert({
       survey_id: surveyId,
       token,
+      access_key: accessKey,
       access_key_hash: hashPublicResponseAccessKey(accessKey),
       include_pii: includePii,
       created_by: user.id,
@@ -118,6 +119,24 @@ export async function disablePublicResponseLink(formData: FormData) {
   const { error } = await supabase
     .from('public_response_links')
     .update({ enabled: false })
+    .eq('id', linkId)
+
+  if (error) throw new Error(error.message)
+  revalidatePath('/admin/export')
+}
+export async function regeneratePublicResponseLinkAccessKey(formData: FormData) {
+  await requireAdmin()
+  const linkId = String(formData.get('linkId') ?? '')
+  if (!linkId) return
+
+  const accessKey = makeAccessKey()
+  const supabase = createServiceClient()
+  const { error } = await supabase
+    .from('public_response_links')
+    .update({
+      access_key: accessKey,
+      access_key_hash: hashPublicResponseAccessKey(accessKey),
+    })
     .eq('id', linkId)
 
   if (error) throw new Error(error.message)

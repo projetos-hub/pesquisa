@@ -5,6 +5,8 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
+  const next = searchParams.get('next')
+  const redirectPath = next?.startsWith('/') && !next.startsWith('//') ? next : '/admin'
 
   if (!code) {
     return NextResponse.redirect(`${origin}/admin/login?error=missing_code`)
@@ -36,7 +38,7 @@ export async function GET(request: Request) {
   }
 
   // Cria a resposta de redirect e aplica os cookies explicitamente
-  const response = NextResponse.redirect(`${origin}/admin`)
+  const response = NextResponse.redirect(`${origin}${redirectPath}`)
   cookiesToSet.forEach(({ name, value, options }) => {
     response.cookies.set(name, value, options as Parameters<typeof response.cookies.set>[2])
   })
