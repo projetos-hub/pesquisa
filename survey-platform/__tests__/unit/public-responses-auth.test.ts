@@ -15,6 +15,7 @@ function makeLink(accessKeyHash: string | null): PublicResponseLink {
     include_pii: false,
     access_key_hash: accessKeyHash,
     expires_at: null,
+    scope: { type: 'all', brandNames: [], communityIds: [] },
   }
 }
 

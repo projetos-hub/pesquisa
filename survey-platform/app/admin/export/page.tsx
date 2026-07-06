@@ -3,6 +3,7 @@ import { AdminPageShell } from '../AdminPageShell'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { disablePublicResponseLink } from './actions'
 import { PublicLinkCreateForm } from './PublicLinkCreateForm'
+import { normalizePublicResponseScope, publicResponseScopeLabel, type PublicResponseScope } from '@/lib/public-responses'
 
 interface Survey {
   id: string
@@ -20,6 +21,11 @@ interface PublicResponseLink {
   include_pii: boolean
   access_key_hash: string | null
   created_at: string
+  scope: PublicResponseScope
+}
+
+interface CommunityBrand {
+  marca: string | null
 }
 
 function statusLabel(status: string) {
@@ -45,11 +51,26 @@ export default async function ExportPage() {
 
   const { data: publicLinks } = await supabase
     .from('public_response_links')
-    .select('id, survey_id, token, enabled, include_pii, access_key_hash, created_at')
+    .select('id, survey_id, token, enabled, include_pii, access_key_hash, created_at, scope')
     .order('created_at', { ascending: false }) as { data: PublicResponseLink[] | null }
 
+  const { data: communities } = await supabase
+    .from('communities')
+    .select('marca')
+    .not('marca', 'is', null) as { data: CommunityBrand[] | null }
+
+  const brandNames = [...new Set(
+    (communities ?? [])
+      .map(community => community.marca?.trim())
+      .filter((marca): marca is string => Boolean(marca))
+  )].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+
   const linksBySurvey = new Map<string, PublicResponseLink[]>()
-  for (const link of publicLinks ?? []) {
+  for (const rawLink of publicLinks ?? []) {
+    const link = {
+      ...rawLink,
+      scope: normalizePublicResponseScope(rawLink.scope),
+    }
     const current = linksBySurvey.get(link.survey_id) ?? []
     current.push(link)
     linksBySurvey.set(link.survey_id, current)
@@ -106,7 +127,7 @@ export default async function ExportPage() {
                         >
                           XLSX admin
                         </a>
-                        <PublicLinkCreateForm surveyId={survey.id} />
+                        <PublicLinkCreateForm surveyId={survey.id} brandNames={brandNames} />
                       </div>
                     </td>
                   </tr>
@@ -125,6 +146,7 @@ export default async function ExportPage() {
                                 </span>
                                 <span>{link.access_key_hash ? 'com senha' : 'sem senha antiga'}</span>
                                 <span>{link.include_pii ? 'com dados pessoais' : 'sem dados pessoais'}</span>
+                                <span>{publicResponseScopeLabel(link.scope)}</span>
                                 <span>{new Date(link.created_at).toLocaleString('pt-BR')}</span>
                               </div>
                               <div className="mt-2 flex flex-col gap-1 font-mono text-[11px]">

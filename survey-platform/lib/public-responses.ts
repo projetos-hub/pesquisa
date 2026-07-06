@@ -22,6 +22,13 @@ export interface PublicResponseLink {
   include_pii: boolean
   access_key_hash: string | null
   expires_at: string | null
+  scope: PublicResponseScope
+}
+
+export interface PublicResponseScope {
+  type: 'all' | 'brands'
+  brandNames: string[]
+  communityIds: string[]
 }
 
 export interface PublicResponsesDataset {
@@ -34,6 +41,39 @@ export interface PublicResponsesDataset {
 }
 
 const PII_META_HEADERS = new Set(['userId', 'userName', 'userEmail'])
+
+export const DEFAULT_PUBLIC_RESPONSE_SCOPE: PublicResponseScope = {
+  type: 'all',
+  brandNames: [],
+  communityIds: [],
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? [...new Set(value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0).map(item => item.trim()))]
+    : []
+}
+
+export function normalizePublicResponseScope(value: unknown): PublicResponseScope {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return DEFAULT_PUBLIC_RESPONSE_SCOPE
+
+  const raw = value as Record<string, unknown>
+  const type = raw.type === 'brands' ? 'brands' : 'all'
+  const brandNames = stringArray(raw.brandNames)
+  const communityIds = stringArray(raw.communityIds)
+
+  if (type === 'brands') {
+    return { type, brandNames, communityIds }
+  }
+
+  return DEFAULT_PUBLIC_RESPONSE_SCOPE
+}
+
+export function publicResponseScopeLabel(scope: PublicResponseScope): string {
+  if (scope.type !== 'brands') return 'Todas as marcas'
+  if (scope.brandNames.length > 0) return `Marcas: ${scope.brandNames.join(', ')}`
+  return `Comunidades: ${scope.communityIds.length}`
+}
 
 export function hashPublicResponseAccessKey(accessKey: string) {
   return createHash('sha256').update(accessKey, 'utf8').digest('hex')
@@ -70,13 +110,16 @@ export async function getPublicResponseLink(token: string): Promise<PublicRespon
   const supabase = createServiceClient()
   const { data: link, error } = await supabase
     .from('public_response_links')
-    .select('id, survey_id, token, label, enabled, include_pii, access_key_hash, expires_at')
+    .select('id, survey_id, token, label, enabled, include_pii, access_key_hash, expires_at, scope')
     .eq('token', token)
     .maybeSingle()
 
   if (error || !link) return null
 
-  const publicLink = link as PublicResponseLink
+  const publicLink = {
+    ...(link as Omit<PublicResponseLink, 'scope'> & { scope?: unknown }),
+    scope: normalizePublicResponseScope((link as { scope?: unknown }).scope),
+  }
   if (!publicLink.enabled) return null
   if (publicLink.expires_at && new Date(publicLink.expires_at).getTime() < Date.now()) return null
 
@@ -91,9 +134,15 @@ export async function getPublicResponsesDataset(
   if (!publicLink) return null
   if (!verifyPublicResponseAccessKey(publicLink, accessKey)) return null
 
+  const scopeCommunityIds = publicLink.scope.type === 'brands'
+    ? publicLink.scope.communityIds
+    : undefined
+
   const [survey, sessions, questionData] = await Promise.all([
     fetchSurveyMeta(publicLink.survey_id),
-    fetchRawSessions(publicLink.survey_id),
+    scopeCommunityIds && scopeCommunityIds.length === 0
+      ? Promise.resolve([])
+      : fetchRawSessions(publicLink.survey_id, { communityIds: scopeCommunityIds }),
     fetchQuestionsAndOptions(publicLink.survey_id),
   ])
 
