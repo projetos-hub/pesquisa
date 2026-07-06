@@ -11,6 +11,7 @@ export interface CreatePublicResponseLinkState {
   publicUrl?: string
   accessKey?: string
   sheetsFormula?: string
+  apiJsonUrl?: string
 }
 
 function makeToken() {
@@ -83,6 +84,7 @@ export async function createPublicResponseLink(
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://pesquisa-nu-sand.vercel.app'
   const publicUrl = `${appUrl}/public/responses/${token}`
   const csvUrl = `${appUrl}/api/public/responses/${token}.csv?key=${accessKey}`
+  const apiJsonUrl = `${appUrl}/api/public/responses/${token}.json?key=${accessKey}`
 
   const supabase = createServiceClient()
   const { error } = await supabase
@@ -103,6 +105,7 @@ export async function createPublicResponseLink(
     publicUrl,
     accessKey,
     sheetsFormula: `=IMPORTDATA("${csvUrl}")`,
+    apiJsonUrl,
   }
 }
 

@@ -47,7 +47,7 @@ export function PublicLinkCreateForm({ surveyId, brandNames }: PublicLinkCreateF
         <p className="max-w-[340px] text-right text-xs font-medium text-red-700">{state.error}</p>
       )}
 
-      {state?.publicUrl && state.accessKey && state.sheetsFormula && (
+      {state?.publicUrl && state.accessKey && state.sheetsFormula && state.apiJsonUrl && (
         <div className="max-w-[520px] rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-left text-xs text-emerald-950">
           <p className="font-bold">Link criado. Guarde a senha abaixo.</p>
           <p className="mt-1 text-emerald-800">Ela aparece apenas agora. Se perder, desative este link e crie outro.</p>
@@ -55,6 +55,7 @@ export function PublicLinkCreateForm({ surveyId, brandNames }: PublicLinkCreateF
             <p className="break-all">Link: {state.publicUrl}</p>
             <p className="break-all">Senha/key: {state.accessKey}</p>
             <p className="break-all">Sheets: {state.sheetsFormula}</p>
+            <p className="break-all">API JSON: {state.apiJsonUrl}</p>
           </div>
         </div>
       )}
