@@ -5,23 +5,23 @@ import { useState } from 'react'
 interface Community { id: string; nome: string }
 
 interface Props {
-  surveyId:    string
+  surveyId: string
   communities: Community[]
-  onAdded:     () => void
+  onAdded: () => void
 }
 
 interface Result {
-  added:               number
-  skipped_duplicates:  number
+  added: number
+  skipped_duplicates: number
 }
 
 export default function QuickSample({ surveyId, communities, onAdded }: Props) {
-  const [open,        setOpen]        = useState(false)
+  const [open, setOpen] = useState(false)
   const [communityId, setCommunityId] = useState(communities[0]?.id ?? '')
-  const [emailsRaw,   setEmailsRaw]   = useState('')
-  const [loading,     setLoading]     = useState(false)
-  const [result,      setResult]      = useState<Result | null>(null)
-  const [error,       setError]       = useState('')
+  const [emailsRaw, setEmailsRaw] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<Result | null>(null)
+  const [error, setError] = useState('')
 
   const emails = emailsRaw
     .split('\n')
@@ -34,12 +34,14 @@ export default function QuickSample({ surveyId, communities, onAdded }: Props) {
       return
     }
 
-    setLoading(true); setError(''); setResult(null)
+    setLoading(true)
+    setError('')
+    setResult(null)
     try {
       const res = await fetch(`/api/admin/surveys/${surveyId}/sample/quick`, {
-        method:  'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ community_id: communityId, emails }),
+        body: JSON.stringify({ community_id: communityId, emails }),
       })
       const data = await res.json() as { added?: number; skipped_duplicates?: number; error?: string }
       if (!res.ok) { setError(data.error ?? 'Erro desconhecido'); return }
@@ -60,9 +62,9 @@ export default function QuickSample({ surveyId, communities, onAdded }: Props) {
         className="w-full flex items-center justify-between px-4 py-3 text-left"
       >
         <span className="text-sm font-semibold text-amber-800">
-          ⚡ Amostra rápida — colar emails
+          Amostra rapida - colar emails
         </span>
-        <span className="text-amber-500 text-xs">{open ? '▲ fechar' : '▼ abrir'}</span>
+        <span className="text-amber-500 text-xs">{open ? 'fechar' : 'abrir'}</span>
       </button>
 
       {open && (
@@ -97,7 +99,7 @@ export default function QuickSample({ surveyId, communities, onAdded }: Props) {
           </div>
 
           <p className="text-xs text-amber-700">
-            Os emails serão adicionados à amostra existente (sem apagar o que já há). Depois, clique em &quot;Resolver pendentes&quot; para resolver os IDs Layers.
+            Os emails serao adicionados a amostra existente, sem apagar o que ja existe. Depois, clique em &quot;Resolver pendentes&quot; para resolver os IDs Layers.
           </p>
 
           {error && (
@@ -109,14 +111,14 @@ export default function QuickSample({ surveyId, communities, onAdded }: Props) {
             disabled={loading || emails.length === 0}
             className="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 text-white font-semibold text-sm py-2 rounded-lg transition-colors"
           >
-            {loading ? 'Adicionando…' : `Adicionar ${emails.length || '—'} email(s) à amostra`}
+            {loading ? 'Adicionando...' : `Adicionar ${emails.length || 0} email(s) a amostra`}
           </button>
 
           {result && (
             <div className="border-t border-amber-200 pt-3 flex gap-4 text-xs text-gray-600">
-              <span>✅ {result.added} adicionado(s)</span>
+              <span>OK: {result.added} adicionado(s)</span>
               {result.skipped_duplicates > 0 && (
-                <span>⏭ {result.skipped_duplicates} já existia(m), ignorado(s)</span>
+                <span>Ignorados: {result.skipped_duplicates} ja existia(m)</span>
               )}
             </div>
           )}

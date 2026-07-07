@@ -114,7 +114,7 @@ export default function SampleGroups({ surveyId, communities }: Props) {
   }
 
   const handleDeleteGroup = async (groupId: string) => {
-    if (!confirm('Apagar este grupo? Os membros da amostra nÃƒÂ£o serÃƒÂ£o afetados.')) return
+    if (!confirm('Apagar este grupo? Os membros da amostra não serão afetados.')) return
     await fetch(`/api/admin/surveys/${surveyId}/sample/groups?id=${groupId}`, { method: 'DELETE' })
     setGroups(prev => prev.filter(g => g.id !== groupId))
     if (activeGroup === groupId) setActiveGroup(null)
@@ -141,7 +141,7 @@ export default function SampleGroups({ surveyId, communities }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-700">Grupos de SegmentaÃƒÂ§ÃƒÂ£o</h3>
+        <h3 className="text-sm font-semibold text-gray-700">Grupos de Segmentação</h3>
         <button
           onClick={() => setShowCreate(true)}
           className="text-xs bg-[#F7941D] text-white px-3 py-1.5 rounded-lg hover:bg-[#D97B10]"
@@ -200,14 +200,14 @@ export default function SampleGroups({ surveyId, communities }: Props) {
             </select>
             <select value={filterPerfil} onChange={e => setFilterPerfil(e.target.value)} className="text-xs border border-gray-200 rounded px-2 py-1">
               <option value="">Todos os perfis</option>
-              <option value="responsavel">ResponsÃƒÂ¡vel</option>
+              <option value="responsavel">Responsável</option>
               <option value="aluno">Aluno</option>
               <option value="colaborador">Colaborador</option>
             </select>
             <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="text-xs border border-gray-200 rounded px-2 py-1">
               <option value="">Qualquer status</option>
               <option value="resolved">Resolvidos</option>
-              <option value="not_found">NÃƒÂ£o encontrados</option>
+              <option value="not_found">Não encontrados</option>
               <option value="pending">Pendentes</option>
             </select>
             <input
@@ -275,13 +275,13 @@ export default function SampleGroups({ surveyId, communities }: Props) {
                           onClick={ev => ev.stopPropagation()}
                         />
                       </td>
-                      <td className="px-2 py-1.5 text-gray-700">{entry.nome || 'Ã¢â‚¬â€'}</td>
+                      <td className="px-2 py-1.5 text-gray-700">{entry.nome || '-'}</td>
                       <td className="px-2 py-1.5 text-gray-500 font-mono">{entry.email}</td>
                       <td className="px-2 py-1.5 text-gray-500">
                         <div>{communityName(entry.community_id)}</div>
                         <div className="font-mono text-[10px] text-gray-400">{entry.community_id}</div>
                       </td>
-                      <td className="px-2 py-1.5 text-gray-400">{entry.perfil ?? 'Ã¢â‚¬â€'}</td>
+                      <td className="px-2 py-1.5 text-gray-400">{entry.perfil ?? '-'}</td>
                       <td className="px-2 py-1.5 text-center">{layersResolutionIcon(entry.layers_user_id)}</td>
                     </tr>
                   ))}

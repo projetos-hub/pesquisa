@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-service'
 import { read, utils } from 'xlsx'
 import { resolveCommunityId } from '@/lib/community-mapping'
+import { extractSampleExcelRow } from '@/lib/sample-excel'
 
 async function requireAuth() {
   const supabase = await createServerSupabaseClient()
@@ -24,9 +25,8 @@ export async function POST(
       return Response.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    // Parse Excel
     const buffer = await file.arrayBuffer()
-    const workbook = read(buffer)
+    const workbook = read(buffer, { type: 'array' })
     const sheet = workbook.Sheets[workbook.SheetNames[0]]
     const rows = utils.sheet_to_json(sheet) as Record<string, unknown>[]
 
@@ -34,7 +34,6 @@ export async function POST(
       return Response.json({ error: 'Empty sheet' }, { status: 400 })
     }
 
-    // Preparar entradas para inserção
     const entries: Array<{
       survey_id: string
       community_id: string
@@ -45,18 +44,10 @@ export async function POST(
 
     const supabase = createServiceClient()
 
-    // Diagnóstico de descarte
     const skipped = { sem_email: 0, sem_community: 0, community_map: {} as Record<string, number> }
 
-    // Para cada linha, extrair 3 emails e resolver community_id
     for (const row of rows) {
-      const nome = String(row.NOME || '').trim()
-      const nomefantasia = String(row.NOMEFANTASIA || '').trim()
-      const emails = [
-        row['EMAIL INSTITUCIONAL'],
-        row['EMAIL RESP FIN'],
-        row['EMAIL RESP ACAD'],
-      ].filter(Boolean).map(String) as string[]
+      const { nome, nomefantasia, emails } = extractSampleExcelRow(row)
 
       if (emails.length === 0) {
         skipped.sem_email++
@@ -71,12 +62,11 @@ export async function POST(
         continue
       }
 
-      // Salva imediatamente sem resolução Layers (feita em background depois)
       for (const email of emails) {
         entries.push({
           survey_id:      id,
           community_id:   communityId,
-          email:          email.toLowerCase().trim(),
+          email:          email.toLowerCase(),
           nome,
           layers_user_id: null,
         })
@@ -87,18 +77,16 @@ export async function POST(
       return Response.json({ error: 'No valid entries found' }, { status: 400 })
     }
 
-    // Deduplica por (community_id, email) — mesmo email pode aparecer em colunas diferentes
-    const seen    = new Set<string>()
-    const unique  = entries.filter(e => {
+    const seen = new Set<string>()
+    const unique = entries.filter(e => {
       const key = `${e.community_id}::${e.email}`
       if (seen.has(key)) return false
       seen.add(key)
       return true
     })
 
-    console.log(`[sample-upload] ${entries.length} entradas → ${unique.length} únicas para survey ${id}`)
+    console.log(`[sample-upload] ${entries.length} entradas -> ${unique.length} unicas para survey ${id}`)
 
-    // Limpar amostra antiga
     const { error: delErr } = await supabase
       .from('survey_sample_lists')
       .delete()
@@ -109,7 +97,6 @@ export async function POST(
       return Response.json({ error: `Erro ao limpar amostra anterior: ${delErr.message}` }, { status: 500 })
     }
 
-    // INSERT em lotes de 100 para evitar limite de payload
     const BATCH_SIZE = 100
     for (let i = 0; i < unique.length; i += BATCH_SIZE) {
       const batch = unique.slice(i, i + BATCH_SIZE)
@@ -157,19 +144,18 @@ export async function GET(
   try {
     await requireAuth()
     const { id } = await params
-    const url    = new URL(req.url)
-    const page   = Number(url.searchParams.get('page')   ?? 0)
-    const limit  = Math.min(Number(url.searchParams.get('limit') ?? 200), 500)
-    const filter = url.searchParams.get('filter') ?? 'all' // all | resolved | not_found | pending
+    const url = new URL(req.url)
+    const page = Number(url.searchParams.get('page') ?? 0)
+    const limit = Math.min(Number(url.searchParams.get('limit') ?? 200), 500)
+    const filter = url.searchParams.get('filter') ?? 'all'
 
     const supabase = createServiceClient()
 
-    // ── Contagens agregadas (sem limite de rows) ───────────────────────────
     const [
-      { count: total    },
+      { count: total },
       { count: resolved },
       { count: notFound },
-      { count: pending  },
+      { count: pending },
     ] = await Promise.all([
       supabase.from('survey_sample_lists').select('*', { count: 'exact', head: true }).eq('survey_id', id),
       supabase.from('survey_sample_lists').select('*', { count: 'exact', head: true }).eq('survey_id', id).not('layers_user_id', 'is', null).neq('layers_user_id', 'NOT_FOUND'),
@@ -177,7 +163,6 @@ export async function GET(
       supabase.from('survey_sample_lists').select('*', { count: 'exact', head: true }).eq('survey_id', id).is('layers_user_id', null),
     ])
 
-    // ── Entradas paginadas para a tabela ──────────────────────────────────
     let query = supabase
       .from('survey_sample_lists')
       .select('id, community_id, email, nome, layers_user_id, created_at')
@@ -185,9 +170,9 @@ export async function GET(
       .order('community_id, email')
       .range(page * limit, (page + 1) * limit - 1)
 
-    if (filter === 'resolved')  query = query.not('layers_user_id', 'is', null).neq('layers_user_id', 'NOT_FOUND')
+    if (filter === 'resolved') query = query.not('layers_user_id', 'is', null).neq('layers_user_id', 'NOT_FOUND')
     if (filter === 'not_found') query = query.eq('layers_user_id', 'NOT_FOUND')
-    if (filter === 'pending')   query = query.is('layers_user_id', null)
+    if (filter === 'pending') query = query.is('layers_user_id', null)
 
     const { data: entries } = await query
 

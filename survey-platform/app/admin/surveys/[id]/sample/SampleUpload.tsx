@@ -1,14 +1,15 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import QuickSample    from './QuickSample'
-import SampleGroups   from './SampleGroups'
+import QuickSample from './QuickSample'
+import SampleGroups from './SampleGroups'
+import { extractSampleExcelRow, SAMPLE_EXCEL_REQUIRED_COLUMNS } from '@/lib/sample-excel'
 
 interface Community { id: string; nome: string; marca?: string | null; unidade?: string | null }
 
 interface Props {
-  surveyId:    string
-  surveySlug:  string
+  surveyId: string
+  surveySlug: string
   communities: Community[]
 }
 
@@ -19,38 +20,38 @@ interface PreviewRow {
 }
 
 interface SampleEntry {
-  id:             string
-  community_id:   string
-  email:          string
-  nome:           string
+  id: string
+  community_id: string
+  email: string
+  nome: string
   layers_user_id: string | null
-  created_at:     string
+  created_at: string
 }
 
 interface SampleState {
-  totals:   { total: number; resolved: number; not_found: number; pending: number }
-  entries:  SampleEntry[]
-  page:     number
-  limit:    number
+  totals: { total: number; resolved: number; not_found: number; pending: number }
+  entries: SampleEntry[]
+  page: number
+  limit: number
   has_more: boolean
 }
 
 export default function SampleUpload({ surveyId, communities }: Props) {
   const communityById = useMemo(() => new Map(communities.map(community => [community.id, community])), [communities])
   const communityName = useCallback((communityId: string) => communityById.get(communityId)?.nome ?? communityId, [communityById])
-  const [file,     setFile]     = useState<File | null>(null)
-  const [preview,  setPreview]  = useState<PreviewRow[]>([])
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState<string>('')
-  const [success,  setSuccess]  = useState<string>('')
+  const [file, setFile] = useState<File | null>(null)
+  const [preview, setPreview] = useState<PreviewRow[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string>('')
+  const [success, setSuccess] = useState<string>('')
 
-  const [resolving,        setResolving]        = useState(false)
-  const [resolveProgress,  setResolveProgress]  = useState<{ resolved: number; failed: number; remaining: number; done: boolean } | null>(null)
+  const [resolving, setResolving] = useState(false)
+  const [resolveProgress, setResolveProgress] = useState<{ resolved: number; failed: number; remaining: number; done: boolean } | null>(null)
 
-  const [sampleState,  setSampleState]  = useState<SampleState | null>(null)
+  const [sampleState, setSampleState] = useState<SampleState | null>(null)
   const [loadingState, setLoadingState] = useState(false)
-  const [activeTab,    setActiveTab]    = useState<'all' | 'resolved' | 'not_found' | 'pending'>('all')
-  const [page,         setPage]         = useState(0)
+  const [activeTab, setActiveTab] = useState<'all' | 'resolved' | 'not_found' | 'pending'>('all')
+  const [page, setPage] = useState(0)
 
   const loadSampleState = useCallback(async (p = page, tab = activeTab) => {
     setLoadingState(true)
@@ -67,20 +68,17 @@ export default function SampleUpload({ surveyId, communities }: Props) {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (!selectedFile) return
-    setError(''); setSuccess('')
+    setError('')
+    setSuccess('')
     try {
       const { read, utils } = await import('xlsx')
-      const buffer   = await selectedFile.arrayBuffer()
-      const workbook = read(buffer)
-      const sheet    = workbook.Sheets[workbook.SheetNames[0]]
-      const rows     = utils.sheet_to_json(sheet) as Record<string, unknown>[]
-      const previewData: PreviewRow[] = rows.slice(0, 20).map(row => ({
-        nome:         String(row.NOME || ''),
-        nomefantasia: String(row.NOMEFANTASIA || ''),
-        emails:       [row['EMAIL INSTITUCIONAL'], row['EMAIL RESP FIN'], row['EMAIL RESP ACAD']]
-                        .filter(Boolean).map(String),
-      }))
-      setFile(selectedFile); setPreview(previewData)
+      const buffer = await selectedFile.arrayBuffer()
+      const workbook = read(buffer, { type: 'array' })
+      const sheet = workbook.Sheets[workbook.SheetNames[0]]
+      const rows = utils.sheet_to_json(sheet) as Record<string, unknown>[]
+      const previewData = rows.slice(0, 20).map(extractSampleExcelRow)
+      setFile(selectedFile)
+      setPreview(previewData)
     } catch (err) {
       setError(`Erro ao parsear Excel: ${err instanceof Error ? err.message : 'desconhecido'}`)
     }
@@ -88,7 +86,9 @@ export default function SampleUpload({ surveyId, communities }: Props) {
 
   const handleUpload = async () => {
     if (!file) { setError('Selecione um arquivo'); return }
-    setLoading(true); setError(''); setSuccess('')
+    setLoading(true)
+    setError('')
+    setSuccess('')
     try {
       const formData = new FormData()
       formData.append('file', file)
@@ -108,32 +108,37 @@ export default function SampleUpload({ surveyId, communities }: Props) {
       const d = data.diagnostico
       let msg = `${data.total_entries} entradas importadas de ${d?.total_linhas_excel ?? '?'} linhas.`
       if (d) {
-        if (d.duplicatas_removidas > 0)      msg += ` ${d.duplicatas_removidas} duplicatas removidas (mesmo email+escola).`
-        if (d.descartadas_sem_email > 0)     msg += ` ${d.descartadas_sem_email} linhas sem email.`
-        if (d.descartadas_sem_community > 0) msg += ` Ã¢Å¡Â Ã¯Â¸Â ${d.descartadas_sem_community} linhas com escola nÃƒÂ£o mapeada`
-          + (d.nomefantasia_nao_mapeados.length ? `: ${d.nomefantasia_nao_mapeados.join(', ')}` : '') + '.'
+        if (d.duplicatas_removidas > 0) msg += ` ${d.duplicatas_removidas} duplicatas removidas (mesmo email+escola).`
+        if (d.descartadas_sem_email > 0) msg += ` ${d.descartadas_sem_email} linhas sem email.`
+        if (d.descartadas_sem_community > 0) {
+          msg += ` ${d.descartadas_sem_community} linhas com escola nao mapeada`
+            + (d.nomefantasia_nao_mapeados.length ? `: ${d.nomefantasia_nao_mapeados.join(', ')}` : '') + '.'
+        }
       }
       setSuccess(msg)
-      setFile(null); setPreview([])
+      setFile(null)
+      setPreview([])
       void loadSampleState()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido')
-    } finally { setLoading(false) }
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleResolve = async () => {
-    setResolving(true); setResolveProgress(null)
+    setResolving(true)
+    setResolveProgress(null)
     let totalResolved = 0, totalFailed = 0
     while (true) {
       const res = await fetch(`/api/admin/surveys/${surveyId}/sample/resolve`, { method: 'POST' })
       if (!res.ok) { setError('Erro ao resolver IDs'); break }
       const data = await res.json() as { resolved: number; failed: number; remaining: number; done: boolean }
       totalResolved += data.resolved
-      totalFailed   += data.failed
-      // "failed" aqui = nÃƒÂ£o encontrado nesta rodada (NOT_FOUND), nÃƒÂ£o acumula entre chamadas
+      totalFailed += data.failed
       setResolveProgress({ resolved: totalResolved, failed: totalFailed, remaining: data.remaining, done: data.done })
       if (data.done) break
-      if (data.resolved === 0 && data.failed === 0) break // sem progresso, para
+      if (data.resolved === 0 && data.failed === 0) break
       await new Promise(r => setTimeout(r, 100))
     }
     setResolving(false)
@@ -144,8 +149,8 @@ export default function SampleUpload({ surveyId, communities }: Props) {
     const { utils, writeFile } = await import('xlsx')
     const ws = utils.aoa_to_sheet([
       ['NOME', 'NOMEFANTASIA', 'EMAIL INSTITUCIONAL', 'EMAIL RESP FIN', 'EMAIL RESP ACAD'],
-      ['JoÃƒÂ£o Silva', 'COLÃƒâ€°GIO QI FREGUESIA', 'joao.silva@escola.com.br', '', ''],
-      ['Maria Santos', 'COLÃƒâ€°GIO LEONARDO DA VINCI ALFA', 'maria@ldva.com.br', 'fin@ldva.com.br', ''],
+      ['Joao Silva', 'COLEGIO QI FREGUESIA', 'joao.silva@escola.com.br', '', ''],
+      ['Maria Santos', 'COLEGIO LEONARDO DA VINCI ALFA', 'maria@ldva.com.br', 'fin@ldva.com.br', ''],
     ])
     const wb = utils.book_new()
     utils.book_append_sheet(wb, ws, 'Amostra')
@@ -153,11 +158,10 @@ export default function SampleUpload({ surveyId, communities }: Props) {
   }
 
   const exportNaoEncontrados = async () => {
-    // Busca todos os nÃƒÂ£o encontrados para exportar (sem limite de display)
     let allNotFound: SampleEntry[] = []
     let p = 0
     while (true) {
-      const res  = await fetch(`/api/admin/surveys/${surveyId}/sample?page=${p}&limit=500&filter=not_found`)
+      const res = await fetch(`/api/admin/surveys/${surveyId}/sample?page=${p}&limit=500&filter=not_found`)
       const data = await res.json() as SampleState
       allNotFound = [...allNotFound, ...data.entries]
       if (!data.has_more) break
@@ -171,25 +175,26 @@ export default function SampleUpload({ surveyId, communities }: Props) {
       }),
     ]
     const blob = new Blob([linhas.join('\n')], { type: 'text/csv;charset=utf-8;' })
-    const url  = URL.createObjectURL(blob)
-    const a    = document.createElement('a'); a.href = url; a.download = 'nao-encontrados.csv'; a.click()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'nao-encontrados.csv'
+    a.click()
     URL.revokeObjectURL(url)
   }
 
   const counts = {
-    all:       sampleState?.totals.total     ?? 0,
-    resolved:  sampleState?.totals.resolved  ?? 0,
+    all: sampleState?.totals.total ?? 0,
+    resolved: sampleState?.totals.resolved ?? 0,
     not_found: sampleState?.totals.not_found ?? 0,
-    pending:   sampleState?.totals.pending   ?? 0,
+    pending: sampleState?.totals.pending ?? 0,
   }
 
-  const entries  = sampleState?.entries ?? []
-  const hasMore  = sampleState?.has_more ?? false
+  const entries = sampleState?.entries ?? []
+  const hasMore = sampleState?.has_more ?? false
 
   return (
     <div className="space-y-6">
-
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Amostra rÃƒÂ¡pida Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {communities.length > 0 && (
         <QuickSample
           surveyId={surveyId}
@@ -198,21 +203,19 @@ export default function SampleUpload({ surveyId, communities }: Props) {
         />
       )}
 
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Upload Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Arquivo Excel (TOTVS)</label>
         <input type="file" accept=".xlsx,.xls" onChange={handleFileChange}
           className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-[#F7941D]/5 file:text-[#D97B10] hover:file:bg-[#F7941D]/10" />
         <div className="flex items-center justify-between mt-1">
-          <p className="text-xs text-gray-500">Colunas esperadas: NOME, NOMEFANTASIA, EMAIL INSTITUCIONAL, EMAIL RESP FIN, EMAIL RESP ACAD</p>
+          <p className="text-xs text-gray-500">Colunas aceitas: {SAMPLE_EXCEL_REQUIRED_COLUMNS}</p>
           <button onClick={handleDownloadTemplate} type="button"
             className="text-xs text-[#F7941D] hover:text-[#D97B10] whitespace-nowrap ml-3">
-            Ã¢Â¬â€¡ Baixar modelo
+            Baixar modelo
           </button>
         </div>
       </div>
 
-      {/* Preview */}
       {preview.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-gray-900 mb-2">Preview ({preview.length} linhas)</h3>
@@ -227,7 +230,7 @@ export default function SampleUpload({ surveyId, communities }: Props) {
                 <tr key={i} className="border-t">
                   <td className="px-3 py-2 text-gray-700">{row.nome}</td>
                   <td className="px-3 py-2 text-gray-700">{row.nomefantasia}</td>
-                  <td className="px-3 py-2 text-gray-600 text-xs">{row.emails.join(', ') || 'Ã¢â‚¬â€'}</td>
+                  <td className="px-3 py-2 text-gray-600 text-xs">{row.emails.join(', ') || '-'}</td>
                 </tr>
               ))}</tbody>
             </table>
@@ -235,8 +238,8 @@ export default function SampleUpload({ surveyId, communities }: Props) {
         </div>
       )}
 
-      {error   && <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">{error}</div>}
-      {success && <div className="p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm">Ã¢Å“â€œ {success}</div>}
+      {error && <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">{error}</div>}
+      {success && <div className="p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm">OK: {success}</div>}
 
       {preview.length > 0 && (
         <button onClick={handleUpload} disabled={loading}
@@ -245,50 +248,47 @@ export default function SampleUpload({ surveyId, communities }: Props) {
         </button>
       )}
 
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Resolver IDs Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {counts.all > 0 && (
         <div className="border-t pt-4 flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-gray-700">ResoluÃƒÂ§ÃƒÂ£o de IDs Layers</p>
-            <p className="text-xs text-gray-500">{counts.pending} pendentes Ã‚Â· {counts.resolved} resolvidos Ã‚Â· {counts.not_found} nÃƒÂ£o encontrados</p>
+            <p className="text-sm font-medium text-gray-700">Resolucao de IDs Layers</p>
+            <p className="text-xs text-gray-500">{counts.pending} pendentes | {counts.resolved} resolvidos | {counts.not_found} nao encontrados</p>
             {resolveProgress && !resolveProgress.done && (
-              <p className="text-xs text-amber-600 mt-1">Resolvendo... +{resolveProgress.resolved} Ã¢Å“â€¦ +{resolveProgress.failed} Ã¢ÂÅ’ Ã¢â‚¬â€ restam {resolveProgress.remaining}</p>
+              <p className="text-xs text-amber-600 mt-1">Resolvendo... +{resolveProgress.resolved} resolvidos, +{resolveProgress.failed} falhas, restam {resolveProgress.remaining}</p>
             )}
-            {resolveProgress?.done && <p className="text-xs text-green-600 mt-1">Ã¢Å“â€œ ResoluÃƒÂ§ÃƒÂ£o concluÃƒÂ­da</p>}
+            {resolveProgress?.done && <p className="text-xs text-green-600 mt-1">Resolucao concluida</p>}
           </div>
           <button onClick={handleResolve} disabled={resolving || counts.pending === 0}
             className="shrink-0 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 text-white text-sm font-semibold py-2 px-4 rounded">
-            {resolving ? 'Resolvendo...' : counts.pending === 0 ? 'Ã¢Å“â€œ Sem pendentes' : `Resolver ${counts.pending} pendentes`}
+            {resolving ? 'Resolvendo...' : counts.pending === 0 ? 'Sem pendentes' : `Resolver ${counts.pending} pendentes`}
           </button>
         </div>
       )}
 
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Tabela de resultados Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {counts.all > 0 && (
         <div className="border-t pt-4 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-gray-900">
-              Amostra {loadingState ? 'Ã¢â‚¬Â¦' : `(${counts.all} entradas)`}
+              Amostra {loadingState ? '...' : `(${counts.all} entradas)`}
             </h3>
             <div className="flex gap-2">
               {counts.not_found > 0 && (
                 <button onClick={exportNaoEncontrados}
                   className="text-xs text-red-600 hover:text-red-800 border border-red-200 rounded px-2 py-1">
-                  Ã¢Â¬â€¡ Exportar nÃƒÂ£o encontrados ({counts.not_found})
+                  Exportar nao encontrados ({counts.not_found})
                 </button>
               )}
               <button onClick={() => { setPage(0); void loadSampleState(0, activeTab) }}
-                className="text-xs text-gray-400 hover:text-gray-600">Ã¢â€ Âº Atualizar</button>
+                className="text-xs text-gray-400 hover:text-gray-600">Atualizar</button>
             </div>
           </div>
 
-          {/* Abas de filtro */}
           <div className="flex gap-1 border-b">
             {([
-              ['all',       `Todos (${counts.all})`],
-              ['resolved',  `Ã¢Å“â€¦ Resolvidos (${counts.resolved})`],
-              ['not_found', `Ã¢ÂÅ’ NÃƒÂ£o encontrados (${counts.not_found})`],
-              ['pending',   `Ã¢ÂÂ³ Pendentes (${counts.pending})`],
+              ['all', `Todos (${counts.all})`],
+              ['resolved', `Resolvidos (${counts.resolved})`],
+              ['not_found', `Nao encontrados (${counts.not_found})`],
+              ['pending', `Pendentes (${counts.pending})`],
             ] as const).map(([tab, label]) => (
               <button key={tab} onClick={() => {
                 setActiveTab(tab); setPage(0); void loadSampleState(0, tab)
@@ -303,7 +303,6 @@ export default function SampleUpload({ surveyId, communities }: Props) {
             ))}
           </div>
 
-          {/* Tabela paginada */}
           <div className="overflow-auto max-h-96 rounded border border-gray-200">
             <table className="w-full text-xs">
               <thead className="bg-gray-50 sticky top-0">
@@ -316,8 +315,8 @@ export default function SampleUpload({ surveyId, communities }: Props) {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {entries.map((e, i) => {
-                  const status = e.layers_user_id === null ? 'Ã¢ÂÂ³'
-                    : e.layers_user_id === 'NOT_FOUND' ? 'Ã¢ÂÅ’' : 'Ã¢Å“â€¦'
+                  const status = e.layers_user_id === null ? 'Pendente'
+                    : e.layers_user_id === 'NOT_FOUND' ? 'Nao encontrado' : 'Resolvido'
                   return (
                     <tr key={i} className="hover:bg-gray-50">
                       <td className="px-3 py-1.5">{status}</td>
@@ -337,21 +336,20 @@ export default function SampleUpload({ surveyId, communities }: Props) {
             </table>
           </div>
 
-          {/* PaginaÃƒÂ§ÃƒÂ£o */}
           {(page > 0 || hasMore) && (
             <div className="flex items-center justify-between text-xs text-gray-500 pt-1">
-              <span>PÃƒÂ¡gina {page + 1} Ã‚Â· mostrando {entries.length} de {
+              <span>Pagina {page + 1} | mostrando {entries.length} de {
                 activeTab === 'all' ? counts.all : activeTab === 'resolved' ? counts.resolved :
                 activeTab === 'not_found' ? counts.not_found : counts.pending
               }</span>
               <div className="flex gap-2">
                 {page > 0 && (
                   <button onClick={() => { const p = page - 1; setPage(p); void loadSampleState(p, activeTab) }}
-                    className="px-3 py-1 border rounded hover:bg-gray-50">Ã¢â€ Â Anterior</button>
+                    className="px-3 py-1 border rounded hover:bg-gray-50">Anterior</button>
                 )}
                 {hasMore && (
                   <button onClick={() => { const p = page + 1; setPage(p); void loadSampleState(p, activeTab) }}
-                    className="px-3 py-1 border rounded hover:bg-gray-50">PrÃƒÂ³xima Ã¢â€ â€™</button>
+                    className="px-3 py-1 border rounded hover:bg-gray-50">Proxima</button>
                 )}
               </div>
             </div>
@@ -359,7 +357,6 @@ export default function SampleUpload({ surveyId, communities }: Props) {
         </div>
       )}
 
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Grupos de segmentaÃƒÂ§ÃƒÂ£o Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {communities.length > 0 && (
         <div className="border-t pt-4">
           <SampleGroups surveyId={surveyId} communities={communities} />

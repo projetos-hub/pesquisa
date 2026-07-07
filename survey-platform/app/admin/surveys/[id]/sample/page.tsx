@@ -25,7 +25,7 @@ export default async function SamplePage({ params }: Props) {
     .single()
 
   if (!survey) {
-    return <div className="p-6 text-red-600">Pesquisa nÃƒÂ£o encontrada</div>
+    return <div className="p-6 text-red-600">Pesquisa não encontrada</div>
   }
 
   const service = createServiceClient()
@@ -46,7 +46,7 @@ export default async function SamplePage({ params }: Props) {
   const identityByCommunity = new Map((communityRows ?? []).map(c => [c.community_id, c]))
 
   const communities = (installRows ?? []).map((r: { community_id: string }) => ({
-    id:   r.community_id,
+    id: r.community_id,
     nome: resolveCommunityPrimaryName(identityByCommunity.get(r.community_id) ?? { community_id: r.community_id }),
     marca: identityByCommunity.get(r.community_id)?.marca ?? null,
     unidade: identityByCommunity.get(r.community_id)?.unidade ?? null,
@@ -55,14 +55,14 @@ export default async function SamplePage({ params }: Props) {
   return (
     <AdminPageShell active="surveys" title="Amostra">
       <div className="rounded-3xl border border-white/12 bg-[#12151d]/88 p-5 text-gray-900 shadow-[0_30px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Amostra Ã¢â‚¬â€ {survey.title}</h1>
-        <p className="text-gray-600">Fazer upload de Excel com usuÃƒÂ¡rios da amostra segmentada</p>
-      </div>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Amostra - {survey.title}</h1>
+          <p className="text-gray-600">Fazer upload de Excel com usuários da amostra segmentada</p>
+        </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <SampleUpload surveyId={id} surveySlug={survey.slug} communities={communities} />
-      </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <SampleUpload surveyId={id} surveySlug={survey.slug} communities={communities} />
+        </div>
       </div>
     </AdminPageShell>
   )

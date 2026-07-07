@@ -99,6 +99,18 @@ export const NOMEFANTASIA_TO_COMMUNITY_ID: Record<string, string> = {
   "BOM TEMPO CRECHE E EDUCACAO INFANTIL LTDA": "n6k47n81",
   "ESCOLA SA PEREIRA S.A. CAPISTRANO": "w213sfza",
   "COLEGIO QI BOTAFOGO": "qi-botafogo",
+
+  // Aliases ASCII para bases TOTVS com acentos reais no campo FILIAL.
+  "APOGEU GLOBAL SCHOOL FERREIRA GUIMARAES": "fwnash24",
+  "APOGEU SANTO ANTONIO I": "apogeu-santoantonio-i",
+  "APOGEU SANTO ANTONIO II": "apogeu-santoantonio-ii",
+  "COLEGIO E CURSO UNIAO LTDA": "uniao",
+  "COLEGIO QI FREGUESIA": "qi-freguesia",
+  "COLEGIO QI METROPOLITANO": "qi-metropolitano",
+  "COLEGIO QI RECREIO": "qi-recreio",
+  "COLEGIO QI RIO 2": "qi-rio2",
+  "COLEGIO QI TIJUCA": "qi-tijuca",
+  "COLEGIO QI VALQUEIRE": "az51800x",
 }
 
 function normalize(s: string): string {

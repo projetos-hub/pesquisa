@@ -47,7 +47,7 @@ export function layersResolutionStatus(layersUserId: string | null): string {
 
 export function layersResolutionIcon(layersUserId: string | null): string {
   const status = layersResolutionStatus(layersUserId)
-  if (status === 'pending') return '⏳'
-  if (status === 'not_found') return '❌'
-  return '✅'
+  if (status === 'pending') return '...'
+  if (status === 'not_found') return 'x'
+  return 'ok'
 }
