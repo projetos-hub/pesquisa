@@ -29,6 +29,7 @@ export async function GET(req: Request) {
       nome_responsavel,
       nome_aluno,
       serie,
+      turma,
       school,
       onda,
       sync_attempts,
@@ -87,6 +88,7 @@ export async function GET(req: Request) {
       nomeCompleto: session.nome_responsavel ?? '',
       nomeAluno:    session.nome_aluno      ?? '',
       serie:        session.serie           ?? '',
+      turma:        session.turma           ?? '',
       nomeEscola:   nomeEscolaMap.get(session.community_id ?? '') ?? '',
       answers,
     })

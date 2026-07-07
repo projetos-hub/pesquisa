@@ -110,6 +110,7 @@ export interface SessionRow {
   nome_responsavel: string
   nome_aluno: string
   serie: string
+  turma: string
   email: string
   school: string
   onda: string
@@ -193,7 +194,7 @@ export async function fetchRawSessions(
   const sb = createServiceClient()
   let q = sb
     .from('response_sessions')
-    .select('id, survey_id, community_id, user_id, submitted_at, perfil, nome_responsavel, nome_aluno, serie, email, school, onda, responses(question_key, value)')
+    .select('id, survey_id, community_id, user_id, submitted_at, perfil, nome_responsavel, nome_aluno, serie, turma, email, school, onda, responses(question_key, value)')
     .eq('survey_id', surveyId)
     .order('submitted_at', { ascending: false })
 

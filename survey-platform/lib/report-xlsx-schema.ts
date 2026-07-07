@@ -16,6 +16,8 @@ export const META_HEADERS = [
   'userName',
   'userEmail',
   'tipoRespondente',
+  'serie',
+  'turma',
   'answeredAt',
 ]
 
@@ -99,6 +101,8 @@ export function getMetaValues(s: SessionRow, surveyTitle: string): unknown[] {
     s.perfil === 'aluno' ? s.nome_aluno || '' : s.nome_responsavel || '',
     s.email || '',
     s.perfil === 'aluno' ? 'estudante' : 'responsavel',
+    s.serie || '',
+    s.turma || '',
     s.submitted_at,
   ]
 }

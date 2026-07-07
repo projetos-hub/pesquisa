@@ -12,6 +12,7 @@ export interface LayersUserProfile {
   perfil:    'responsavel' | 'aluno' | 'colaborador'
   nomeAluno: string
   serie:     string
+  turma:     string
   email:     string
   meta: {
     roles:       string[]
@@ -21,6 +22,46 @@ export interface LayersUserProfile {
     address:     Record<string, string | null>
     fields:      Record<string, unknown>
   }
+}
+interface LayersRelatedGroup {
+  _id?: string
+  id?: string
+  name?: string
+  alias?: string
+  type?: string
+  season?: string
+}
+
+function normalizeGroupText(value: string | null | undefined): string {
+  return (value ?? '').trim()
+}
+
+function isLikelySerie(group: LayersRelatedGroup): boolean {
+  const text = `${group.name ?? ''} ${group.alias ?? ''}`.toLowerCase()
+  return /\b(ano|serie|ensino|fundamental|medio|infantil)\b/.test(text)
+    || /^\s*\d{4}\s*[-]/.test(group.name ?? '')
+}
+
+export function extractSerieTurmaFromGroups(groups: LayersRelatedGroup[] | null | undefined): { serie: string; turma: string } {
+  const classroomGroups = (groups ?? []).filter(group => !group.type || group.type === 'classroom')
+  const sourceGroups = classroomGroups.length > 0 ? classroomGroups : (groups ?? [])
+  if (sourceGroups.length === 0) return { serie: '', turma: '' }
+
+  const serieGroup = sourceGroups.find(isLikelySerie) ?? sourceGroups[0]
+  const turmaGroup = sourceGroups.find(group => group !== serieGroup && !isLikelySerie(group))
+    ?? sourceGroups.find(group => group !== serieGroup)
+    ?? serieGroup
+
+  const serie = normalizeGroupText(serieGroup.name || serieGroup.alias)
+  const turmaCandidate = normalizeGroupText(turmaGroup.name || turmaGroup.alias)
+  const serieAlias = normalizeGroupText(serieGroup.alias)
+  const turma = turmaCandidate && turmaCandidate !== serie
+    ? turmaCandidate
+    : serieAlias && serieAlias !== serie
+      ? serieAlias
+      : ''
+
+  return { serie, turma }
 }
 
 // Roles da Layers que correspondem a responsáveis familiares (confirmado via API)
@@ -43,31 +84,31 @@ function mapRole(roles: string[]): 'responsavel' | 'aluno' | null {
 async function fetchSerie(
   entityId: string,
   headers: Record<string, string>,
-): Promise<string> {
+): Promise<{ serie: string; turma: string }> {
   try {
     const enrollRes = await fetch(`${BASE_URL}/v1/enrollments/search?active=true`, {
       headers,
       signal: AbortSignal.timeout(5_000),
     })
-    if (!enrollRes.ok) return ''
+    if (!enrollRes.ok) return { serie: '', turma: '' }
 
     const enrollData = await enrollRes.json() as {
       hits?: { entity?: string; group?: string }[]
     }
 
     const groupId = enrollData.hits?.find(e => e.entity === entityId)?.group
-    if (!groupId) return ''
+    if (!groupId) return { serie: '', turma: '' }
 
     const groupRes = await fetch(`${BASE_URL}/v1/groups/${groupId}`, {
       headers,
       signal: AbortSignal.timeout(5_000),
     })
-    if (!groupRes.ok) return ''
+    if (!groupRes.ok) return { serie: '', turma: '' }
 
     const group = await groupRes.json() as { alias?: string; name?: string }
-    return group.alias || group.name || ''
+    return { serie: group.name || group.alias || '', turma: group.alias && group.alias !== group.name ? group.alias : '' }
   } catch {
-    return ''
+    return { serie: '', turma: '' }
   }
 }
 
@@ -107,6 +148,7 @@ async function _fetchLayersUserUncached(
 
     let nomeAluno = ''
     let serie     = ''
+    let turma     = ''
 
     if (perfil === 'responsavel') {
       const relRes = await fetch(`${BASE_URL}/v1/users/${userId}/related`, {
@@ -115,16 +157,23 @@ async function _fetchLayersUserUncached(
       })
       if (relRes.ok) {
         const rel = await relRes.json() as {
-          members?: { _id?: string; name?: string }[]
+          members?: { _id?: string; name?: string; groups?: LayersRelatedGroup[] }[]
         }
         const student = rel.members?.[0]
         nomeAluno = student?.name ?? ''
-        if (student?._id) {
-          serie = await fetchSerie(student._id, headers)
+        const groupInfo = extractSerieTurmaFromGroups(student?.groups)
+        serie = groupInfo.serie
+        turma = groupInfo.turma
+        if (student?._id && !serie) {
+          const fallback = await fetchSerie(student._id, headers)
+          serie = fallback.serie
+          turma = fallback.turma
         }
       }
     } else {
-      serie = await fetchSerie(userId, headers)
+      const fallback = await fetchSerie(userId, headers)
+      serie = fallback.serie
+      turma = fallback.turma
     }
 
     return {
@@ -133,6 +182,7 @@ async function _fetchLayersUserUncached(
       perfil,
       nomeAluno,
       serie,
+      turma,
       meta: {
         roles:      user.roles      ?? [],
         lastSeenAt: user.lastSeenAt ?? null,
@@ -198,6 +248,7 @@ async function _fetchLayersUserAnyRoleUncached(
 
     let nomeAluno = ''
     let serie     = ''
+    let turma     = ''
 
     if (perfil === 'responsavel') {
       const relRes = await fetch(`${BASE_URL}/v1/users/${userId}/related`, {
@@ -205,13 +256,22 @@ async function _fetchLayersUserAnyRoleUncached(
         signal: AbortSignal.timeout(5_000),
       })
       if (relRes.ok) {
-        const rel = await relRes.json() as { members?: { _id?: string; name?: string }[] }
+        const rel = await relRes.json() as { members?: { _id?: string; name?: string; groups?: LayersRelatedGroup[] }[] }
         const student = rel.members?.[0]
         nomeAluno = student?.name ?? ''
-        if (student?._id) serie = await fetchSerie(student._id, headers)
+        const groupInfo = extractSerieTurmaFromGroups(student?.groups)
+        serie = groupInfo.serie
+        turma = groupInfo.turma
+        if (student?._id && !serie) {
+          const fallback = await fetchSerie(student._id, headers)
+          serie = fallback.serie
+          turma = fallback.turma
+        }
       }
     } else if (perfil === 'aluno') {
-      serie = await fetchSerie(userId, headers)
+      const fallback = await fetchSerie(userId, headers)
+      serie = fallback.serie
+      turma = fallback.turma
     }
     // colaborador: sem lookup extra
 
@@ -221,6 +281,7 @@ async function _fetchLayersUserAnyRoleUncached(
       perfil,
       nomeAluno,
       serie,
+      turma,
       meta: {
         roles:      user.roles      ?? [],
         lastSeenAt: user.lastSeenAt ?? null,

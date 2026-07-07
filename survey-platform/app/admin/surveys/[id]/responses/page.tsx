@@ -63,7 +63,7 @@ export default async function ResponsesPage({ params, searchParams }: PageProps)
   const offset = (pageNum - 1) * pageSize
   const { data: sessions } = await supabase
     .from('response_sessions')
-    .select('id, submitted_at, perfil, nome_responsavel, nome_aluno, serie, school, onda, responses(question_key, value)')
+    .select('id, submitted_at, perfil, nome_responsavel, nome_aluno, serie, turma, school, onda, responses(question_key, value)')
     .eq('survey_id', id)
     .order('submitted_at', { ascending: false })
     .range(offset, offset + pageSize - 1)
@@ -130,6 +130,7 @@ export default async function ResponsesPage({ params, searchParams }: PageProps)
               <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Perfil</th>
               <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Escola</th>
               <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Série</th>
+              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Turma</th>
               <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Onda</th>
               <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">NPS</th>
               <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Bilíngue</th>
@@ -191,6 +192,7 @@ export default async function ResponsesPage({ params, searchParams }: PageProps)
                     />
                   </td>
                   <td className="px-4 py-2.5 text-gray-500 text-xs">{session.serie || '—'}</td>
+                  <td className="px-4 py-2.5 text-gray-500 text-xs">{session.turma || '-'}</td>
                   <td className="px-4 py-2.5 text-gray-500 text-xs">{session.onda || '—'}</td>
                   <td className={`px-4 py-2.5 text-center text-sm ${npsClass(npsScore)}`}>
                     {npsCategory(npsScore)}
@@ -207,7 +209,7 @@ export default async function ResponsesPage({ params, searchParams }: PageProps)
 
             {!sessions?.length && (
               <tr>
-                <td colSpan={11} className="px-4 py-10 text-center text-gray-400">
+                <td colSpan={12} className="px-4 py-10 text-center text-gray-400">
                   Nenhuma resposta recebida ainda.
                 </td>
               </tr>

@@ -9,6 +9,7 @@ const EMPTY: LayersUserProfile = {
   perfil:    'responsavel',
   nomeAluno: '',
   serie:     '',
+  turma:     '',
   meta: {
     roles:      [],
     lastSeenAt: null,

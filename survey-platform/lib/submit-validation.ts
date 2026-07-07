@@ -11,6 +11,7 @@ const STRING_LIMITS = {
   nomeCompleto: 256,
   nomeAluno: 256,
   serie: 64,
+  turma: 128,
   email: 320,
 } as const
 
@@ -31,6 +32,7 @@ export interface SubmitBody {
   nomeCompleto: string
   nomeAluno: string
   serie: string
+  turma: string
   email: string
   layersMeta: Record<string, unknown>
   answers: Record<string, unknown>
@@ -134,6 +136,7 @@ export function parseSubmitBody(input: unknown): SubmitValidationResult {
       nomeCompleto: normalized.nomeCompleto ?? '',
       nomeAluno: normalized.nomeAluno ?? '',
       serie: normalized.serie ?? '',
+      turma: normalized.turma ?? '',
       email: normalized.email ?? '',
       layersMeta: (layersMeta ?? {}) as Record<string, unknown>,
       answers: input.answers as Record<string, unknown>,

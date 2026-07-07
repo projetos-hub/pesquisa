@@ -199,7 +199,7 @@ export function buildAbaRespostasBrutas(
   const ws = wb.addWorksheet('Respostas Brutas')
   const metaHeadersExtended = [
     'postId', 'title', 'Marca', 'Unidade', 'Nome da Comunidade', 'community_id', 'userId', 'userName',
-    'userEmail', 'tipoRespondente', 'serie', 'onda', 'categoriaNPS', 'answeredAt',
+    'userEmail', 'tipoRespondente', 'serie', 'turma', 'onda', 'categoriaNPS', 'answeredAt',
   ]
   const colSchema = buildColumnSchema(questions, options)
 

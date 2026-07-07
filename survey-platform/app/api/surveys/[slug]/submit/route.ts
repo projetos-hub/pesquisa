@@ -66,6 +66,7 @@ export async function POST(req: Request, { params }: RouteContext) {
     nomeCompleto,
     nomeAluno,
     serie,
+    turma,
     email,
     layersMeta,
     answers,
@@ -104,6 +105,7 @@ export async function POST(req: Request, { params }: RouteContext) {
   const trustedNomeCompleto = trustedProfile?.nome || nomeCompleto
   const trustedNomeAluno = trustedProfile?.nomeAluno || nomeAluno
   const trustedSerie = trustedProfile?.serie || serie
+  const trustedTurma = trustedProfile?.turma || turma
   const trustedLayersMeta = trustedProfile?.meta ?? layersMeta
 
   if (!isPerfilAllowedForSubmit(survey, trustedPerfil)) {
@@ -198,6 +200,7 @@ export async function POST(req: Request, { params }: RouteContext) {
     nome_responsavel: trustedNomeCompleto,
     nome_aluno:       trustedNomeAluno,
     serie:            trustedSerie,
+    turma:            trustedTurma,
     school,
     onda,
     email:            trustedEmail,

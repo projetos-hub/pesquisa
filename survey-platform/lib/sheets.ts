@@ -13,6 +13,7 @@ export interface SheetsSyncPayload {
   nomeCompleto: string
   nomeAluno:    string
   serie:        string
+  turma:        string
   nomeEscola:   string
   answers:      Record<string, unknown>
 }
@@ -58,6 +59,7 @@ export async function syncToSheets(payload: SheetsSyncPayload): Promise<boolean>
     nomeCompleto: payload.nomeCompleto,
     nomeAluno:    payload.nomeAluno,
     serie:        payload.serie,
+    turma:        payload.turma,
     nomeEscola:   payload.nomeEscola,
     ...payload.answers,
   })

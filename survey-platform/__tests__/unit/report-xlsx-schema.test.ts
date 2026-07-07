@@ -72,6 +72,7 @@ describe('report-xlsx-schema', () => {
       nome_responsavel: 'Maria',
       nome_aluno: 'Joao',
       serie: '3A',
+      turma: '3A-Manha',
       email: 'maria@example.com',
       school: 'school-1',
       onda: '1',
@@ -89,6 +90,8 @@ describe('report-xlsx-schema', () => {
       'userName',
       'userEmail',
       'tipoRespondente',
+      'serie',
+      'turma',
       'answeredAt',
     ])
     expect(getMetaValues({ ...base, perfil: 'aluno' }, 'Pesquisa')).toEqual([
@@ -102,6 +105,8 @@ describe('report-xlsx-schema', () => {
       'Joao',
       'maria@example.com',
       'estudante',
+      '3A',
+      '3A-Manha',
       '2026-06-23T10:00:00Z',
     ])
     expect(getMetaValues({ ...base, perfil: 'responsavel' }, 'Pesquisa')[7]).toBe('Maria')
