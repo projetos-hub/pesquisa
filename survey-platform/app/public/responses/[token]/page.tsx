@@ -96,6 +96,11 @@ export default async function PublicResponsesPage({ params, searchParams }: Page
             <p className="mt-1 text-sm text-slate-300">
               {dataset.rowCount} respostas. Atualizado em {new Date(dataset.updatedAt).toLocaleString('pt-BR')}.
             </p>
+            {dataset.sampleResponse.isSampleSurvey && (
+              <p className="mt-1 text-sm font-semibold text-emerald-200">
+                Taxa de resposta da amostra: {dataset.sampleResponse.responseRatePct !== null ? `${dataset.sampleResponse.responseRatePct}%` : '-'} ({dataset.sampleResponse.responseCount}/{dataset.sampleResponse.sampleSize})
+              </p>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-2">

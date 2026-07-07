@@ -5,12 +5,14 @@ import { disablePublicResponseLink, regeneratePublicResponseLinkAccessKey } from
 import { PublicLinkCreateForm } from './PublicLinkCreateForm'
 import { PublicJsonPreview } from './PublicJsonPreview'
 import { normalizePublicResponseScope, publicResponseScopeLabel, type PublicResponseScope } from '@/lib/public-responses'
+import { fetchSampleResponseSummary, type SampleResponseSummary } from '@/lib/report-queries'
 
 interface Survey {
   id: string
   slug: string
   title: string
   status: string
+  access_control: string | null
   response_sessions: { id: string }[]
 }
 
@@ -48,7 +50,7 @@ export default async function ExportPage() {
 
   const { data: surveys } = await supabase
     .from('surveys')
-    .select('id, slug, title, status, response_sessions(id)')
+    .select('id, slug, title, status, access_control, response_sessions(id)')
     .order('created_at', { ascending: false }) as { data: Survey[] | null }
 
   const { data: publicLinks } = await supabase
@@ -78,10 +80,16 @@ export default async function ExportPage() {
     linksBySurvey.set(link.survey_id, current)
   }
 
-  const surveyData = (surveys ?? []).map(survey => ({
-    ...survey,
-    responseCount: survey.response_sessions?.length ?? 0,
-    publicLinks: linksBySurvey.get(survey.id) ?? [],
+  const surveyData = await Promise.all((surveys ?? []).map(async survey => {
+    const responseCount = survey.response_sessions?.length ?? 0
+    const sampleResponse: SampleResponseSummary = await fetchSampleResponseSummary(survey.id, responseCount)
+
+    return {
+      ...survey,
+      responseCount,
+      sampleResponse,
+      publicLinks: linksBySurvey.get(survey.id) ?? [],
+    }
   }))
 
   return (
@@ -119,6 +127,11 @@ export default async function ExportPage() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span className="font-semibold text-gray-900">{survey.responseCount}</span>
+                      {survey.sampleResponse.isSampleSurvey && (
+                        <div className="mt-1 text-[11px] font-medium text-emerald-700">
+                          {survey.sampleResponse.responseRatePct !== null ? `${survey.sampleResponse.responseRatePct}%` : '-'} da amostra
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col items-end gap-2">

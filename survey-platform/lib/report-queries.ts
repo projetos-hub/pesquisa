@@ -87,6 +87,14 @@ export interface SurveyMeta {
   status: string
   open_date: string | null
   close_date: string | null
+  access_control: string | null
+}
+
+export interface SampleResponseSummary {
+  isSampleSurvey: boolean
+  sampleSize: number
+  responseCount: number
+  responseRatePct: number | null
 }
 
 export interface SessionRow {
@@ -231,11 +239,78 @@ export async function fetchSurveyMeta(surveyId: string): Promise<SurveyMeta> {
   const sb = createServiceClient()
   const { data, error } = await sb
     .from('surveys')
-    .select('id, slug, title, status, open_date, close_date')
+    .select('id, slug, title, status, open_date, close_date, access_control')
     .eq('id', surveyId)
     .single()
   if (error || !data) throw new Error(`Survey ${surveyId} not found`)
   return data as SurveyMeta
+}
+
+export async function fetchSampleResponseSummary(
+  surveyId: string,
+  responseCount?: number,
+  filters: Pick<ReportFilters, 'communityIds'> = {}
+): Promise<SampleResponseSummary> {
+  const sb = createServiceClient()
+  const { data: survey, error: surveyError } = await sb
+    .from('surveys')
+    .select('access_control')
+    .eq('id', surveyId)
+    .single()
+
+  if (surveyError || !survey || survey.access_control !== 'amostra') {
+    return {
+      isSampleSurvey: false,
+      sampleSize: 0,
+      responseCount: responseCount ?? 0,
+      responseRatePct: null,
+    }
+  }
+
+  const communityIds = filters.communityIds?.length ? filters.communityIds : null
+  const sampleResult = communityIds
+    ? await sb
+        .from('survey_sample_lists')
+        .select('id', { count: 'exact', head: true })
+        .eq('survey_id', surveyId)
+        .not('layers_user_id', 'is', null)
+        .neq('layers_user_id', 'NOT_FOUND')
+        .in('community_id', communityIds)
+    : await sb
+        .from('survey_sample_lists')
+        .select('id', { count: 'exact', head: true })
+        .eq('survey_id', surveyId)
+        .not('layers_user_id', 'is', null)
+        .neq('layers_user_id', 'NOT_FOUND')
+
+  if (sampleResult.error) throw new Error(`fetchSampleResponseSummary sample: ${sampleResult.error.message}`)
+
+  let resolvedResponseCount = responseCount
+  if (resolvedResponseCount === undefined) {
+    const responseResult = communityIds
+      ? await sb
+          .from('response_sessions')
+          .select('id', { count: 'exact', head: true })
+          .eq('survey_id', surveyId)
+          .in('school', communityIds)
+      : await sb
+          .from('response_sessions')
+          .select('id', { count: 'exact', head: true })
+          .eq('survey_id', surveyId)
+
+    if (responseResult.error) throw new Error(`fetchSampleResponseSummary responses: ${responseResult.error.message}`)
+    resolvedResponseCount = responseResult.count ?? 0
+  }
+
+  const sampleSize = sampleResult.count ?? 0
+  return {
+    isSampleSurvey: true,
+    sampleSize,
+    responseCount: resolvedResponseCount,
+    responseRatePct: sampleSize > 0
+      ? Math.round((resolvedResponseCount / sampleSize) * 1000) / 10
+      : null,
+  }
 }
 
 // Fetch: Questions + Options
@@ -273,7 +348,7 @@ export async function fetchAllSurveys(): Promise<SurveyMeta[]> {
   const sb = createServiceClient()
   const { data, error } = await sb
     .from('surveys')
-    .select('id, slug, title, status, open_date, close_date')
+    .select('id, slug, title, status, open_date, close_date, access_control')
     .order('created_at', { ascending: false })
   if (error) throw new Error(`fetchAllSurveys: ${error.message}`)
   return (data ?? []) as SurveyMeta[]

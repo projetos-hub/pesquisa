@@ -4,7 +4,7 @@ import { adminAuthErrorResponse, requireAdmin } from '@/lib/admin-auth'
 import { createServiceClient } from '@/lib/supabase-service'
 import ExcelJS from 'exceljs'
 import { buildColumnSchema, META_HEADERS, getMetaValues } from '@/lib/report-xlsx'
-import { fetchRawSessions, type SessionRow, type QuestionRow, type OptionRow } from '@/lib/report-queries'
+import { fetchRawSessions, fetchSampleResponseSummary, type SessionRow, type QuestionRow, type OptionRow } from '@/lib/report-queries'
 
 export async function GET(request: Request) {
   try {
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     // Survey metadata
     const { data: survey, error: surveyError } = await serviceSupabase
       .from('surveys')
-      .select('id, slug, title')
+      .select('id, slug, title, access_control')
       .eq('id', surveyId)
       .single()
 
@@ -58,6 +58,10 @@ export async function GET(request: Request) {
 
     // All sessions + responses, enriched with Marca/Unidade/Nome da Comunidade.
     const sessions: SessionRow[] = await fetchRawSessions(surveyId)
+    const sampleResponse = await fetchSampleResponseSummary(surveyId, sessions.length)
+    const sampleHeaders = sampleResponse.isSampleSurvey
+      ? ['sampleSize', 'sampleResponded', 'sampleResponseRatePct']
+      : []
 
     // Build column schema from questions
     const columnSchema = buildColumnSchema(questions, options)
@@ -74,11 +78,28 @@ export async function GET(request: Request) {
 
     // Create workbook
     const workbook = new ExcelJS.Workbook()
+
+    if (sampleResponse.isSampleSurvey) {
+      const summary = workbook.addWorksheet('Resumo')
+      summary.addRows([
+        ['Metrica', 'Valor'],
+        ['Amostra valida', sampleResponse.sampleSize],
+        ['Respostas recebidas', sampleResponse.responseCount],
+        ['Taxa de resposta (%)', sampleResponse.responseRatePct ?? ''],
+      ])
+      summary.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } }
+      summary.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } }
+      summary.columns.forEach(column => {
+        column.width = 24
+      })
+    }
+
     const worksheet = workbook.addWorksheet('Respostas')
 
     // Header row
     worksheet.addRow([
       ...META_HEADERS,
+      ...sampleHeaders,
       ...columnSchema.map(c => c.header),
     ])
 
@@ -93,6 +114,9 @@ export async function GET(request: Request) {
       const ans = answersBySession.get(session.id) ?? {}
       worksheet.addRow([
         ...getMetaValues(session, surveyTitle),
+        ...(sampleResponse.isSampleSurvey
+          ? [sampleResponse.sampleSize, sampleResponse.responseCount, sampleResponse.responseRatePct ?? '']
+          : []),
         ...columnSchema.map(c => c.getValue(ans)),
       ])
     }

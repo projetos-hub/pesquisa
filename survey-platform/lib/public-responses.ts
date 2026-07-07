@@ -4,8 +4,10 @@ import { createServiceClient } from '@/lib/supabase-service'
 import {
   fetchQuestionsAndOptions,
   fetchRawSessions,
+  fetchSampleResponseSummary,
   fetchSurveyMeta,
   type QuestionRow,
+  type SampleResponseSummary,
   type SessionRow,
   type SurveyMeta,
 } from '@/lib/report-queries'
@@ -37,6 +39,7 @@ export interface PublicResponsesDataset {
   headers: string[]
   rows: unknown[][]
   rowCount: number
+  sampleResponse: SampleResponseSummary
   updatedAt: string
 }
 
@@ -146,7 +149,9 @@ export async function getPublicResponsesDataset(
     fetchQuestionsAndOptions(publicLink.survey_id),
   ])
 
-  return buildPublicResponsesDataset(publicLink, survey, sessions, questionData.questions, questionData.options)
+  const sampleResponse = await fetchSampleResponseSummary(publicLink.survey_id, sessions.length, { communityIds: scopeCommunityIds })
+
+  return buildPublicResponsesDataset(publicLink, survey, sessions, questionData.questions, questionData.options, sampleResponse)
 }
 
 function buildPublicResponsesDataset(
@@ -154,10 +159,14 @@ function buildPublicResponsesDataset(
   survey: SurveyMeta,
   sessions: SessionRow[],
   questions: QuestionRow[],
-  options: Awaited<ReturnType<typeof fetchQuestionsAndOptions>>['options']
+  options: Awaited<ReturnType<typeof fetchQuestionsAndOptions>>['options'],
+  sampleResponse: SampleResponseSummary
 ): PublicResponsesDataset {
   const questionColumns = buildColumnSchema(questions, options)
-  const allHeaders = [...META_HEADERS, ...questionColumns.map(column => column.header)]
+  const sampleHeaders = sampleResponse.isSampleSurvey
+    ? ['sampleSize', 'sampleResponded', 'sampleResponseRatePct']
+    : []
+  const allHeaders = [...META_HEADERS, ...sampleHeaders, ...questionColumns.map(column => column.header)]
   const visibleIndexes = allHeaders
     .map((header, index) => ({ header, index }))
     .filter(item => link.include_pii || !PII_META_HEADERS.has(item.header))
@@ -170,6 +179,9 @@ function buildPublicResponsesDataset(
 
     const values = [
       ...getMetaValues(session, survey.title),
+      ...(sampleResponse.isSampleSurvey
+        ? [sampleResponse.sampleSize, sampleResponse.responseCount, sampleResponse.responseRatePct ?? '']
+        : []),
       ...questionColumns.map(column => column.getValue(answers)),
     ]
 
@@ -182,6 +194,7 @@ function buildPublicResponsesDataset(
     headers: visibleIndexes.map(item => item.header),
     rows,
     rowCount: rows.length,
+    sampleResponse,
     updatedAt: new Date().toISOString(),
   }
 }
@@ -206,6 +219,7 @@ export function publicResponsesToJson(dataset: PublicResponsesDataset) {
   return {
     survey: dataset.survey,
     rowCount: dataset.rowCount,
+    sampleResponse: dataset.sampleResponse,
     updatedAt: dataset.updatedAt,
     rows: dataset.rows.map(row => Object.fromEntries(
       dataset.headers.map((header, index) => [header, row[index] ?? ''])
@@ -215,6 +229,22 @@ export function publicResponsesToJson(dataset: PublicResponsesDataset) {
 
 export async function publicResponsesToXlsx(dataset: PublicResponsesDataset): Promise<ArrayBuffer> {
   const workbook = new ExcelJS.Workbook()
+
+  if (dataset.sampleResponse.isSampleSurvey) {
+    const summary = workbook.addWorksheet('Resumo')
+    summary.addRows([
+      ['Metrica', 'Valor'],
+      ['Amostra valida', dataset.sampleResponse.sampleSize],
+      ['Respostas recebidas', dataset.sampleResponse.responseCount],
+      ['Taxa de resposta (%)', dataset.sampleResponse.responseRatePct ?? ''],
+    ])
+    summary.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } }
+    summary.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } }
+    summary.columns.forEach(column => {
+      column.width = 24
+    })
+  }
+
   const worksheet = workbook.addWorksheet('Respostas')
 
   worksheet.addRow(dataset.headers)

@@ -34,7 +34,7 @@ export default async function ResponsesPage({ params, searchParams }: PageProps)
   // Survey
   const { data: survey } = await supabase
     .from('surveys')
-    .select('id, title, slug')
+    .select('id, title, slug, access_control')
     .eq('id', id)
     .single()
 
@@ -47,6 +47,19 @@ export default async function ResponsesPage({ params, searchParams }: PageProps)
     .eq('survey_id', id)
 
   const totalPages = Math.ceil((totalSessions ?? 0) / pageSize)
+  const isSampleSurvey = survey.access_control === 'amostra'
+  const { count: sampleResolvedCount } = isSampleSurvey
+    ? await supabase
+        .from('survey_sample_lists')
+        .select('id', { count: 'exact', head: true })
+        .eq('survey_id', id)
+        .not('layers_user_id', 'is', null)
+        .neq('layers_user_id', 'NOT_FOUND')
+    : { count: null }
+  const sampleSize = sampleResolvedCount ?? 0
+  const sampleResponseRate = isSampleSurvey && sampleSize > 0
+    ? Math.round(((totalSessions ?? 0) / sampleSize) * 1000) / 10
+    : null
 
   // Sessions com todas as respostas embutidas — com LIMIT e OFFSET
   const offset = (pageNum - 1) * pageSize
@@ -84,9 +97,31 @@ export default async function ResponsesPage({ params, searchParams }: PageProps)
         <span className="text-gray-300">/</span>
         <h2 className="text-lg font-semibold text-gray-900">Respostas</h2>
         <span className="ml-auto text-sm text-gray-400">
-          {sessions?.length ?? 0} resposta{sessions?.length !== 1 ? 's' : ''}
+          {totalSessions ?? 0} resposta{(totalSessions ?? 0) !== 1 ? 's' : ''}
         </span>
       </div>
+
+      {isSampleSurvey && (
+        <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="text-2xl font-bold text-emerald-600">
+              {sampleResponseRate !== null ? `${sampleResponseRate}%` : '-'}
+            </div>
+            <div className="text-xs text-gray-500 mt-0.5">Taxa de resposta da amostra</div>
+            <div className="text-[11px] text-gray-400 mt-1">
+              {totalSessions ?? 0}/{sampleSize} responderam
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="text-2xl font-bold text-[#F7941D]">{totalSessions ?? 0}</div>
+            <div className="text-xs text-gray-500 mt-0.5">Respostas recebidas</div>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="text-2xl font-bold text-gray-900">{sampleSize}</div>
+            <div className="text-xs text-gray-500 mt-0.5">Amostra valida</div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
         <table className="w-full text-sm whitespace-nowrap">

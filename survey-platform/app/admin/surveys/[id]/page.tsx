@@ -82,6 +82,19 @@ export default async function SurveyDetailPage({ params }: PageProps) {
   const total       = sessions?.length ?? 0
   const responsaveis = sessions?.filter(s => s.perfil === 'responsavel').length ?? 0
   const alunos      = sessions?.filter(s => s.perfil === 'aluno').length ?? 0
+  const isSampleSurvey = survey.access_control === 'amostra'
+  const { count: sampleResolvedCount } = isSampleSurvey
+    ? await supabase
+        .from('survey_sample_lists')
+        .select('id', { count: 'exact', head: true })
+        .eq('survey_id', id)
+        .not('layers_user_id', 'is', null)
+        .neq('layers_user_id', 'NOT_FOUND')
+    : { count: null }
+  const sampleSize = sampleResolvedCount ?? 0
+  const sampleResponseRate = isSampleSurvey && sampleSize > 0
+    ? Math.round((total / sampleSize) * 1000) / 10
+    : null
 
   // Escolas com mais respostas (top 5)
   const schoolCount: Record<string, number> = {}
@@ -110,15 +123,24 @@ export default async function SurveyDetailPage({ params }: PageProps) {
 
       <div className="grid gap-6">
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Total de respostas', value: total,       color: 'text-[#F7941D]' },
-            { label: 'Responsáveis',       value: responsaveis, color: 'text-blue-600' },
-            { label: 'Alunos',            value: alunos,       color: 'text-purple-600' },
-          ].map(({ label, value, color }) => (
+            { label: 'Total de respostas', value: total,       color: 'text-[#F7941D]', hint: null },
+            { label: 'Responsáveis',       value: responsaveis, color: 'text-blue-600', hint: null },
+            { label: 'Alunos',            value: alunos,       color: 'text-purple-600', hint: null },
+            ...(isSampleSurvey
+              ? [{
+                  label: 'Taxa da amostra',
+                  value: sampleResponseRate !== null ? `${sampleResponseRate}%` : '-',
+                  color: 'text-emerald-600',
+                  hint: `${total}/${sampleSize} responderam`,
+                }]
+              : []),
+          ].map(({ label, value, color, hint }) => (
             <div key={label} className="bg-white rounded-xl border border-gray-200 p-4">
               <div className={`text-2xl font-bold ${color}`}>{value}</div>
               <div className="text-xs text-gray-500 mt-0.5">{label}</div>
+              {hint && <div className="text-[11px] text-gray-400 mt-1">{hint}</div>}
             </div>
           ))}
         </div>
