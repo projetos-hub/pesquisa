@@ -17,10 +17,10 @@ function npsClass(score: number | undefined) {
 }
 
 function npsCategory(score: number | undefined) {
-  if (score === undefined) return 'Ã¢â‚¬â€'
-  if (score >= 9) return `${score} Ã¢Å“â€œ`
+  if (score === undefined) return '—'
+  if (score >= 9) return `${score} ✓`
   if (score >= 7) return `${score} ~`
-  return `${score} Ã¢Å“â€”`
+  return `${score} ✗`
 }
 
 export default async function ResponsesPage({ params, searchParams }: PageProps) {
@@ -40,7 +40,7 @@ export default async function ResponsesPage({ params, searchParams }: PageProps)
 
   if (!survey) notFound()
 
-  // Conta total de sessÃƒÂµes para paginaÃƒÂ§ÃƒÂ£o
+  // Conta total de sessões para paginação
   const { count: totalSessions } = await supabase
     .from('response_sessions')
     .select('id', { count: 'exact', head: true })
@@ -48,7 +48,7 @@ export default async function ResponsesPage({ params, searchParams }: PageProps)
 
   const totalPages = Math.ceil((totalSessions ?? 0) / pageSize)
 
-  // Sessions com todas as respostas embutidas Ã¢â‚¬â€ com LIMIT e OFFSET
+  // Sessions com todas as respostas embutidas — com LIMIT e OFFSET
   const offset = (pageNum - 1) * pageSize
   const { data: sessions } = await supabase
     .from('response_sessions')
@@ -72,7 +72,7 @@ export default async function ResponsesPage({ params, searchParams }: PageProps)
       {/* Breadcrumb */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/admin/surveys" className="text-gray-400 hover:text-gray-600 text-sm">
-          Ã¢â€ Â Pesquisas
+          ← Pesquisas
         </Link>
         <span className="text-gray-300">/</span>
         <Link
@@ -96,11 +96,11 @@ export default async function ResponsesPage({ params, searchParams }: PageProps)
               <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Nome</th>
               <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Perfil</th>
               <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Escola</th>
-              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">SÃƒÂ©rie</th>
+              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Série</th>
               <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Onda</th>
               <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">NPS</th>
-              <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">BilÃƒÂ­ngue</th>
-              <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">PedagÃƒÂ³gico</th>
+              <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Bilíngue</th>
+              <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Pedagógico</th>
               <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Admin</th>
               <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Infra</th>
             </tr>
@@ -117,20 +117,20 @@ export default async function ResponsesPage({ params, searchParams }: PageProps)
               const npsScore = nps?.nps
               const bilingue = nps?.participa_bilingue
 
-              // MÃƒÂ©dia de uma escala (objeto de scores numÃƒÂ©ricos)
+              // Média de uma escala (objeto de scores numéricos)
               function avg(key: string): string {
                 const val = ans[key]
-                if (!val || typeof val !== 'object') return 'Ã¢â‚¬â€'
+                if (!val || typeof val !== 'object') return '—'
                 const scores = Object.values(val as Record<string, unknown>)
                   .map(Number)
                   .filter(n => !isNaN(n) && n > 0)
-                if (!scores.length) return 'Ã¢â‚¬â€'
+                if (!scores.length) return '—'
                 return (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1)
               }
 
               const nome = session.perfil === 'aluno'
-                ? session.nome_aluno || 'Ã¢â‚¬â€'
-                : session.nome_responsavel || 'Ã¢â‚¬â€'
+                ? session.nome_aluno || '—'
+                : session.nome_responsavel || '—'
               return (
                 <tr key={session.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-2.5 text-gray-500 text-xs">
@@ -146,7 +146,7 @@ export default async function ResponsesPage({ params, searchParams }: PageProps)
                         ? 'bg-purple-100 text-purple-700'
                         : 'bg-blue-100 text-blue-700'
                     }`}>
-                      {session.perfil === 'aluno' ? 'Aluno' : 'ResponsÃƒÂ¡vel'}
+                      {session.perfil === 'aluno' ? 'Aluno' : 'Responsável'}
                     </span>
                   </td>
                   <td className="px-4 py-2.5">
@@ -157,13 +157,13 @@ export default async function ResponsesPage({ params, searchParams }: PageProps)
                       unidade={communityById.get(session.school)?.unidade}
                     />
                   </td>
-                  <td className="px-4 py-2.5 text-gray-500 text-xs">{session.serie || 'Ã¢â‚¬â€'}</td>
-                  <td className="px-4 py-2.5 text-gray-500 text-xs">{session.onda || 'Ã¢â‚¬â€'}</td>
+                  <td className="px-4 py-2.5 text-gray-500 text-xs">{session.serie || '—'}</td>
+                  <td className="px-4 py-2.5 text-gray-500 text-xs">{session.onda || '—'}</td>
                   <td className={`px-4 py-2.5 text-center text-sm ${npsClass(npsScore)}`}>
                     {npsCategory(npsScore)}
                   </td>
                   <td className="px-4 py-2.5 text-center text-xs text-gray-500">
-                    {bilingue === 'Sim' ? avg('bilingue') : 'Ã¢â‚¬â€'}
+                    {bilingue === 'Sim' ? avg('bilingue') : '—'}
                   </td>
                   <td className="px-4 py-2.5 text-center text-sm text-gray-700">{avg('pedagogico')}</td>
                   <td className="px-4 py-2.5 text-center text-sm text-gray-700">{avg('administrativo')}</td>
@@ -183,11 +183,11 @@ export default async function ResponsesPage({ params, searchParams }: PageProps)
         </table>
       </div>
 
-      {/* PaginaÃƒÂ§ÃƒÂ£o */}
+      {/* Paginação */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-6">
           <div className="text-sm text-gray-500">
-            PÃƒÂ¡gina {pageNum} de {totalPages} Ã¢â‚¬Â¢ Total: {totalSessions ?? 0} {(totalSessions ?? 0) === 1 ? 'resposta' : 'respostas'}
+            Página {pageNum} de {totalPages} • Total: {totalSessions ?? 0} {(totalSessions ?? 0) === 1 ? 'resposta' : 'respostas'}
           </div>
           <div className="flex gap-2">
             {pageNum > 1 && (
@@ -195,7 +195,7 @@ export default async function ResponsesPage({ params, searchParams }: PageProps)
                 href={`?page=${pageNum - 1}`}
                 className="px-3 py-1.5 text-sm font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
               >
-                Ã¢â€ Â Anterior
+                ← Anterior
               </Link>
             )}
             {pageNum < totalPages && (
@@ -203,7 +203,7 @@ export default async function ResponsesPage({ params, searchParams }: PageProps)
                 href={`?page=${pageNum + 1}`}
                 className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
-                PrÃƒÂ³xima Ã¢â€ â€™
+                Próxima →
               </Link>
             )}
           </div>

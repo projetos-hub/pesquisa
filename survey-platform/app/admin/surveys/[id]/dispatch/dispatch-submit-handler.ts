@@ -55,11 +55,11 @@ export async function submitDispatchForm(
     return
   }
   if (!input.title.trim()) {
-    input.setResult({ error: 'Título é obrigatório' })
+    input.setResult({ error: 'Titulo e obrigatorio' })
     return
   }
   if (!input.body.trim()) {
-    input.setResult({ error: 'Mensagem é obrigatória' })
+    input.setResult({ error: 'Mensagem e obrigatoria' })
     return
   }
 

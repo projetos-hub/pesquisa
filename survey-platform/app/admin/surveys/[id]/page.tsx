@@ -25,7 +25,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
 
   if (!survey) notFound()
 
-  // Busca perguntas com opÃƒÂ§ÃƒÂµes
+  // Busca perguntas com opções
   const { data: questionsRaw } = await supabase
     .from('questions')
     .select('id, order_index, type, key, title, description, required, settings')
@@ -102,7 +102,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
       {/* Breadcrumb */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/admin/surveys" className="text-gray-400 hover:text-gray-600 text-sm">
-          Ã¢â€ Â Pesquisas
+          ← Pesquisas
         </Link>
         <span className="text-gray-300">/</span>
         <h2 className="text-lg font-semibold text-gray-900 truncate">{survey.title}</h2>
@@ -113,7 +113,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
         <div className="grid grid-cols-3 gap-4">
           {[
             { label: 'Total de respostas', value: total,       color: 'text-[#F7941D]' },
-            { label: 'ResponsÃƒÂ¡veis',       value: responsaveis, color: 'text-blue-600' },
+            { label: 'Responsáveis',       value: responsaveis, color: 'text-blue-600' },
             { label: 'Alunos',            value: alunos,       color: 'text-purple-600' },
           ].map(({ label, value, color }) => (
             <div key={label} className="bg-white rounded-xl border border-gray-200 p-4">
@@ -172,14 +172,14 @@ export default async function SurveyDetailPage({ params }: PageProps) {
             <div>
               <h3 className="text-sm font-semibold text-gray-700">Amostra Segmentada</h3>
               <p className="text-xs text-gray-400 mt-0.5">
-                FaÃƒÂ§a upload de uma lista de usuÃƒÂ¡rios para segmentar esta pesquisa.
+                Faça upload de uma lista de usuários para segmentar esta pesquisa.
               </p>
             </div>
             <Link
               href={`/admin/surveys/${id}/sample`}
               className="bg-[#F7941D] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#D97B10] transition-colors font-medium"
             >
-              Ã°Å¸â€œâ€¹ Gerenciar
+              Gerenciar
             </Link>
           </div>
         </div>
@@ -190,14 +190,14 @@ export default async function SurveyDetailPage({ params }: PageProps) {
             <div>
               <h3 className="text-sm font-semibold text-gray-700">Disparos</h3>
               <p className="text-xs text-gray-400 mt-0.5">
-                Envie notificaÃƒÂ§ÃƒÂµes push e email para as famÃƒÂ­lias via Layers.
+                Envie notificações push e email para as famílias via Layers.
               </p>
             </div>
             <Link
               href={`/admin/surveys/${id}/dispatch`}
               className="bg-[#F7941D] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#D97B10] transition-colors font-medium"
             >
-              Ã°Å¸â€œÂ¢ Disparar
+              📢 Disparar
             </Link>
           </div>
         </div>
@@ -208,25 +208,25 @@ export default async function SurveyDetailPage({ params }: PageProps) {
             href={`/admin/surveys/${id}/communities`}
             className="text-sm text-[#F7941D] hover:text-[#D97B10] font-medium"
           >
-            Identidade Visual Ã¢â€ â€™
+            Identidade Visual →
           </Link>
           {total > 0 && (
             <Link
               href={`/admin/surveys/${id}/responses`}
               className="text-sm text-[#F7941D] hover:text-[#D97B10] font-medium"
             >
-              Ver todas as respostas Ã¢â€ â€™
+              Ver todas as respostas →
             </Link>
           )}
           <Link
             href={`/admin/surveys/${id}/disparos`}
             className="text-sm text-[#F7941D] hover:text-[#D97B10] font-medium"
           >
-            Disparos Ã¢â€ â€™
+            Disparos →
           </Link>
         </div>
 
-        {/* FormulÃƒÂ¡rio de ediÃƒÂ§ÃƒÂ£o */}
+        {/* Formulário de edição */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Metadados</h3>
           <SurveyEditForm survey={survey} settings={survey.settings as Record<string, unknown> | null} />

@@ -38,7 +38,7 @@ export async function GET(req: Request) {
         .in('session_id', sessionIds)).data ?? []
     : []
 
-  // Map session_id Ã¢â€ â€™ school
+  // Map session_id → school
   const sessionSchool = new Map<string, string>()
   for (const s of sessionList) {
     if (s.school) sessionSchool.set(s.id, s.school)

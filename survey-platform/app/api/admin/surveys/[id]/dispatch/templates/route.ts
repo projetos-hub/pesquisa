@@ -32,6 +32,7 @@ export async function GET(
       )
       .eq('survey_id', surveyId)
       .eq('is_template', true)
+      .eq('status', 'draft')
       .order('created_at', { ascending: false })
 
     if (error) {

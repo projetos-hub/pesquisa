@@ -47,8 +47,8 @@ export function buildAbaResumo(
   ws.addRow(['Promotores', nps.promotores])
   ws.addRow(['Neutros', nps.neutros])
   ws.addRow(['Detratores', nps.detratores])
-  ws.addRow(['% Promotores', nps.total > 0 ? `${Math.round((nps.promotores / nps.total) * 100)}%` : 'Ã¢â‚¬â€'])
-  ws.addRow(['% Detratores', nps.total > 0 ? `${Math.round((nps.detratores / nps.total) * 100)}%` : 'Ã¢â‚¬â€'])
+  ws.addRow(['% Promotores', nps.total > 0 ? `${Math.round((nps.promotores / nps.total) * 100)}%` : '—'])
+  ws.addRow(['% Detratores', nps.total > 0 ? `${Math.round((nps.detratores / nps.total) * 100)}%` : '—'])
 
   ws.addRow([])
 
@@ -69,7 +69,7 @@ export function buildAbaResumo(
 
   const eixos = [...new Set(scaleRows.map(r => r.eixo))]
   if (eixos.length > 0) {
-    const eixoHeader = ws.addRow(['Eixo', 'MÃƒÂ©dia Rede', 'N Respostas'])
+    const eixoHeader = ws.addRow(['Eixo', 'Média Rede', 'N Respostas'])
     applyHeaderStyle(eixoHeader)
 
     for (const eixo of eixos) {
@@ -79,7 +79,7 @@ export function buildAbaResumo(
         totalN > 0
           ? linhas.reduce((a, b) => a + Number(b.media) * Number(b.n_respostas), 0) / totalN
           : null
-      const row = ws.addRow([eixo, mediaRede !== null ? Number(mediaRede.toFixed(2)) : 'Ã¢â‚¬â€', totalN])
+      const row = ws.addRow([eixo, mediaRede !== null ? Number(mediaRede.toFixed(2)) : '—', totalN])
       if (mediaRede !== null) row.getCell(2).fill = cellFill(scaleColor(mediaRede))
     }
   }
@@ -94,7 +94,7 @@ export function buildAbaNPS(wb: ExcelJS.Workbook, npsRows: NpsRow[]) {
     { header: 'Unidade', key: 'unidade', width: 24 },
     { header: 'Nome da Comunidade', key: 'nome_escola', width: 32 },
     { header: 'Perfil', key: 'perfil', width: 14 },
-    { header: 'SÃƒÂ©rie', key: 'serie', width: 14 },
+    { header: 'Série', key: 'serie', width: 14 },
     { header: 'Onda', key: 'onda', width: 14 },
     { header: 'Nota NPS', key: 'nps_score', width: 12 },
     { header: 'Categoria', key: 'categoria', width: 14 },
@@ -160,7 +160,7 @@ export function buildAbaMedias(wb: ExcelJS.Workbook, scaleRows: ScaleAverageRow[
 
     for (const eixo of eixos) {
       const m = medias.get(eixo) ?? null
-      values.push(m !== null ? Number(m.toFixed(2)) : 'Ã¢â‚¬â€')
+      values.push(m !== null ? Number(m.toFixed(2)) : '—')
       colors.push(m !== null ? scaleColor(m) : null)
     }
 
@@ -171,7 +171,7 @@ export function buildAbaMedias(wb: ExcelJS.Workbook, scaleRows: ScaleAverageRow[
   }
 
   ws.addRow([])
-  const footerValues: (string | number)[] = ['', '', 'MÃƒâ€°DIA REDE']
+  const footerValues: (string | number)[] = ['', '', 'MÉDIA REDE']
   for (const eixo of eixos) {
     const linhas = scaleRows.filter(r => r.eixo === eixo)
     const totalN = linhas.reduce((a, b) => a + Number(b.n_respostas), 0)
@@ -179,7 +179,7 @@ export function buildAbaMedias(wb: ExcelJS.Workbook, scaleRows: ScaleAverageRow[
       totalN > 0
         ? linhas.reduce((a, b) => a + Number(b.media) * Number(b.n_respostas), 0) / totalN
         : null
-    footerValues.push(mediaRede !== null ? Number(mediaRede.toFixed(2)) : 'Ã¢â‚¬â€')
+    footerValues.push(mediaRede !== null ? Number(mediaRede.toFixed(2)) : '—')
   }
   const footerRow = ws.addRow(footerValues)
   footerRow.font = { bold: true }

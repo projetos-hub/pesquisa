@@ -56,7 +56,7 @@ export default async function NovoDisparoPage({ params }: PageProps) {
     label: nameByCommunity.get(c.community_id) ?? c.community_id,
   }))
 
-  // Default = agora no fuso de BrasÃ­lia (servidor roda em UTC, enviamos UTC-3)
+  // Default = agora no fuso de Brasília (servidor roda em UTC, enviamos UTC-3)
   const nowBR = new Date()
   nowBR.setHours(nowBR.getHours() - 3)
   const defaultFiredAt = toDatetimeLocalString(nowBR)
@@ -67,7 +67,7 @@ export default async function NovoDisparoPage({ params }: PageProps) {
       {/* Breadcrumb */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/admin/auditoria" className="text-gray-400 hover:text-gray-600 text-sm">
-          â† Auditoria
+          ← Auditoria
         </Link>
         <span className="text-gray-300">/</span>
         <Link

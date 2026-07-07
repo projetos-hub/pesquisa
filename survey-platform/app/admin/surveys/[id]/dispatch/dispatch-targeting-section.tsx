@@ -81,7 +81,7 @@ export function TargetingSection({
       <div className="flex gap-3 flex-wrap">
         {([
           ['all', 'Todas as comunidades'],
-          ['communities', 'Comunidades especÃƒÂ­ficas'],
+          ['communities', 'Comunidades específicas'],
           ['group', 'Uma turma'],
           ['sample', 'Amostra'],
         ] as const).map(([value, label]) => (
@@ -162,7 +162,7 @@ export function TargetingSection({
           {sampleGroups.length > 0 && (
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                Grupo de destinatÃƒÂ¡rios <span className="text-gray-400">(opcional - vazio = toda a amostra)</span>
+                Grupo de destinatários <span className="text-gray-400">(opcional - vazio = toda a amostra)</span>
               </label>
               <div className="flex flex-wrap gap-1.5">
                 <button
@@ -262,9 +262,9 @@ export function TargetingSection({
       )}
 
       <div>
-        <label className="text-xs text-gray-500 mb-1.5 block">Perfil dos destinatÃƒÂ¡rios</label>
+        <label className="text-xs text-gray-500 mb-1.5 block">Perfil dos destinatários</label>
         <div className="flex gap-4">
-          {[['guardian', 'ResponsÃƒÂ¡veis'], ['student', 'Alunos'], ['admin', 'Admins']].map(([value, label]) => (
+          {[['guardian', 'Responsáveis'], ['student', 'Alunos'], ['admin', 'Admins']].map(([value, label]) => (
             <label key={value} className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
               <input type="checkbox" checked={roles.includes(value)} onChange={() => toggleRole(value)} className="rounded border-gray-300 text-[#F7941D]" />
               {label}
@@ -282,7 +282,7 @@ export function TargetingSection({
       </button>
       {preview && (
         <p className="text-xs text-gray-600 bg-[#F7941D]/5 rounded-lg px-3 py-2">
-          {preview.community_count} comunidade(s) serÃƒÂ£o notificadas
+          {preview.community_count} comunidade(s) serão notificadas
           {personalized && preview.personalized_estimate_min > 0
             ? ` - estimativa personalizado: ~${preview.personalized_estimate_min} min`
             : ''}

@@ -18,7 +18,7 @@ import { getCorrelationId, jsonWithCorrelation, logError, logInfo, logWarn } fro
 async function requireAuth() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Não autorizado')
+  if (!user) throw new Error('Nao autorizado')
   return user
 }
 
@@ -79,7 +79,7 @@ export async function POST(
     if (!parsed.success) {
       logWarn('dispatch.invalid_body', surveyLogContext, { issues: parsed.error.issues.length })
       return json(
-        { error: 'Dados inválidos', details: parsed.error.flatten() },
+        { error: 'Dados invalidos', details: parsed.error.flatten() },
         { status: 400 },
       )
     }
@@ -96,7 +96,7 @@ export async function POST(
 
     if (!survey) {
       logWarn('dispatch.survey_not_found', surveyLogContext)
-      return json({ error: 'Survey não encontrada' }, { status: 404 })
+      return json({ error: 'Survey nao encontrada' }, { status: 404 })
     }
 
     // Validação específica para scope 'sample'
@@ -118,7 +118,7 @@ export async function POST(
       if (!count || count === 0) {
         logWarn('dispatch.sample_without_resolved_users', surveyLogContext)
         return json(
-          { error: 'Nenhum email resolvido na amostra. Faça upload da lista antes de disparar.' },
+          { error: 'Nenhum email resolvido na amostra. Faca upload da lista antes de disparar.' },
           { status: 422 },
         )
       }
@@ -134,7 +134,7 @@ export async function POST(
     if (targetCommunities.length === 0) {
       logWarn('dispatch.no_target_communities', surveyLogContext, { targetScope: body.target_scope })
       return json(
-        { error: 'Nenhuma comunidade encontrada para os critérios selecionados' },
+        { error: 'Nenhuma comunidade encontrada para os criterios selecionados' },
         { status: 422 },
       )
     }
@@ -162,8 +162,8 @@ export async function POST(
       scheduled_at:         body.scheduled_at ?? null,
       status:               initialStatus,
       total_jobs:           targetCommunities.length,
-      is_template:          body.save_as_template ?? false,
-      template_name:        body.template_name ?? null,
+      is_template:          false,
+      template_name:        null,
       created_by:           user.id,
     }
     // sequence_steps só inclui se existir (evita erro se migration 017 não foi aplicada)
@@ -207,6 +207,28 @@ export async function POST(
       )
     }
 
+    const templateName = body.template_name?.trim()
+    if (body.save_as_template && templateName) {
+      const templatePayload = {
+        ...insertPayload,
+        status:        'draft',
+        scheduled_at:  null,
+        total_jobs:    0,
+        is_template:   true,
+        template_name: templateName,
+      }
+
+      const { error: templateErr } = await supabase
+        .from('survey_dispatches')
+        .insert(templatePayload)
+
+      if (templateErr) {
+        logWarn('dispatch.template_save_failed', { ...surveyLogContext, dispatchId: dispatch.id }, {
+          detail: templateErr.message,
+        })
+      }
+    }
+
     // Disparo agendado: retorna imediatamente
     if (isScheduled) {
       logInfo('dispatch.scheduled_created', { ...surveyLogContext, dispatchId: dispatch.id }, {
@@ -236,9 +258,9 @@ export async function POST(
       total:       targetCommunities.length,
     })
   } catch (err) {
-    if (err instanceof Error && err.message === 'Não autorizado') {
+    if (err instanceof Error && err.message === 'Nao autorizado') {
       logWarn('dispatch.unauthorized', logContext)
-      return json({ error: 'Não autorizado' }, { status: 401 })
+      return json({ error: 'Nao autorizado' }, { status: 401 })
     }
     logError('dispatch.unhandled_error', logContext, err)
     return json({ error: 'Erro interno' }, { status: 500 })
@@ -270,20 +292,20 @@ export async function GET(
         )
       `)
       .eq('survey_id', surveyId)
-      .eq('is_template', false)
+      .or('is_template.eq.false,status.neq.draft')
       .order('created_at', { ascending: false })
 
     if (error) {
       logError('dispatch.history_failed', surveyLogContext, error)
-      return json({ error: 'Erro ao buscar histórico' }, { status: 500 })
+      return json({ error: 'Erro ao buscar historico' }, { status: 500 })
     }
 
     logInfo('dispatch.history_loaded', surveyLogContext, { count: dispatches?.length ?? 0 })
     return json({ dispatches: dispatches ?? [] })
   } catch (err) {
-    if (err instanceof Error && err.message === 'Não autorizado') {
+    if (err instanceof Error && err.message === 'Nao autorizado') {
       logWarn('dispatch.history_unauthorized', logContext)
-      return json({ error: 'Não autorizado' }, { status: 401 })
+      return json({ error: 'Nao autorizado' }, { status: 401 })
     }
     logError('dispatch.history_unhandled_error', logContext, err)
     return json({ error: 'Erro interno' }, { status: 500 })

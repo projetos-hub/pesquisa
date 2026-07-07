@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -42,8 +42,8 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
 
-  // â”€â”€ Loading personalizado por comunidade â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // â”€â”€ Comunidade nÃ£o autorizada â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Loading personalizado por comunidade ─────────────────────────────────────
+  // ── Comunidade não autorizada ─────────────────────────────────────────────────
   if (accessDenied) {
     return <AccessDeniedCard />
   }
@@ -52,7 +52,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     return <LoadingSurveyCard loadingLogoUrl={loadingLogoUrl} />
   }
 
-  // â”€â”€ Survey nÃ£o encontrado ou erro de rede â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Survey não encontrado ou erro de rede ────────────────────────────────────
   if (surveyNotFound || !survey) {
     return <SurveyNotFoundCard surveySlug={surveySlug} />
   }
@@ -63,7 +63,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     communityId, userId, accountId, email, layersMeta,
   } = ctx
 
-  // Status e datas: instalaÃ§Ã£o do banco tem prioridade sobre URL params
+  // Status e datas: instalação do banco tem prioridade sobre URL params
   const status    = (survey.installation?.status    ?? ctx.status)    as SurveyContext['status']
   const openDate  =  survey.installation?.open_date  ?? ctx.openDate
   const closeDate =  survey.installation?.close_date ?? ctx.closeDate
@@ -76,13 +76,13 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
       } as React.CSSProperties
     : undefined
 
-  // â”€â”€ Perfil sem acesso â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Perfil sem acesso ────────────────────────────────────────────────────────
   const allowAllRoles = (survey.settings as { allow_all_roles?: boolean } | undefined)?.allow_all_roles
   if (!allowAllRoles && survey.publico && !survey.publico.includes(perfil)) {
     return <RoleDeniedCard title={survey.titulo} />
   }
 
-  // â”€â”€ Prazo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Prazo ────────────────────────────────────────────────────────────────────
   if (status === 'nao_aberta') {
     return <NotOpenCard title={survey.titulo} openDate={openDate} />
   }
@@ -95,7 +95,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     return <PausedCard title={survey.titulo} themeVars={themeVars} />
   }
 
-  // â”€â”€ Steps ativos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Steps ativos ─────────────────────────────────────────────────────────────
   const activeSteps = buildActiveSteps(survey, perfil, answers)
   const currentIdx  = activeSteps.findIndex(s => stepId(s) === currentKey)
   const currentStep = activeSteps[currentIdx] || activeSteps[0]
@@ -104,11 +104,11 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const dataSteps = activeSteps.filter(s => s.type !== 'welcome' && s.type !== 'thankyou')
   const dataIdx   = dataSteps.findIndex(s => stepId(s) === currentKey)
 
-  // isLastData = o passo atual Ã© o Ãºltimo que contÃ©m perguntas (nÃ£o Ã© welcome nem thankyou)
+  // isLastData = o passo atual é o último que contém perguntas (não é welcome nem thankyou)
   const lastDataStep = dataSteps[dataSteps.length - 1]
   const isLastData   = lastDataStep && stepId(lastDataStep) === currentKey
 
-  // â”€â”€ NavegaÃ§Ã£o â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Navegação ────────────────────────────────────────────────────────────────
   function next(key: string, data: unknown) {
     const newAnswers = { ...answers, [key]: data }
     setAnswers(newAnswers)
@@ -116,7 +116,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     if (isLastData) {
       submitPesquisa(newAnswers, activeSteps)
     } else {
-      // Recalcula com newAnswers para capturar mudanÃ§as condicionais (bilÃ­ngue)
+      // Recalcula com newAnswers para capturar mudanças condicionais (bilíngue)
       const newActive = buildActiveSteps(survey!, perfil, newAnswers)
       const currentIndexInNewActive = newActive.findIndex(s => stepId(s) === currentKey)
       const nextStep  = newActive[currentIndexInNewActive + 1]
@@ -131,7 +131,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     }
   }
 
-  // â”€â”€ Submit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Submit ───────────────────────────────────────────────────────────────────
   async function submitPesquisa(finalAnswers: Answers, stepsSnapshot: typeof activeSteps) {
     setLoading(true)
     setSubmitError(null)
@@ -162,7 +162,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
       }
 
       // Se existir um step de agradecimento no config, vai para ele.
-      // Caso contrÃ¡rio, fica no estado de enviado (podemos mostrar algo ou apenas travar).
+      // Caso contrário, fica no estado de enviado (podemos mostrar algo ou apenas travar).
       const hasThankYouStep = stepsSnapshot.some(s => s.type === 'thankyou')
       if (hasThankYouStep) {
         setCurrentKey('thankyou')
@@ -185,7 +185,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const npsKey     = activeSteps.find(s => s.type === 'nps')?.key ?? 'nps'
   const npsAnswer  = answers[npsKey] as NPSAnswer | undefined
 
-  // â”€â”€ Lookup table de renderers por tipo de step â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Lookup table de renderers por tipo de step ────────────────────────────────
   // CC de renderCurrentStep cai de 11 para ~3 com esta abordagem.
   // Adicionar novo tipo: inserir entry aqui, sem tocar no fluxo principal.
   type StepRenderer = () => React.ReactElement | null
@@ -228,7 +228,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     },
   }
 
-  // â”€â”€ Render exclusivo â€” apenas 1 step montado por vez (CC = 3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Render exclusivo — apenas 1 step montado por vez (CC = 3) ─────────────────
   function renderCurrentStep() {
     if (isThankyou) {
       return (
@@ -249,7 +249,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
 
   const isWelcome = currentStep?.type === 'welcome' && !submitted
 
-  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="card" style={themeVars}>
       <div className="header">

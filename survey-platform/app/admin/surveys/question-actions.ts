@@ -1,4 +1,4 @@
-﻿'use server'
+'use server'
 
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { createServiceClient } from '@/lib/supabase-service'
@@ -8,7 +8,7 @@ export async function createQuestion(
   surveyId: string,
   formData: FormData
 ): Promise<{ error?: string; id?: string }> {
-  try { await requireAuth() } catch { return { error: 'NÃ£o autorizado' } }
+  try { await requireAuth() } catch { return { error: 'Não autorizado' } }
 
   const type        = formData.get('type')        as string
   const key         = formData.get('key')         as string
@@ -21,12 +21,12 @@ export async function createQuestion(
   const correctAnswer  = (formData.get('correctAnswer')  as string) || ''
   const textAlign      = (formData.get('textAlign')      as string) || ''
 
-  if (!type || !key || !title) return { error: 'Tipo, key e tÃ­tulo sÃ£o obrigatÃ³rios' }
-  if (!/^[a-z0-9_]+$/.test(key)) return { error: 'Key deve conter apenas letras minÃºsculas, nÃºmeros e underscore' }
+  if (!type || !key || !title) return { error: 'Tipo, key e título são obrigatórios' }
+  if (!/^[a-z0-9_]+$/.test(key)) return { error: 'Key deve conter apenas letras minúsculas, números e underscore' }
 
   const supabase = createServiceClient()
 
-  // PrÃ³ximo order_index
+  // Próximo order_index
   const { data: existing } = await supabase
     .from('questions')
     .select('order_index')
@@ -58,7 +58,7 @@ export async function createQuestion(
     .single()
 
   if (error) {
-    if (error.code === '23505') return { error: 'JÃ¡ existe uma pergunta com essa key nesta pesquisa' }
+    if (error.code === '23505') return { error: 'Já existe uma pergunta com essa key nesta pesquisa' }
     return { error: error.message }
   }
 
@@ -81,13 +81,13 @@ export async function createQuestion(
   return { id: created.id }
 }
 
-// â”€â”€ Atualiza uma pergunta existente â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Atualiza uma pergunta existente ──────────────────────────────────────────
 export async function updateQuestion(
   questionId: string,
   surveyId: string,
   formData: FormData
 ): Promise<{ error?: string }> {
-  try { await requireAuth() } catch { return { error: 'NÃ£o autorizado' } }
+  try { await requireAuth() } catch { return { error: 'Não autorizado' } }
 
   const type        = formData.get('type')        as string
   const key         = formData.get('key')         as string
@@ -100,8 +100,8 @@ export async function updateQuestion(
   const correctAnswer  = (formData.get('correctAnswer')  as string) || ''
   const textAlign      = (formData.get('textAlign')      as string) || ''
 
-  if (!type || !key || !title) return { error: 'Tipo, key e tÃ­tulo sÃ£o obrigatÃ³rios' }
-  if (!/^[a-z0-9_]+$/.test(key)) return { error: 'Key deve conter apenas letras minÃºsculas, nÃºmeros e underscore' }
+  if (!type || !key || !title) return { error: 'Tipo, key e título são obrigatórios' }
+  if (!/^[a-z0-9_]+$/.test(key)) return { error: 'Key deve conter apenas letras minúsculas, números e underscore' }
 
   const supabase = createServiceClient()
 
@@ -125,7 +125,7 @@ export async function updateQuestion(
     .eq('id', questionId)
 
   if (error) {
-    if (error.code === '23505') return { error: 'JÃ¡ existe uma pergunta com essa key nesta pesquisa' }
+    if (error.code === '23505') return { error: 'Já existe uma pergunta com essa key nesta pesquisa' }
     return { error: error.message }
   }
 
@@ -134,13 +134,13 @@ export async function updateQuestion(
   return {}
 }
 
-// â”€â”€ Salva opÃ§Ãµes de uma pergunta â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Salva opções de uma pergunta ─────────────────────────────────────────────
 export async function saveQuestionOptions(
   questionId: string,
   surveyId: string,
   labels: string[]
 ): Promise<{ error?: string }> {
-  try { await requireAuth() } catch { return { error: 'NÃ£o autorizado' } }
+  try { await requireAuth() } catch { return { error: 'Não autorizado' } }
 
   const supabase = createServiceClient()
   const { error } = await supabase.rpc('admin_replace_question_options', {
@@ -154,12 +154,12 @@ export async function saveQuestionOptions(
   return {}
 }
 
-// â”€â”€ Deleta pergunta â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Deleta pergunta ───────────────────────────────────────────────────────────
 export async function deleteQuestion(
   questionId: string,
   surveyId: string
 ): Promise<{ error?: string }> {
-  try { await requireAuth() } catch { return { error: 'NÃ£o autorizado' } }
+  try { await requireAuth() } catch { return { error: 'Não autorizado' } }
 
   const supabase = createServiceClient()
   const { error } = await supabase.from('questions').delete().eq('id', questionId)
@@ -170,13 +170,13 @@ export async function deleteQuestion(
   return {}
 }
 
-// â”€â”€ Move pergunta (reordena) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Move pergunta (reordena) ──────────────────────────────────────────────────
 export async function moveQuestion(
   questionId: string,
   surveyId: string,
   direction: 'up' | 'down'
 ): Promise<{ error?: string }> {
-  try { await requireAuth() } catch { return { error: 'NÃ£o autorizado' } }
+  try { await requireAuth() } catch { return { error: 'Não autorizado' } }
 
   const supabase = createServiceClient()
   const { data: questions } = await supabase
@@ -185,10 +185,10 @@ export async function moveQuestion(
     .eq('survey_id', surveyId)
     .order('order_index', { ascending: true })
 
-  if (!questions) return { error: 'Perguntas nÃ£o encontradas' }
+  if (!questions) return { error: 'Perguntas não encontradas' }
 
   const idx = questions.findIndex(q => q.id === questionId)
-  if (idx < 0) return { error: 'Pergunta nÃ£o encontrada' }
+  if (idx < 0) return { error: 'Pergunta não encontrada' }
 
   const swapIdx = direction === 'up' ? idx - 1 : idx + 1
   if (swapIdx < 0 || swapIdx >= questions.length) return {}
@@ -203,12 +203,12 @@ export async function moveQuestion(
   return {}
 }
 
-// â”€â”€ Adiciona/remove tela de boas-vindas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Adiciona/remove tela de boas-vindas ───────────────────────────────────────
 export async function toggleWelcomeStep(
   surveyId: string,
   add: boolean
 ): Promise<{ error?: string; id?: string }> {
-  try { await requireAuth() } catch { return { error: 'NÃ£o autorizado' } }
+  try { await requireAuth() } catch { return { error: 'Não autorizado' } }
 
   const supabase = createServiceClient()
 
@@ -219,7 +219,7 @@ export async function toggleWelcomeStep(
     return {}
   }
 
-  // Desloca todas as perguntas existentes +1 para abrir o Ã­ndice 0
+  // Desloca todas as perguntas existentes +1 para abrir o índice 0
   const { data: existing } = await supabase
     .from('questions')
     .select('id, order_index')
@@ -245,12 +245,12 @@ export async function toggleWelcomeStep(
   return { id: inserted?.id }
 }
 
-// â”€â”€ Adiciona/remove tela de agradecimento â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Adiciona/remove tela de agradecimento ────────────────────────────────────
 export async function toggleThankYouStep(
   surveyId: string,
   add: boolean
 ): Promise<{ error?: string; id?: string }> {
-  try { await requireAuth() } catch { return { error: 'NÃ£o autorizado' } }
+  try { await requireAuth() } catch { return { error: 'Não autorizado' } }
 
   const supabase = createServiceClient()
 
@@ -261,7 +261,7 @@ export async function toggleThankYouStep(
     return {}
   }
 
-  // Busca o Ãºltimo order_index para colocar no final
+  // Busca o último order_index para colocar no final
   const { data: existing } = await supabase
     .from('questions')
     .select('order_index')

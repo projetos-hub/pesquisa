@@ -1,4 +1,4 @@
-﻿import type { DispatchResultState, DispatchTemplate } from './dispatch-form-utils'
+import type { DispatchResultState, DispatchTemplate } from './dispatch-form-utils'
 
 interface ResultFeedbackProps {
   result:  DispatchResultState | null
@@ -19,10 +19,10 @@ export function ResultFeedback({ result, seqMode }: ResultFeedbackProps) {
   return (
     <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-3 py-2">
       {seqMode
-        ? `✓ Régua criada com ${result.sent} disparos agendados`
+        ? `Regua criada com ${result.sent} disparos agendados`
         : result.sent === 0
-          ? '✓ Disparo agendado com sucesso'
-          : `✓ Enviado para ${result.sent} comunidade(s)${result.failed ? ` - ${result.failed} com falha` : ''}`
+          ? 'Disparo agendado com sucesso'
+          : `Enviado para ${result.sent} comunidade(s)${result.failed ? ` - ${result.failed} com falha` : ''}`
       }
     </div>
   )
@@ -158,7 +158,7 @@ export function FinalOptionsSection({
           {loading
             ? 'Enviando...'
             : seqMode
-              ? `Criar régua com ${stepsCount} passo(s)`
+              ? `Criar regua com ${stepsCount} passo(s)`
               : schedMode === 'scheduled'
                 ? 'Agendar disparo'
                 : 'Disparar agora'}

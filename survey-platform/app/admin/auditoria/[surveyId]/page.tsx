@@ -47,7 +47,7 @@ const CHANNEL_LABEL: Record<string, string> = {
 const SAUDE_BADGE: Record<string, { label: string; cls: string }> = {
   ok:          { label: 'ok',         cls: 'bg-green-100 text-green-700' },
   parcial:     { label: 'parcial',    cls: 'bg-yellow-100 text-yellow-700' },
-  critico:     { label: 'crÃƒÂ­tico',    cls: 'bg-red-100 text-red-700' },
+  critico:     { label: 'crítico',    cls: 'bg-red-100 text-red-700' },
   sem_resposta:{ label: 'sem resp.',  cls: 'bg-gray-100 text-gray-500' },
   sem_meta:    { label: 'sem meta',   cls: 'bg-gray-100 text-gray-400' },
 }
@@ -74,7 +74,7 @@ export default async function AuditoriaSurveyPage({ params }: PageProps) {
 
   const db = createServiceClient()
 
-  // Survey bÃƒÂ¡sico
+  // Survey básico
   const { data: survey } = await db
     .from('surveys')
     .select('id, title, slug, status')
@@ -83,7 +83,7 @@ export default async function AuditoriaSurveyPage({ params }: PageProps) {
 
   if (!survey) notFound()
 
-  // Audit broadcasts ordenados por fired_at ASC (para correlaÃƒÂ§ÃƒÂ£o)
+  // Audit broadcasts ordenados por fired_at ASC (para correlação)
   const { data: broadcastsRaw } = await db
     .from('audit_broadcasts')
     .select('id, fired_at, channel, community_ids, notes, fired_by')
@@ -113,7 +113,7 @@ export default async function AuditoriaSurveyPage({ params }: PageProps) {
     (adminProfiles ?? []).map(p => [p.id, p.name ?? p.email])
   )
 
-  // Calcula respostas apÃƒÂ³s cada disparo (janela entre disparos consecutivos)
+  // Calcula respostas após cada disparo (janela entre disparos consecutivos)
   const broadcasts: BroadcastRow[] = rawBroadcasts.map((b, idx) => {
     const nextBroadcast = rawBroadcasts[idx + 1]
     const windowStart = new Date(b.fired_at)
@@ -212,7 +212,7 @@ export default async function AuditoriaSurveyPage({ params }: PageProps) {
   // Ordena por total_respostas DESC
   schools.sort((a, b) => b.total_respostas - a.total_respostas)
 
-  // Nomes legÃƒÂ­veis das comunidades para exibir nos disparos
+  // Nomes legíveis das comunidades para exibir nos disparos
   const commNameMap = Object.fromEntries(
     (commData ?? []).map(c => [c.community_id, resolveCommunityPrimaryName(identityByCommunity.get(c.community_id) ?? { community_id: c.community_id })])
   )
@@ -223,14 +223,14 @@ export default async function AuditoriaSurveyPage({ params }: PageProps) {
       {/* Breadcrumb */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/admin/auditoria" className="text-gray-400 hover:text-gray-600 text-sm">
-          Ã¢â€ Â Auditoria
+          ← Auditoria
         </Link>
         <span className="text-gray-300">/</span>
         <h2 className="text-lg font-semibold text-gray-900 truncate">{survey.title}</h2>
       </div>
 
       <div className="grid gap-6">
-        {/* Ã¢â€â‚¬Ã¢â€â‚¬ 1. Broadcasts Table Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
+        {/* ── 1. Broadcasts Table ─────────────────────────────────── */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <h3 className="text-sm font-semibold text-gray-700">Disparos registrados</h3>
@@ -249,9 +249,9 @@ export default async function AuditoriaSurveyPage({ params }: PageProps) {
                   <th className="text-left text-xs font-medium text-gray-500 px-4 py-2">Data/hora</th>
                   <th className="text-left text-xs font-medium text-gray-500 px-4 py-2">Canal</th>
                   <th className="text-left text-xs font-medium text-gray-500 px-4 py-2">Comunidades</th>
-                  <th className="text-right text-xs font-medium text-gray-500 px-4 py-2">Resp. apÃƒÂ³s</th>
+                  <th className="text-right text-xs font-medium text-gray-500 px-4 py-2">Resp. após</th>
                   <th className="text-left text-xs font-medium text-gray-500 px-4 py-2">Quem disparou</th>
-                  <th className="text-left text-xs font-medium text-gray-500 px-4 py-2">ObservaÃƒÂ§ÃƒÂ£o</th>
+                  <th className="text-left text-xs font-medium text-gray-500 px-4 py-2">Observação</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -278,10 +278,10 @@ export default async function AuditoriaSurveyPage({ params }: PageProps) {
                       {b.respostas_apos_disparo}
                     </td>
                     <td className="px-4 py-2.5 text-xs text-gray-500">
-                      {b.fired_by ?? 'Ã¢â‚¬â€'}
+                      {b.fired_by ?? '—'}
                     </td>
                     <td className="px-4 py-2.5 text-xs text-gray-500 max-w-xs truncate">
-                      {b.notes ?? 'Ã¢â‚¬â€'}
+                      {b.notes ?? '—'}
                     </td>
                   </tr>
                 ))}
@@ -300,7 +300,7 @@ export default async function AuditoriaSurveyPage({ params }: PageProps) {
           )}
         </div>
 
-        {/* Ã¢â€â‚¬Ã¢â€â‚¬ 2. Response Timeline Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
+        {/* ── 2. Response Timeline ─────────────────────────────────── */}
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">
             Timeline de respostas por hora
@@ -314,7 +314,7 @@ export default async function AuditoriaSurveyPage({ params }: PageProps) {
                   const heightPct = maxTimeline > 0 ? (point.total / maxTimeline) * 100 : 0
                   const heightPx = Math.max(4, Math.round((heightPct / 100) * 112))
 
-                  // Verifica se hÃƒÂ¡ disparo nesta hora
+                  // Verifica se há disparo nesta hora
                   const hasBroadcast = broadcasts.some(b => {
                     const broadcastHour = new Date(b.fired_at).toISOString().slice(0, 13)
                     const pointHour = point.hora.slice(0, 13)
@@ -325,7 +325,7 @@ export default async function AuditoriaSurveyPage({ params }: PageProps) {
                     <div
                       key={point.hora}
                       className="flex flex-col items-center gap-0.5 min-w-[28px]"
-                      title={`${formatHora(point.hora)} Ã¢â‚¬â€ ${point.total} respostas`}
+                      title={`${formatHora(point.hora)} — ${point.total} respostas`}
                     >
                       <span className="text-[9px] text-gray-400">{point.total}</span>
                       <div
@@ -362,7 +362,7 @@ export default async function AuditoriaSurveyPage({ params }: PageProps) {
           )}
         </div>
 
-        {/* Ã¢â€â‚¬Ã¢â€â‚¬ 3. School Response Table Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
+        {/* ── 3. School Response Table ─────────────────────────────── */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100">
             <h3 className="text-sm font-semibold text-gray-700">Taxa de resposta por escola</h3>
@@ -378,8 +378,8 @@ export default async function AuditoriaSurveyPage({ params }: PageProps) {
                 <th className="text-right text-xs font-medium text-gray-500 px-4 py-2">Respostas</th>
                 <th className="text-left text-xs font-medium text-gray-500 px-4 py-2">Esperado</th>
                 <th className="text-left text-xs font-medium text-gray-500 px-4 py-2">Taxa</th>
-                <th className="text-left text-xs font-medium text-gray-500 px-4 py-2">SaÃƒÂºde</th>
-                <th className="text-left text-xs font-medium text-gray-500 px-4 py-2">ÃƒÅ¡ltima resposta</th>
+                <th className="text-left text-xs font-medium text-gray-500 px-4 py-2">Saúde</th>
+                <th className="text-left text-xs font-medium text-gray-500 px-4 py-2">Última resposta</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -424,7 +424,7 @@ export default async function AuditoriaSurveyPage({ params }: PageProps) {
                           <span className="text-xs text-gray-700">{school.taxa_pct}%</span>
                         </div>
                       ) : (
-                        <span className="text-xs text-gray-400">Ã¢â‚¬â€</span>
+                        <span className="text-xs text-gray-400">—</span>
                       )}
                     </td>
                     <td className="px-4 py-2.5">
@@ -433,7 +433,7 @@ export default async function AuditoriaSurveyPage({ params }: PageProps) {
                       </span>
                     </td>
                     <td className="px-4 py-2.5 text-xs text-gray-500">
-                      {school.ultima_resposta ? formatBR(school.ultima_resposta) : 'Ã¢â‚¬â€'}
+                      {school.ultima_resposta ? formatBR(school.ultima_resposta) : '—'}
                     </td>
                   </tr>
                 )

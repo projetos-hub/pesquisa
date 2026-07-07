@@ -65,6 +65,7 @@ export default async function DispatchPage({ params }: PageProps) {
     )
     .eq('survey_id', surveyId)
     .eq('is_template', true)
+      .eq('status', 'draft')
     .order('created_at', { ascending: false })
 
   const templates = (templatesRaw ?? []) as unknown as {
@@ -90,18 +91,18 @@ export default async function DispatchPage({ params }: PageProps) {
   ])
   const sampleCount = sampleResolved ?? 0
 
-  // HistÃƒÂ³rico de disparos (nÃƒÂ£o templates)
+  // Histórico de disparos (não templates)
   const { data: dispatches } = await service
     .from('survey_dispatches')
     .select(`
       id, title, target_scope, channels, status, total_jobs, completed_jobs,
-      failed_jobs, personalized, sequence_step, scheduled_at, created_at, completed_at,
+      failed_jobs, personalized, sequence_step, scheduled_at, created_at, completed_at, is_template,
       jobs:survey_dispatch_jobs (
         id, community_id, status, error, retry_count, sent_at, processed_users, failed_users, total_users
       )
     `)
     .eq('survey_id', surveyId)
-    .eq('is_template', false)
+    .or('is_template.eq.false,status.neq.draft')
     .order('created_at', { ascending: false })
     .limit(30)
 
@@ -111,7 +112,7 @@ export default async function DispatchPage({ params }: PageProps) {
       {/* Breadcrumb */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/admin/surveys" className="text-gray-400 hover:text-gray-600 text-sm">
-          Ã¢â€ Â Pesquisas
+          ← Pesquisas
         </Link>
         <span className="text-gray-300">/</span>
         <Link href={`/admin/surveys/${surveyId}`} className="text-gray-400 hover:text-gray-600 text-sm truncate max-w-[200px]">
@@ -122,7 +123,7 @@ export default async function DispatchPage({ params }: PageProps) {
       </div>
 
       <div className="grid gap-6">
-        {/* FormulÃƒÂ¡rio */}
+        {/* Formulário */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Novo disparo</h3>
           {communities.length === 0 ? (
@@ -156,15 +157,15 @@ export default async function DispatchPage({ params }: PageProps) {
           }}
         />
 
-        {/* Disparo rÃƒÂ¡pido */}
+        {/* Disparo rápido */}
         {communities.length > 0 && (
           <ManualDispatch surveyId={surveyId} communities={communities} />
         )}
 
-        {/* HistÃƒÂ³rico */}
+        {/* Histórico */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-gray-700">HistÃƒÂ³rico de disparos</h3>
+            <h3 className="text-sm font-semibold text-gray-700">Histórico de disparos</h3>
             {(dispatches?.length ?? 0) > 0 && (
               <span className="text-xs text-gray-400">{dispatches?.length} registro(s)</span>
             )}

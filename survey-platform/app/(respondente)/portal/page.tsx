@@ -11,6 +11,7 @@ export default function PortalPage() {
   const router = useRouter()
   const [surveys, setSurveys] = useState<ResolvedSurvey[] | null>(null)
   const [communityId, setCommunityId] = useState('')
+  const [launchParams, setLaunchParams] = useState({ userId: '', accountId: '', session: '' })
   const [error, setError] = useState<string | null>(null)
 
   function buildSurveyUrl(slug: string, cId: string, uId: string, aId: string, sess: string) {
@@ -48,6 +49,7 @@ export default function PortalPage() {
       }
 
       setCommunityId(cId)
+      setLaunchParams({ userId: uId, accountId: aId, session: sess })
 
       if (!cId) {
         setError('nenhuma_comunidade')
@@ -146,7 +148,7 @@ export default function PortalPage() {
                 key={s.slug}
                 className="btn btn-primary"
                 style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 2, padding: '14px 18px' }}
-                onClick={() => router.push(`/p/${s.slug}?communityId=${encodeURIComponent(communityId)}`)}
+                onClick={() => router.push(buildSurveyUrl(s.slug, communityId, launchParams.userId, launchParams.accountId, launchParams.session))}
               >
                 <span style={{ fontWeight: 600, fontSize: '1rem' }}>{s.title}</span>
                 {s.close_date && (

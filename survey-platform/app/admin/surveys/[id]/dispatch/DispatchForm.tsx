@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useCallback, useEffect } from 'react'
 import {
@@ -20,18 +20,18 @@ import { SequenceSection } from './dispatch-sequence-section'
 import { submitDispatchForm } from './dispatch-submit-handler'
 import { TargetingSection } from './dispatch-targeting-section'
 
-// â”€â”€â”€ Tipos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Tipos ────────────────────────────────────────────────────────────────────
 
 
-// â”€â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function DispatchForm({ surveyId, communities, templates, openDate, sampleCount }: DispatchFormProps) {
-  // â”€â”€ Targeting
+  // ── Targeting
   const [scope,        setScope]        = useState<DispatchScope>('all')
   const [selectedComms, setSelectedComms] = useState<string[]>([])
   const [groupAlias,   setGroupAlias]   = useState('')
 
-  // Comunidades disponÃ­veis na amostra (para segmentaÃ§Ã£o por comunidade)
+  // Comunidades disponíveis na amostra (para segmentação por comunidade)
   const [sampleComms,         setSampleComms]         = useState<SampleCommunity[]>([])
   const [selectedSampleComms, setSelectedSampleComms] = useState<string[]>([])
 
@@ -57,10 +57,10 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
   }, [scope, surveyId])
   const [roles,        setRoles]        = useState<string[]>(['guardian'])
 
-  // â”€â”€ Channels
+  // ── Channels
   const [channels,     setChannels]     = useState<string[]>(['pushNotification', 'email'])
 
-  // â”€â”€ Message
+  // ── Message
   const [title,        setTitle]        = useState('')
   const [body,         setBody]         = useState('')
   const [customPerCh,  setCustomPerCh]  = useState(false)
@@ -73,29 +73,29 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
   const [importText,   setImportText]   = useState('')
   const [showImport,   setShowImport]   = useState(false)
 
-  // â”€â”€ Personalization
+  // ── Personalization
   const [personalized, setPersonalized] = useState(false)
 
-  // â”€â”€ Sequence (rÃ©gua)
+  // ── Sequence (régua)
   const [seqMode,      setSeqMode]      = useState(false)
   const [steps,        setSteps]        = useState<SequenceStep[]>(() => createDefaultSequenceSteps())
 
-  // â”€â”€ Schedule
+  // ── Schedule
   const [schedMode,    setSchedMode]    = useState<'immediate' | 'scheduled'>('immediate')
   const [scheduledAt,  setScheduledAt]  = useState('')
 
-  // â”€â”€ Template
+  // ── Template
   const [saveTemplate, setSaveTemplate] = useState(false)
   const [templateName, setTemplateName] = useState('')
 
-  // â”€â”€ Submit state
+  // ── Submit state
   const [loading,  setLoading]  = useState(false)
   const [result,   setResult]   = useState<DispatchResultState | null>(null)
 
-  // â”€â”€ Preview
+  // ── Preview
   const [preview, setPreview] = useState<DispatchPreview | null>(null)
 
-  // â”€â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Handlers ───────────────────────────────────────────────────────────────
 
   const toggleRole = (role: string) => {
     setRoles(r => r.includes(role) ? r.filter(x => x !== role) : [...r, role])
@@ -152,7 +152,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
     if (res.ok) setPreview(await res.json() as typeof preview)
   }
 
-  // â”€â”€â”€ Submit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Submit ─────────────────────────────────────────────────────────────────
 
   const handleSubmit = (event: React.FormEvent) => submitDispatchForm(event, {
     surveyId,
@@ -185,7 +185,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
     setResult,
   })
 
-  // â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
