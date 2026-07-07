@@ -45,6 +45,7 @@ export default function SampleUpload({ surveyId, communities }: Props) {
   const [error, setError] = useState<string>('')
   const [success, setSuccess] = useState<string>('')
   const [emailMode, setEmailMode] = useState<SampleEmailMode>('all')
+  const [clearing, setClearing] = useState(false)
 
   const [resolving, setResolving] = useState(false)
   const [resolveProgress, setResolveProgress] = useState<{ resolved: number; failed: number; remaining: number; done: boolean } | null>(null)
@@ -141,6 +142,32 @@ export default function SampleUpload({ surveyId, communities }: Props) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleClearSample = async () => {
+    if (counts.all === 0 || clearing) return
+    const ok = window.confirm('Limpar toda a amostra desta pesquisa? Esta acao remove todos os emails carregados.')
+    if (!ok) return
+
+    setClearing(true)
+    setError('')
+    setSuccess('')
+    try {
+      const res = await fetch(`/api/admin/surveys/${surveyId}/sample`, { method: 'DELETE' })
+      const data = await res.json() as { error?: string; message?: string }
+      if (!res.ok || data.error) throw new Error(data.error ?? 'Erro ao limpar amostra')
+      setFile(null)
+      setPreview([])
+      setPage(0)
+      setActiveTab('all')
+      setResolveProgress(null)
+      setSuccess('Amostra limpa com sucesso.')
+      await loadSampleState(0, 'all')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro desconhecido')
+    } finally {
+      setClearing(false)
     }
   }
 
@@ -315,13 +342,21 @@ export default function SampleUpload({ surveyId, communities }: Props) {
             <h3 className="text-sm font-semibold text-gray-900">
               Amostra {loadingState ? '...' : `(${counts.all} entradas)`}
             </h3>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               {counts.not_found > 0 && (
                 <button onClick={exportNaoEncontrados}
                   className="text-xs text-red-600 hover:text-red-800 border border-red-200 rounded px-2 py-1">
                   Exportar nao encontrados ({counts.not_found})
                 </button>
               )}
+              <button
+                type="button"
+                onClick={() => void handleClearSample()}
+                disabled={clearing || counts.all === 0}
+                className="text-xs text-red-600 hover:text-red-800 disabled:text-gray-300 border border-red-200 disabled:border-gray-200 rounded px-2 py-1"
+              >
+                {clearing ? 'Limpando...' : 'Limpar amostra'}
+              </button>
               <button onClick={() => { setPage(0); void loadSampleState(0, activeTab) }}
                 className="text-xs text-gray-400 hover:text-gray-600">Atualizar</button>
             </div>
