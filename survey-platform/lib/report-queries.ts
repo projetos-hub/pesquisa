@@ -258,7 +258,7 @@ export async function fetchSampleResponseSummary(
     .eq('id', surveyId)
     .single()
 
-  if (surveyError || !survey || survey.access_control !== 'amostra') {
+  if (surveyError || !survey) {
     return {
       isSampleSurvey: false,
       sampleSize: 0,
@@ -303,11 +303,13 @@ export async function fetchSampleResponseSummary(
   }
 
   const sampleSize = sampleResult.count ?? 0
+  const isSampleSurvey = survey.access_control === 'amostra' || sampleSize > 0
+
   return {
-    isSampleSurvey: true,
+    isSampleSurvey,
     sampleSize,
     responseCount: resolvedResponseCount,
-    responseRatePct: sampleSize > 0
+    responseRatePct: isSampleSurvey && sampleSize > 0
       ? Math.round((resolvedResponseCount / sampleSize) * 1000) / 10
       : null,
   }

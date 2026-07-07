@@ -47,16 +47,14 @@ export default async function ResponsesPage({ params, searchParams }: PageProps)
     .eq('survey_id', id)
 
   const totalPages = Math.ceil((totalSessions ?? 0) / pageSize)
-  const isSampleSurvey = survey.access_control === 'amostra'
-  const { count: sampleResolvedCount } = isSampleSurvey
-    ? await supabase
-        .from('survey_sample_lists')
-        .select('id', { count: 'exact', head: true })
-        .eq('survey_id', id)
-        .not('layers_user_id', 'is', null)
-        .neq('layers_user_id', 'NOT_FOUND')
-    : { count: null }
+  const { count: sampleResolvedCount } = await supabase
+    .from('survey_sample_lists')
+    .select('id', { count: 'exact', head: true })
+    .eq('survey_id', id)
+    .not('layers_user_id', 'is', null)
+    .neq('layers_user_id', 'NOT_FOUND')
   const sampleSize = sampleResolvedCount ?? 0
+  const isSampleSurvey = survey.access_control === 'amostra' || sampleSize > 0
   const sampleResponseRate = isSampleSurvey && sampleSize > 0
     ? Math.round(((totalSessions ?? 0) / sampleSize) * 1000) / 10
     : null

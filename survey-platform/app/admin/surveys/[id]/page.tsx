@@ -82,16 +82,14 @@ export default async function SurveyDetailPage({ params }: PageProps) {
   const total       = sessions?.length ?? 0
   const responsaveis = sessions?.filter(s => s.perfil === 'responsavel').length ?? 0
   const alunos      = sessions?.filter(s => s.perfil === 'aluno').length ?? 0
-  const isSampleSurvey = survey.access_control === 'amostra'
-  const { count: sampleResolvedCount } = isSampleSurvey
-    ? await supabase
-        .from('survey_sample_lists')
-        .select('id', { count: 'exact', head: true })
-        .eq('survey_id', id)
-        .not('layers_user_id', 'is', null)
-        .neq('layers_user_id', 'NOT_FOUND')
-    : { count: null }
+  const { count: sampleResolvedCount } = await supabase
+    .from('survey_sample_lists')
+    .select('id', { count: 'exact', head: true })
+    .eq('survey_id', id)
+    .not('layers_user_id', 'is', null)
+    .neq('layers_user_id', 'NOT_FOUND')
   const sampleSize = sampleResolvedCount ?? 0
+  const isSampleSurvey = survey.access_control === 'amostra' || sampleSize > 0
   const sampleResponseRate = isSampleSurvey && sampleSize > 0
     ? Math.round((total / sampleSize) * 1000) / 10
     : null
