@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import QuickSample from './QuickSample'
 import SampleGroups from './SampleGroups'
-import { extractSampleExcelRow, SAMPLE_EXCEL_REQUIRED_COLUMNS } from '@/lib/sample-excel'
+import { extractSampleExcelRow, SAMPLE_EXCEL_REQUIRED_COLUMNS, type SampleEmailMode } from '@/lib/sample-excel'
 
 interface Community { id: string; nome: string; marca?: string | null; unidade?: string | null }
 
@@ -44,6 +44,7 @@ export default function SampleUpload({ surveyId, communities }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string>('')
   const [success, setSuccess] = useState<string>('')
+  const [emailMode, setEmailMode] = useState<SampleEmailMode>('all')
 
   const [resolving, setResolving] = useState(false)
   const [resolveProgress, setResolveProgress] = useState<{ resolved: number; failed: number; remaining: number; done: boolean } | null>(null)
@@ -65,20 +66,35 @@ export default function SampleUpload({ surveyId, communities }: Props) {
 
   useEffect(() => { void loadSampleState(0, activeTab) }, [surveyId]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const parsePreview = async (selectedFile: File, mode: SampleEmailMode) => {
+    const { read, utils } = await import('xlsx')
+    const buffer = await selectedFile.arrayBuffer()
+    const workbook = read(buffer, { type: 'array' })
+    const sheet = workbook.Sheets[workbook.SheetNames[0]]
+    const rows = utils.sheet_to_json(sheet) as Record<string, unknown>[]
+    return rows.slice(0, 20).map(row => extractSampleExcelRow(row, mode))
+  }
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (!selectedFile) return
     setError('')
     setSuccess('')
     try {
-      const { read, utils } = await import('xlsx')
-      const buffer = await selectedFile.arrayBuffer()
-      const workbook = read(buffer, { type: 'array' })
-      const sheet = workbook.Sheets[workbook.SheetNames[0]]
-      const rows = utils.sheet_to_json(sheet) as Record<string, unknown>[]
-      const previewData = rows.slice(0, 20).map(extractSampleExcelRow)
+      setPreview(await parsePreview(selectedFile, emailMode))
       setFile(selectedFile)
-      setPreview(previewData)
+    } catch (err) {
+      setError(`Erro ao parsear Excel: ${err instanceof Error ? err.message : 'desconhecido'}`)
+    }
+  }
+
+  const handleEmailModeChange = async (mode: SampleEmailMode) => {
+    setEmailMode(mode)
+    if (!file) return
+    setError('')
+    setSuccess('')
+    try {
+      setPreview(await parsePreview(file, mode))
     } catch (err) {
       setError(`Erro ao parsear Excel: ${err instanceof Error ? err.message : 'desconhecido'}`)
     }
@@ -92,6 +108,7 @@ export default function SampleUpload({ surveyId, communities }: Props) {
     try {
       const formData = new FormData()
       formData.append('file', file)
+      formData.append('emailMode', emailMode)
       const res = await fetch(`/api/admin/surveys/${surveyId}/sample`, { method: 'POST', body: formData })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Erro ao fazer upload') }
       const data = await res.json() as {
@@ -103,10 +120,11 @@ export default function SampleUpload({ surveyId, communities }: Props) {
           descartadas_sem_email: number
           descartadas_sem_community: number
           nomefantasia_nao_mapeados: string[]
+          modo_emails?: SampleEmailMode
         }
       }
       const d = data.diagnostico
-      let msg = `${data.total_entries} entradas importadas de ${d?.total_linhas_excel ?? '?'} linhas.`
+      let msg = `${data.total_entries} entradas importadas de ${d?.total_linhas_excel ?? '?'} linhas.` + (emailMode === 'financial_responsible' ? ' Modo: somente RF.' : '')
       if (d) {
         if (d.duplicatas_removidas > 0) msg += ` ${d.duplicatas_removidas} duplicatas removidas (mesmo email+escola).`
         if (d.descartadas_sem_email > 0) msg += ` ${d.descartadas_sem_email} linhas sem email.`
@@ -203,7 +221,33 @@ export default function SampleUpload({ surveyId, communities }: Props) {
         />
       )}
 
-      <div>
+      <div className="space-y-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Emails para importar</label>
+          <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1 text-xs">
+            {([
+              ['all', 'Todos os emails'],
+              ['financial_responsible', 'Somente RF'],
+            ] as const).map(([mode, label]) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => void handleEmailModeChange(mode)}
+                className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+                  emailMode === mode
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-gray-500">
+            Somente RF usa exclusivamente a coluna EMAIL_RESP_FINANCEIRO ou EMAIL RESP FIN.
+          </p>
+        </div>
+
         <label className="block text-sm font-medium text-gray-700 mb-2">Arquivo Excel (TOTVS)</label>
         <input type="file" accept=".xlsx,.xls" onChange={handleFileChange}
           className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-[#F7941D]/5 file:text-[#D97B10] hover:file:bg-[#F7941D]/10" />
@@ -224,7 +268,7 @@ export default function SampleUpload({ surveyId, communities }: Props) {
               <thead className="bg-gray-50"><tr>
                 <th className="px-3 py-2 text-left">Nome</th>
                 <th className="px-3 py-2 text-left">Escola</th>
-                <th className="px-3 py-2 text-left">Emails</th>
+                <th className="px-3 py-2 text-left">{emailMode === 'financial_responsible' ? 'Email RF' : 'Emails'}</th>
               </tr></thead>
               <tbody>{preview.map((row, i) => (
                 <tr key={i} className="border-t">

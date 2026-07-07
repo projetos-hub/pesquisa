@@ -1,5 +1,7 @@
 import { excelText } from './sample-upload-text'
 
+export type SampleEmailMode = 'all' | 'financial_responsible'
+
 export interface SampleExcelRow {
   nome: string
   nomefantasia: string
@@ -10,11 +12,20 @@ type SheetRow = Record<string, unknown>
 
 const NAME_COLUMNS = ['NOME', 'ALUNO', 'NOME DO ALUNO']
 const SCHOOL_COLUMNS = ['NOMEFANTASIA', 'FILIAL', 'ESCOLA', 'UNIDADE']
-const EMAIL_COLUMNS = [
-  ['EMAIL INSTITUCIONAL', 'EMAIL_ALUNO', 'EMAIL ALUNO'],
-  ['EMAIL RESP FIN', 'EMAIL_RESP_FINANCEIRO', 'EMAIL RESP FINANCEIRO'],
-  ['EMAIL RESP ACAD', 'EMAIL_RESP_ACADEMICO', 'EMAIL RESP ACADEMICO'],
-]
+const EMAIL_COLUMNS: Record<SampleEmailMode, string[][]> = {
+  all: [
+    ['EMAIL INSTITUCIONAL', 'EMAIL_ALUNO', 'EMAIL ALUNO'],
+    ['EMAIL RESP FIN', 'EMAIL_RESP_FINANCEIRO', 'EMAIL RESP FINANCEIRO'],
+    ['EMAIL RESP ACAD', 'EMAIL_RESP_ACADEMICO', 'EMAIL RESP ACADEMICO'],
+  ],
+  financial_responsible: [
+    ['EMAIL RESP FIN', 'EMAIL_RESP_FINANCEIRO', 'EMAIL RESP FINANCEIRO'],
+  ],
+}
+
+export function isSampleEmailMode(value: unknown): value is SampleEmailMode {
+  return value === 'all' || value === 'financial_responsible'
+}
 
 function normalizeHeader(value: string): string {
   return excelText(value)
@@ -47,8 +58,8 @@ export function getSampleCell(row: SheetRow, aliases: string[]): string {
   return ''
 }
 
-export function extractSampleExcelRow(row: SheetRow): SampleExcelRow {
-  const emails = EMAIL_COLUMNS
+export function extractSampleExcelRow(row: SheetRow, emailMode: SampleEmailMode = 'all'): SampleExcelRow {
+  const emails = EMAIL_COLUMNS[emailMode]
     .map(columns => getSampleCell(row, columns).toLowerCase())
     .filter(Boolean)
 

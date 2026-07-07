@@ -34,4 +34,16 @@ describe('sample excel encoding', () => {
 
     expect(extractSampleExcelRow(row).emails).toEqual(['maria@example.com'])
   })
+
+  it('extracts only financial responsible email when RF mode is selected', () => {
+    const row = {
+      ALUNO: 'Maria',
+      FILIAL: 'Escola Teste',
+      EMAIL_ALUNO: 'aluno@example.com',
+      EMAIL_RESP_FINANCEIRO: 'financeiro@example.com',
+      EMAIL_RESP_ACADEMICO: 'academico@example.com',
+    }
+
+    expect(extractSampleExcelRow(row, 'financial_responsible').emails).toEqual(['financeiro@example.com'])
+  })
 })

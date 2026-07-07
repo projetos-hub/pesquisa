@@ -2,7 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-service'
 import { read, utils } from 'xlsx'
 import { resolveCommunityId } from '@/lib/community-mapping'
-import { extractSampleExcelRow } from '@/lib/sample-excel'
+import { extractSampleExcelRow, isSampleEmailMode } from '@/lib/sample-excel'
 
 async function requireAuth() {
   const supabase = await createServerSupabaseClient()
@@ -23,6 +23,11 @@ export async function POST(
     const file = formData.get('file') as File
     if (!file) {
       return Response.json({ error: 'No file provided' }, { status: 400 })
+    }
+
+    const emailModeValue = formData.get('emailMode') ?? 'all'
+    if (!isSampleEmailMode(emailModeValue)) {
+      return Response.json({ error: 'Invalid email mode' }, { status: 400 })
     }
 
     const buffer = await file.arrayBuffer()
@@ -47,7 +52,7 @@ export async function POST(
     const skipped = { sem_email: 0, sem_community: 0, community_map: {} as Record<string, number> }
 
     for (const row of rows) {
-      const { nome, nomefantasia, emails } = extractSampleExcelRow(row)
+      const { nome, nomefantasia, emails } = extractSampleExcelRow(row, emailModeValue)
 
       if (emails.length === 0) {
         skipped.sem_email++
@@ -126,6 +131,7 @@ export async function POST(
         descartadas_sem_email:       skipped.sem_email,
         descartadas_sem_community:   skipped.sem_community,
         nomefantasia_nao_mapeados:   topUnmapped,
+        modo_emails:                 emailModeValue,
       },
     })
   } catch (err) {
