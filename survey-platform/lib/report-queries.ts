@@ -45,7 +45,7 @@ function enrichCommunityFields<T extends { school: string; nome_escola?: string 
 // Tipos
 
 export interface ReportFilters {
-  communityIds?: string[]   // filtra por school (IDs)
+  communityIds?: string[]   // filtra por community_id (IDs)
   perfil?: 'aluno' | 'responsavel' | 'todos'
   serieIds?: string[]
   dateFrom?: string         // ISO date "YYYY-MM-DD"
@@ -192,35 +192,44 @@ export async function fetchRawSessions(
   filters: ReportFilters = {}
 ): Promise<SessionRow[]> {
   const sb = createServiceClient()
-  let q = sb
-    .from('response_sessions')
-    .select('id, survey_id, community_id, user_id, submitted_at, perfil, nome_responsavel, nome_aluno, serie, turma, email, school, onda, responses(question_key, value)')
-    .eq('survey_id', surveyId)
-    .order('submitted_at', { ascending: false })
+  const pageSize = 1000
+  const rows: SessionRow[] = []
 
-  if (filters.communityIds?.length) {
-    q = q.in('school', filters.communityIds)
-  }
-  if (filters.perfil && filters.perfil !== 'todos') {
-    q = q.eq('perfil', filters.perfil)
-  }
-  if (filters.serieIds?.length) {
-    q = q.in('serie', filters.serieIds)
-  }
-  if (filters.dateFrom) {
-    q = q.gte('submitted_at', `${filters.dateFrom}T00:00:00Z`)
-  }
-  if (filters.dateTo) {
-    q = q.lte('submitted_at', `${filters.dateTo}T23:59:59Z`)
-  }
-  if (filters.onda) {
-    q = q.eq('onda', filters.onda)
+  for (let from = 0; ; from += pageSize) {
+    let q = sb
+      .from('response_sessions')
+      .select('id, survey_id, community_id, user_id, submitted_at, perfil, nome_responsavel, nome_aluno, serie, turma, email, school, onda, responses(question_key, value)')
+      .eq('survey_id', surveyId)
+      .order('submitted_at', { ascending: false })
+      .range(from, from + pageSize - 1)
+
+    if (filters.communityIds?.length) {
+      q = q.in('community_id', filters.communityIds)
+    }
+    if (filters.perfil && filters.perfil !== 'todos') {
+      q = q.eq('perfil', filters.perfil)
+    }
+    if (filters.serieIds?.length) {
+      q = q.in('serie', filters.serieIds)
+    }
+    if (filters.dateFrom) {
+      q = q.gte('submitted_at', `${filters.dateFrom}T00:00:00Z`)
+    }
+    if (filters.dateTo) {
+      q = q.lte('submitted_at', `${filters.dateTo}T23:59:59Z`)
+    }
+    if (filters.onda) {
+      q = q.eq('onda', filters.onda)
+    }
+
+    const { data, error } = await q
+    if (error) throw new Error(`fetchRawSessions: ${error.message}`)
+
+    const pageRows = (data ?? []) as SessionRow[]
+    rows.push(...pageRows)
+    if (pageRows.length < pageSize) break
   }
 
-  const { data, error } = await q
-  if (error) throw new Error(`fetchRawSessions: ${error.message}`)
-
-  const rows = (data ?? []) as SessionRow[]
   const identityMap = await fetchCommunityIdentityMap(rows.map(row => row.school || row.community_id))
   return rows.map(row => {
     const communityKey = row.school || row.community_id
@@ -293,7 +302,7 @@ export async function fetchSampleResponseSummary(
           .from('response_sessions')
           .select('id', { count: 'exact', head: true })
           .eq('survey_id', surveyId)
-          .in('school', communityIds)
+          .in('community_id', communityIds)
       : await sb
           .from('response_sessions')
           .select('id', { count: 'exact', head: true })
@@ -363,23 +372,23 @@ export async function getFilterOptions(surveyId: string): Promise<FilterOptions>
   const sb = createServiceClient()
 
   // Communities present in this survey
-  const { data: schoolRows } = await sb
+  const { data: communitySessionRows } = await sb
     .from('response_sessions')
-    .select('school')
+    .select('community_id')
     .eq('survey_id', surveyId)
 
-  const schoolIds: string[] = [...new Set(
-    ((schoolRows ?? []) as { school: string | null }[])
-      .map(r => r.school)
+  const communityIds: string[] = [...new Set(
+    ((communitySessionRows ?? []) as { community_id: string | null }[])
+      .map(r => r.community_id)
       .filter((s): s is string => typeof s === 'string' && s.length > 0)
   )]
 
   let communities: { id: string; nome: string }[] = []
-  if (schoolIds.length > 0) {
+  if (communityIds.length > 0) {
     const { data: communityRows } = await sb
       .from('communities')
       .select('community_id, nome_escola, marca, unidade')
-      .in('community_id', schoolIds)
+      .in('community_id', communityIds)
     communities = (communityRows ?? []).map((c: { community_id: string; nome_escola: string | null; marca: string | null; unidade: string | null }) => ({
       id: c.community_id,
       nome: resolveCommunityPrimaryName(c),
