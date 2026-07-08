@@ -263,7 +263,7 @@ export default function SampleUpload({ surveyId, communities }: Props) {
           <label className="block text-sm font-medium text-gray-700 mb-2">Como salvar</label>
           <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1 text-xs">
             {([
-              ['append', 'Adicionar à atual'],
+              ['append', 'Adicionar a atual'],
               ['replace', 'Substituir tudo'],
             ] as const).map(([mode, label]) => (
               <button
@@ -281,7 +281,7 @@ export default function SampleUpload({ surveyId, communities }: Props) {
             ))}
           </div>
           <p className="mt-1 text-xs text-gray-500">
-            Adicionar mantém a amostra existente e ignora emails duplicados na mesma comunidade.
+            Adicionar mantem a amostra existente e ignora emails duplicados na mesma comunidade.
           </p>
         </div>
 
