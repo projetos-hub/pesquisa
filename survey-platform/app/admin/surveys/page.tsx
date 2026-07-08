@@ -55,10 +55,20 @@ export default async function SurveysPage() {
 
   const { data: surveys } = await supabase
     .from('surveys')
-    .select('id, slug, title, status, survey_type, open_date, close_date, created_at, response_sessions(id)')
+    .select('id, slug, title, status, survey_type, open_date, close_date, created_at')
     .order('created_at', { ascending: false })
 
-  const surveyList = surveys ?? []
+  const surveyList = await Promise.all((surveys ?? []).map(async survey => {
+    const { count } = await supabase
+      .from('response_sessions')
+      .select('*', { count: 'exact', head: true })
+      .eq('survey_id', survey.id)
+
+    return {
+      ...survey,
+      responseCount: count ?? 0,
+    }
+  }))
 
   return (
     <main className={`${nunitoSans.className} relative min-h-screen overflow-hidden bg-[#070b14] text-white`}>
@@ -120,7 +130,7 @@ export default async function SurveysPage() {
                 {surveyList.map(s => {
                   const effectiveStatus = getEffectiveSurveyStatus(s)
                   const st = STATUS[effectiveStatus] ?? STATUS.rascunho
-                  const count = Array.isArray(s.response_sessions) ? s.response_sessions.length : 0
+                  const count = s.responseCount
                   const hint = schedulingHint(s.open_date, s.close_date, effectiveStatus)
 
                   return (

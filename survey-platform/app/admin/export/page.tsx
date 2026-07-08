@@ -13,7 +13,6 @@ interface Survey {
   title: string
   status: string
   access_control: string | null
-  response_sessions: { id: string }[]
 }
 
 interface PublicResponseLink {
@@ -50,7 +49,7 @@ export default async function ExportPage() {
 
   const { data: surveys } = await supabase
     .from('surveys')
-    .select('id, slug, title, status, access_control, response_sessions(id)')
+    .select('id, slug, title, status, access_control')
     .order('created_at', { ascending: false }) as { data: Survey[] | null }
 
   const { data: publicLinks } = await supabase
@@ -81,7 +80,12 @@ export default async function ExportPage() {
   }
 
   const surveyData = await Promise.all((surveys ?? []).map(async survey => {
-    const responseCount = survey.response_sessions?.length ?? 0
+    const { count } = await supabase
+      .from('response_sessions')
+      .select('*', { count: 'exact', head: true })
+      .eq('survey_id', survey.id)
+
+    const responseCount = count ?? 0
     const sampleResponse: SampleResponseSummary = await fetchSampleResponseSummary(survey.id, responseCount)
 
     return {
