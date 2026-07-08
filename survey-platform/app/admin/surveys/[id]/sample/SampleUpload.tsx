@@ -28,6 +28,8 @@ interface SampleEntry {
   created_at: string
 }
 
+type SampleUploadMode = 'append' | 'replace'
+
 interface SampleState {
   totals: { total: number; resolved: number; not_found: number; pending: number }
   entries: SampleEntry[]
@@ -45,6 +47,7 @@ export default function SampleUpload({ surveyId, communities }: Props) {
   const [error, setError] = useState<string>('')
   const [success, setSuccess] = useState<string>('')
   const [emailMode, setEmailMode] = useState<SampleEmailMode>('all')
+  const [uploadMode, setUploadMode] = useState<SampleUploadMode>('append')
   const [clearing, setClearing] = useState(false)
 
   const [resolving, setResolving] = useState(false)
@@ -110,10 +113,13 @@ export default function SampleUpload({ surveyId, communities }: Props) {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('emailMode', emailMode)
+      formData.append('mode', uploadMode)
       const res = await fetch(`/api/admin/surveys/${surveyId}/sample`, { method: 'POST', body: formData })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Erro ao fazer upload') }
       const data = await res.json() as {
         total_entries: number
+        saved_entries?: number
+        skipped_existing?: number
         diagnostico?: {
           total_linhas_excel: number
           entradas_antes_dedup: number
@@ -125,7 +131,11 @@ export default function SampleUpload({ surveyId, communities }: Props) {
         }
       }
       const d = data.diagnostico
-      let msg = `${data.total_entries} entradas importadas de ${d?.total_linhas_excel ?? '?'} linhas.` + (emailMode === 'financial_responsible' ? ' Modo: somente RF.' : '')
+      let msg = uploadMode === 'append'
+        ? `${data.saved_entries ?? data.total_entries} novas entradas adicionadas de ${d?.total_linhas_excel ?? '?'} linhas.`
+        : `${data.total_entries} entradas importadas de ${d?.total_linhas_excel ?? '?'} linhas.`
+      if (uploadMode === 'append' && (data.skipped_existing ?? 0) > 0) msg += ` ${data.skipped_existing} ja existiam e foram mantidas.`
+      if (emailMode === 'financial_responsible') msg += ' Modo: somente RF.'
       if (d) {
         if (d.duplicatas_removidas > 0) msg += ` ${d.duplicatas_removidas} duplicatas removidas (mesmo email+escola).`
         if (d.descartadas_sem_email > 0) msg += ` ${d.descartadas_sem_email} linhas sem email.`
@@ -249,6 +259,32 @@ export default function SampleUpload({ surveyId, communities }: Props) {
       )}
 
       <div className="space-y-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Como salvar</label>
+          <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1 text-xs">
+            {([
+              ['append', 'Adicionar à atual'],
+              ['replace', 'Substituir tudo'],
+            ] as const).map(([mode, label]) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setUploadMode(mode)}
+                className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+                  uploadMode === mode
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-gray-500">
+            Adicionar mantém a amostra existente e ignora emails duplicados na mesma comunidade.
+          </p>
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Emails para importar</label>
           <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1 text-xs">

@@ -4,6 +4,12 @@ import { read, utils } from 'xlsx'
 import { resolveCommunityId } from '@/lib/community-mapping'
 import { extractSampleExcelRow, isSampleEmailMode } from '@/lib/sample-excel'
 
+type SampleUploadMode = 'replace' | 'append'
+
+function isSampleUploadMode(value: unknown): value is SampleUploadMode {
+  return value === 'replace' || value === 'append'
+}
+
 async function requireAuth() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -28,6 +34,11 @@ export async function POST(
     const emailModeValue = formData.get('emailMode') ?? 'all'
     if (!isSampleEmailMode(emailModeValue)) {
       return Response.json({ error: 'Invalid email mode' }, { status: 400 })
+    }
+
+    const uploadModeValue = formData.get('mode') ?? 'replace'
+    if (!isSampleUploadMode(uploadModeValue)) {
+      return Response.json({ error: 'Invalid upload mode' }, { status: 400 })
     }
 
     const buffer = await file.arrayBuffer()
@@ -90,29 +101,37 @@ export async function POST(
       return true
     })
 
-    console.log(`[sample-upload] ${entries.length} entradas -> ${unique.length} unicas para survey ${id}`)
+    console.log(`[sample-upload] ${entries.length} entradas -> ${unique.length} unicas para survey ${id} (${uploadModeValue})`)
 
-    const { error: delErr } = await supabase
-      .from('survey_sample_lists')
-      .delete()
-      .eq('survey_id', id)
+    if (uploadModeValue === 'replace') {
+      const { error: delErr } = await supabase
+        .from('survey_sample_lists')
+        .delete()
+        .eq('survey_id', id)
 
-    if (delErr) {
-      console.error('[sample-upload] Delete error:', delErr)
-      return Response.json({ error: `Erro ao limpar amostra anterior: ${delErr.message}` }, { status: 500 })
+      if (delErr) {
+        console.error('[sample-upload] Delete error:', delErr)
+        return Response.json({ error: `Erro ao limpar amostra anterior: ${delErr.message}` }, { status: 500 })
+      }
     }
 
+    let savedCount = 0
     const BATCH_SIZE = 100
     for (let i = 0; i < unique.length; i += BATCH_SIZE) {
       const batch = unique.slice(i, i + BATCH_SIZE)
-      const { error: insertErr } = await supabase
+      const { data, error: saveErr } = await supabase
         .from('survey_sample_lists')
-        .insert(batch)
+        .upsert(batch, {
+          onConflict:       'survey_id,community_id,email',
+          ignoreDuplicates: uploadModeValue === 'append',
+        })
+        .select('id')
 
-      if (insertErr) {
-        console.error(`[sample-upload] Insert error (lote ${i}):`, insertErr)
-        return Response.json({ error: `Erro ao salvar lote ${i}: ${insertErr.message}` }, { status: 500 })
+      if (saveErr) {
+        console.error(`[sample-upload] Save error (lote ${i}):`, saveErr)
+        return Response.json({ error: `Erro ao salvar lote ${i}: ${saveErr.message}` }, { status: 500 })
       }
+      savedCount += data?.length ?? 0
     }
 
     const resolvedCount = unique.filter(e => e.layers_user_id).length
@@ -123,6 +142,8 @@ export async function POST(
 
     return Response.json({
       total_entries:       unique.length,
+      saved_entries:       savedCount,
+      skipped_existing:    uploadModeValue === 'append' ? unique.length - savedCount : 0,
       resolved_layers_ids: resolvedCount,
       diagnostico: {
         total_linhas_excel:          rows.length,
@@ -132,6 +153,7 @@ export async function POST(
         descartadas_sem_community:   skipped.sem_community,
         nomefantasia_nao_mapeados:   topUnmapped,
         modo_emails:                 emailModeValue,
+        modo_upload:                 uploadModeValue,
       },
     })
   } catch (err) {
