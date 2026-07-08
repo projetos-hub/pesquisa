@@ -46,4 +46,19 @@ describe('sample excel encoding', () => {
 
     expect(extractSampleExcelRow(row, 'financial_responsible').emails).toEqual(['financeiro@example.com'])
   })
+  it('extracts Sao Pereira renewal export aliases', () => {
+    const row = {
+      FILIAL: 'ESCOLA SA PEREIRA (R. DA MATRIZ)',
+      NOMEALUNO: 'DANIEL MAGIANO HAZAN',
+      EMAIL: 'responsavel.financeiro@example.com',
+      EMAIL_ALUNO: 'aluno@example.com',
+      EMAIL_RESP_ACADEMICO: 'academico@example.com',
+    }
+
+    expect(extractSampleExcelRow(row, 'financial_responsible')).toEqual({
+      nome: 'DANIEL MAGIANO HAZAN',
+      nomefantasia: 'ESCOLA SA PEREIRA (R. DA MATRIZ)',
+      emails: ['responsavel.financeiro@example.com'],
+    })
+  })
 })
