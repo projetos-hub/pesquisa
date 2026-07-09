@@ -186,6 +186,24 @@ export default async function SurveyDetailPage({ params }: PageProps) {
           />
         </div>
 
+        {/* Adaptações por comunidade */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700">Adaptações por comunidade</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Personalize textos por comunidade sem duplicar perguntas, respostas ou relatórios.
+              </p>
+            </div>
+            <Link
+              href={`/admin/surveys/${id}/textos`}
+              className="bg-[#F7941D] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#D97B10] transition-colors font-medium"
+            >
+              Editar textos
+            </Link>
+          </div>
+        </div>
+
         {/* Card de amostra */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between">

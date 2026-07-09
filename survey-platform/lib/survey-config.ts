@@ -30,6 +30,19 @@ export interface InstallationRow {
   settings: Record<string, unknown>
 }
 
+export interface QuestionTextOverride {
+  title?: string
+  description?: string
+  pergunta?: string
+}
+
+export interface SurveyContentOverrides {
+  questions?: Record<string, QuestionTextOverride>
+  thankyou?: {
+    message?: string
+  }
+}
+
 export interface QuestionRow {
   id: string
   survey_id: string
@@ -51,6 +64,33 @@ export interface OptionRow {
   value: string
   section_key: string | null
   section_title: string | null
+}
+
+function asContentOverrides(settings: Record<string, unknown> | undefined): SurveyContentOverrides {
+  return (settings?.contentOverrides ?? {}) as SurveyContentOverrides
+}
+
+function applyQuestionTextOverride(
+  q: QuestionRow,
+  overrides: SurveyContentOverrides
+): QuestionRow {
+  const byKey = q.key ? overrides.questions?.[q.key] : undefined
+  const byType = overrides.questions?.[q.type]
+  const override = byKey ?? byType
+
+  if (!override) return q
+
+  const settings = { ...(q.settings ?? {}) }
+  if (typeof override.pergunta === 'string') {
+    settings.pergunta = override.pergunta
+  }
+
+  return {
+    ...q,
+    title: typeof override.title === 'string' ? override.title : q.title,
+    description: typeof override.description === 'string' ? override.description : q.description,
+    settings,
+  }
 }
 
 // ─── Helpers internos ─────────────────────────────────────────────────────────
@@ -194,8 +234,11 @@ export function rowsToConfig(
   options: OptionRow[],
   installation?: InstallationRow
 ): SurveyConfig {
+  const contentOverrides = asContentOverrides(installation?.settings)
+  const effectiveQuestions = questions.map(q => applyQuestionTextOverride(q, contentOverrides))
+
   // Converte cada question em StepDef usando o strategy map
-  const steps: StepDef[] = [...questions]
+  const steps: StepDef[] = [...effectiveQuestions]
     .sort((a, b) => a.order_index - b.order_index)
     .map((q): StepDef => {
       const qOptions = options
@@ -210,7 +253,11 @@ export function rowsToConfig(
   // Sempre propagado — nunca perdido por installation vazia ou ausente
   const surveyTheme = (survey.settings as { theme?: Record<string, unknown> })?.theme ?? {}
   const installTheme = installation?.theme ?? {}
-  const mergedTheme: Record<string, unknown> = { ...surveyTheme, ...installTheme }
+  const mergedTheme: Record<string, unknown> = {
+    ...surveyTheme,
+    ...installTheme,
+    ...(contentOverrides.thankyou?.message ? { thankyouMessage: contentOverrides.thankyou.message } : {}),
+  }
 
   const mergedSettings: SurveySettings = {
     ...(survey.settings ?? {}),

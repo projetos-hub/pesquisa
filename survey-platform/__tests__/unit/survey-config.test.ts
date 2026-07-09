@@ -154,6 +154,40 @@ describe('rowsToConfig', () => {
 
     expect(config.steps[0].somentePara).toBe('aluno')
   })
+
+  it('applies community content overrides without changing the base survey', () => {
+    const installation: InstallationRow = {
+      status: 'ativa',
+      open_date: null,
+      close_date: null,
+      theme: {},
+      settings: {
+        contentOverrides: {
+          questions: {
+            comentario: {
+              title: 'Comentario para SAP',
+              pergunta: 'Conte sua percepcao sobre a rematricula',
+            },
+          },
+          thankyou: {
+            message: 'Obrigado, {{nomeEscola}} recebeu sua resposta.',
+          },
+        },
+      },
+    }
+
+    const config = rowsToConfig(
+      surveyRow(),
+      [questionRow({ type: 'text', key: 'comentario', title: 'Comentario padrao', settings: { pergunta: 'Pergunta padrao' } })],
+      [],
+      installation
+    )
+
+    const step = config.steps[0] as TextStepDef
+    expect(step.titulo).toBe('Comentario para SAP')
+    expect(step.pergunta).toBe('Conte sua percepcao sobre a rematricula')
+    expect(config.settings?.theme?.thankyouMessage).toBe('Obrigado, {{nomeEscola}} recebeu sua resposta.')
+  })
 })
 
 describe('applyConditionals', () => {
