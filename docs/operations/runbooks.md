@@ -169,3 +169,51 @@ Procedimento:
 3. Se houve migration destrutiva, avaliar rollback de dados separadamente; nao executar downgrade sem backup/confirmacao.
 4. Verificar `/api/health`, fluxo respondente e dispatch health.
 5. Registrar causa raiz e teste que teria capturado a falha.
+
+## Adaptacoes de texto por comunidade
+
+Quando usar:
+
+- mesma pesquisa precisa ter linguagem diferente por marca, unidade ou comunidade;
+- campanha de intencao de rematricula precisa adaptar saudacao, pergunta ou agradecimento;
+- a comparabilidade de respostas deve ser preservada em uma unica `survey_id`.
+
+Procedimento:
+
+1. Abrir a pesquisa em `/admin/surveys/[id]`.
+2. Confirmar que as comunidades estao instaladas no card `Comunidades`.
+3. Entrar em `Adaptações por comunidade` ou acessar `/admin/surveys/[id]/textos`.
+4. Selecionar a comunidade.
+5. Selecionar a etapa/pergunta.
+6. Preencher apenas os campos que precisam sobrescrever o texto padrao.
+7. Usar variaveis quando necessario: `{{nomeAluno}}`, `{{nomeEscola}}`, `{{marca}}`, `{{unidade}}`, `{{serie}}`.
+8. Conferir o preview lateral.
+9. Clicar em `Salvar adaptação`.
+10. Abrir o link de teste da comunidade e validar a experiencia real do respondente.
+
+Criterios de pronto antes de disparar:
+
+- comunidades sem adaptacao aparecem como `Texto padrão`;
+- comunidades adaptadas mostram a quantidade esperada de textos personalizados;
+- pelo menos um link real por marca/unidade critica foi testado;
+- o texto padrao da pesquisa continua adequado para comunidades sem personalizacao;
+- a amostra e o disparo foram validados separadamente quando aplicavel.
+
+Rollback operacional:
+
+- Para remover a adaptacao de uma etapa, abrir a etapa e clicar em `Usar texto padrão`, depois `Salvar adaptação`.
+- Para remover todas as adaptacoes de uma comunidade via SQL, limpar `settings.contentOverrides` em `survey_communities` somente apos confirmar `survey_id` e `community_id`:
+
+```sql
+update survey_communities
+set settings = settings - 'contentOverrides'
+where survey_id = '<survey_id>'
+  and community_id = '<community_id>';
+```
+
+Diagnostico:
+
+- Se a tela admin mostra adaptacao mas o respondente nao, acionar novamente `Salvar adaptação` para revalidar cache.
+- Conferir se o link de teste tem `communityId` correto.
+- Conferir em `survey_communities.settings` se `contentOverrides.questions` usa a `question.key` correta.
+- Rodar `/api/surveys/[slug]?communityId=[community_id]` e verificar se os textos efetivos aparecem no JSON.

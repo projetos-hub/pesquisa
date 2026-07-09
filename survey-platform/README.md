@@ -20,6 +20,7 @@ Aplicacao Next.js do Mini App Layers Pesquisa.
 | `/admin/surveys` | Lista de pesquisas |
 | `/admin/surveys/[id]` | Edicao de pesquisa e perguntas |
 | `/admin/surveys/[id]/sample` | Upload e gestao de amostras |
+| `/admin/surveys/[id]/textos` | Adaptacoes de textos por comunidade |
 | `/admin/surveys/[id]/dispatch` | Criacao de disparos |
 | `/admin/auditoria` | Auditoria de disparos |
 | `/admin/export` | Exportacao |
@@ -71,6 +72,21 @@ Regra de UX para texto justificado:
 - nao usar hifenizacao automatica agressiva;
 - usar `text-wrap: pretty` e fallback para alinhamento a esquerda em cards estreitos;
 - o idioma raiz do app e `pt-BR` para melhorar layout de texto.
+
+### Adaptacoes por comunidade
+
+A rota `/admin/surveys/[id]/textos` permite mudar textos por comunidade sem duplicar a pesquisa.
+
+Os overrides ficam em `survey_communities.settings.contentOverrides`:
+
+- `questions[question.key].title`
+- `questions[question.key].description`
+- `questions[question.key].pergunta`
+- `thankyou.message`
+
+Campos vazios herdam o texto padrao da pesquisa. O runtime aplica os overrides em `lib/survey-config.ts` durante `rowsToConfig()`.
+
+Doc completa: `../docs/release-2026-07-09-community-text-overrides.md`.
 
 ## Dados e comunidades
 
