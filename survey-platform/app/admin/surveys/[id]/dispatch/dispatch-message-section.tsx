@@ -109,7 +109,7 @@ export function MessageSection({
         required
         multiline
         rows={3}
-        placeholder="Ei, {{nome}}! Queremos ouvir sua opiniao sobre a experiencia de {{nomeAluno}} na escola."
+        placeholder="Ei, {{nome}}! Queremos ouvir sua opiniao sobre a experiencia da sua familia na escola."
       />
 
       <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
@@ -151,7 +151,7 @@ export function MessageSection({
         {personalized && (
           <div className="text-xs text-amber-800 bg-amber-100 rounded-lg px-3 py-2 space-y-1">
             <p className="font-semibold">Modo personalizado ativo</p>
-            <p>Cada usuario recebe uma notificacao individual com seu nome. O envio e feito em lotes de 30 a cada 5 minutos pelo sistema.</p>
+            <p>Cada usuario recebe uma notificacao individual com seu nome. Para responsaveis, prefira textos de familia; {'{{'} nomeAluno {'}}'} pode virar &quot;seus filhos&quot; quando houver mais de um aluno vinculado.</p>
             <p>Estimativa: ~150ms por usuario. O disparo continua em background mesmo apos fechar o admin.</p>
             <p className="text-amber-700">Rate limit: se a Layers retornar erro 429, o sistema recua automaticamente e retoma no proximo ciclo.</p>
           </div>

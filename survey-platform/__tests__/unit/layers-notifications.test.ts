@@ -7,6 +7,7 @@ import {
   type DispatchRecord,
 } from '@/lib/layers-notification-payloads'
 import { sendToOneCommunity } from '@/lib/layers-notifications'
+import { summarizeRelatedStudents } from '@/lib/layers-hub'
 
 function dispatch(overrides: Partial<DispatchRecord> = {}): DispatchRecord {
   return {
@@ -233,6 +234,43 @@ describe('interpolatePlaceholders', () => {
   })
 })
 
+it('uses a readable student list for guardians with multiple related students', () => {
+  expect(interpolatePlaceholders(
+    'Ola {{nome}}, mae do {{nomeAluno}}',
+    { nome: 'Ana', nomeAluno: 'Luan, Bia e Caio', nomeEscola: 'Raiz', serie: '' },
+  )).toBe('Ola Ana, mae de Luan, Bia e Caio')
+
+  expect(interpolatePlaceholders(
+    'Queremos ouvir sua opiniao sobre {{nomeAluno}}',
+    { nome: 'Ana', nomeAluno: 'Luan, Bia e Caio', nomeEscola: 'Raiz', serie: '' },
+  )).toBe('Queremos ouvir sua opiniao sobre Luan, Bia e Caio')
+})
+
+
+describe('summarizeRelatedStudents', () => {
+  it('keeps the single student name and class information', () => {
+    expect(summarizeRelatedStudents([
+      {
+        _id: 'student-1',
+        name: 'Bruno',
+        groups: [{ name: '3 ano', alias: '3A', type: 'classroom' }],
+      },
+    ])).toMatchObject({
+      nomeAluno: 'Bruno',
+      serie: '3 ano',
+      turma: '3A',
+      primaryStudentId: 'student-1',
+    })
+  })
+
+  it('lists all related students when guardian has multiple related students', () => {
+    expect(summarizeRelatedStudents([
+      { _id: 'student-1', name: 'Luan' },
+      { _id: 'student-2', name: 'Bia' },
+      { _id: 'student-3', name: 'Caio' },
+    ])).toEqual({ nomeAluno: 'Luan, Bia e Caio', serie: '', turma: '' })
+  })
+})
 describe('sendToOneCommunity', () => {
   const originalToken = process.env.LAYERS_API_TOKEN
   const originalFetch = globalThis.fetch

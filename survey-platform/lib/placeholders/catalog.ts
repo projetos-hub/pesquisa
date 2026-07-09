@@ -8,8 +8,8 @@ export interface PlaceholderToken {
 export const PLACEHOLDER_TOKENS: PlaceholderToken[] = [
   { key: 'nome', label: 'Nome do responsavel/usuario', category: 'Pessoa', example: 'Ana' },
   { key: 'email', label: 'Email', category: 'Pessoa', example: 'ana@email.com' },
-  { key: 'nomeAluno', label: 'Nome do aluno', category: 'Aluno', example: 'Pedro' },
-  { key: 'aluno.nome', label: 'Nome do aluno', category: 'Aluno', example: 'Pedro' },
+  { key: 'nomeAluno', label: 'Aluno ou filhos vinculados', category: 'Aluno', example: 'Pedro / seus filhos' },
+  { key: 'aluno.nome', label: 'Aluno ou filhos vinculados', category: 'Aluno', example: 'Pedro / seus filhos' },
   { key: 'serie', label: 'Serie/turma', category: 'Aluno', example: '3F' },
   { key: 'aluno.serie', label: 'Serie/turma', category: 'Aluno', example: '3F' },
   { key: 'nomeEscola', label: 'Nome da escola', category: 'Escola', example: 'Raiz Botafogo' },

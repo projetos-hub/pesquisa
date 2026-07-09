@@ -150,10 +150,21 @@ export function formatFirstName(fullName: string): string {
   return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase()
 }
 
+function isStudentNameList(value: string): boolean {
+  return value.includes(',') || /\s+e\s+/i.test(value.trim())
+}
+
 export function interpolatePlaceholders(text: string, vars: PersonalizedVars): string {
-  return text
+  const nomeAluno = vars.nomeAluno || 'seu filho(a)'
+  const studentText = isStudentNameList(nomeAluno)
+    ? text
+        .replace(/\bdo\s+\{\{nomeAluno\}\}/gi, 'de {{nomeAluno}}')
+        .replace(/\bda\s+\{\{nomeAluno\}\}/gi, 'de {{nomeAluno}}')
+    : text
+
+  return studentText
     .replace(/\{\{nome\}\}/g,       vars.nome       || 'você')
-    .replace(/\{\{nomeAluno\}\}/g,  vars.nomeAluno  || 'seu filho(a)')
+    .replace(/\{\{nomeAluno\}\}/g,  nomeAluno)
     .replace(/\{\{nomeEscola\}\}/g, vars.nomeEscola || 'a escola')
     .replace(/\{\{escola\.nome\}\}/g, vars.nomeEscola || 'a escola')
     .replace(/\{\{marca\}\}/g,      vars.marca      || vars.nomeEscola || 'a escola')
@@ -162,7 +173,6 @@ export function interpolatePlaceholders(text: string, vars: PersonalizedVars): s
     .replace(/\{\{escola\.unidade\}\}/g, vars.unidade || vars.nomeEscola || 'a escola')
     .replace(/\{\{serie\}\}/g,      vars.serie      || 'a turma')
 }
-
 function optionalText(value: string | null | undefined): string | null {
   const trimmed = value?.trim()
   return trimmed ? value! : null

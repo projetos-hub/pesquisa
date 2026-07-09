@@ -18,6 +18,10 @@ interface WelcomeStepProps {
 export default function WelcomeStep({ step, nome, nomeAluno, serie, perfil, tipo, theme, onStart }: WelcomeStepProps) {
   const isResponsavel = perfil !== 'aluno'
   const nomeDaEscola = theme?.nomeEscola ?? tipo
+  const studentReference = nomeAluno.trim()
+  const guardianIntro = studentReference
+    ? <>Que bom que você, responsável por <strong>{studentReference}</strong>, veio responder à nossa pesquisa.</>
+    : <>Que bom que você, responsável da família, veio responder à nossa pesquisa.</>
   const placeholderVars = {
     nome,
     nomeAluno,
@@ -55,9 +59,7 @@ export default function WelcomeStep({ step, nome, nomeAluno, serie, perfil, tipo
           <>
             {isResponsavel ? (
               <p>
-                Que bom que você, responsável pelo(a) aluno(a) <strong>{nomeAluno || '[nome do aluno]'}</strong>,
-                da <strong>{serie || '[série]'}</strong>, veio responder à nossa pesquisa.
-                Sua participação é muito importante para nós.
+                {guardianIntro} Sua participação é muito importante para nós.
               </p>
             ) : (
               <p>

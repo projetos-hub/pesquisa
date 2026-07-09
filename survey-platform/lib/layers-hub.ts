@@ -23,13 +23,19 @@ export interface LayersUserProfile {
     fields:      Record<string, unknown>
   }
 }
-interface LayersRelatedGroup {
+export interface LayersRelatedGroup {
   _id?: string
   id?: string
   name?: string
   alias?: string
   type?: string
   season?: string
+}
+
+export interface LayersRelatedMember {
+  _id?: string
+  name?: string
+  groups?: LayersRelatedGroup[]
 }
 
 function normalizeGroupText(value: string | null | undefined): string {
@@ -64,6 +70,39 @@ export function extractSerieTurmaFromGroups(groups: LayersRelatedGroup[] | null 
   return { serie, turma }
 }
 
+function formatStudentNameList(names: string[]): string {
+  const cleanNames = names.map(name => name.trim()).filter(Boolean)
+  if (cleanNames.length === 0) return ''
+  if (cleanNames.length === 1) return cleanNames[0]
+  if (cleanNames.length === 2) return `${cleanNames[0]} e ${cleanNames[1]}`
+  return `${cleanNames.slice(0, -1).join(', ')} e ${cleanNames[cleanNames.length - 1]}`
+}
+
+export function summarizeRelatedStudents(
+  members: LayersRelatedMember[] | null | undefined,
+): { nomeAluno: string; serie: string; turma: string; primaryStudentId?: string } {
+  const students = (members ?? []).filter(member => member.name?.trim() || member._id)
+  if (students.length === 0) {
+    return { nomeAluno: '', serie: '', turma: '' }
+  }
+
+  if (students.length > 1) {
+    return {
+      nomeAluno: formatStudentNameList(students.map(student => student.name ?? '')),
+      serie: '',
+      turma: '',
+    }
+  }
+
+  const student = students[0]
+  const groupInfo = extractSerieTurmaFromGroups(student.groups)
+  return {
+    nomeAluno: student.name ?? '',
+    serie: groupInfo.serie,
+    turma: groupInfo.turma,
+    primaryStudentId: student._id,
+  }
+}
 // Roles da Layers que correspondem a responsáveis familiares (confirmado via API)
 const RESPONSAVEL_ROLES = new Set([
   'guardian',
@@ -157,15 +196,14 @@ async function _fetchLayersUserUncached(
       })
       if (relRes.ok) {
         const rel = await relRes.json() as {
-          members?: { _id?: string; name?: string; groups?: LayersRelatedGroup[] }[]
+          members?: LayersRelatedMember[]
         }
-        const student = rel.members?.[0]
-        nomeAluno = student?.name ?? ''
-        const groupInfo = extractSerieTurmaFromGroups(student?.groups)
-        serie = groupInfo.serie
-        turma = groupInfo.turma
-        if (student?._id && !serie) {
-          const fallback = await fetchSerie(student._id, headers)
+        const related = summarizeRelatedStudents(rel.members)
+        nomeAluno = related.nomeAluno
+        serie = related.serie
+        turma = related.turma
+        if (related.primaryStudentId && !serie) {
+          const fallback = await fetchSerie(related.primaryStudentId, headers)
           serie = fallback.serie
           turma = fallback.turma
         }
@@ -256,14 +294,13 @@ async function _fetchLayersUserAnyRoleUncached(
         signal: AbortSignal.timeout(5_000),
       })
       if (relRes.ok) {
-        const rel = await relRes.json() as { members?: { _id?: string; name?: string; groups?: LayersRelatedGroup[] }[] }
-        const student = rel.members?.[0]
-        nomeAluno = student?.name ?? ''
-        const groupInfo = extractSerieTurmaFromGroups(student?.groups)
-        serie = groupInfo.serie
-        turma = groupInfo.turma
-        if (student?._id && !serie) {
-          const fallback = await fetchSerie(student._id, headers)
+        const rel = await relRes.json() as { members?: LayersRelatedMember[] }
+        const related = summarizeRelatedStudents(rel.members)
+        nomeAluno = related.nomeAluno
+        serie = related.serie
+        turma = related.turma
+        if (related.primaryStudentId && !serie) {
+          const fallback = await fetchSerie(related.primaryStudentId, headers)
           serie = fallback.serie
           turma = fallback.turma
         }
