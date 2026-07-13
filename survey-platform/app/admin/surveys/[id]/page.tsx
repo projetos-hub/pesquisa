@@ -73,15 +73,42 @@ export default async function SurveyDetailPage({ params }: PageProps) {
     unidade: c.unidade ?? null,
   }))
 
-  // Stats de respostas
-  const { data: sessions } = await supabase
-    .from('response_sessions')
-    .select('id, perfil, school, onda')
-    .eq('survey_id', id)
+  // Stats de respostas. Use count/head para evitar o limite padrão de 1000 linhas do Supabase.
+  const [
+    { count: totalCount },
+    { count: responsaveisCount },
+    { count: alunosCount },
+  ] = await Promise.all([
+    supabase
+      .from('response_sessions')
+      .select('id', { count: 'exact', head: true })
+      .eq('survey_id', id),
+    supabase
+      .from('response_sessions')
+      .select('id', { count: 'exact', head: true })
+      .eq('survey_id', id)
+      .eq('perfil', 'responsavel'),
+    supabase
+      .from('response_sessions')
+      .select('id', { count: 'exact', head: true })
+      .eq('survey_id', id)
+      .eq('perfil', 'aluno'),
+  ])
 
-  const total       = sessions?.length ?? 0
-  const responsaveis = sessions?.filter(s => s.perfil === 'responsavel').length ?? 0
-  const alunos      = sessions?.filter(s => s.perfil === 'aluno').length ?? 0
+  const total = totalCount ?? 0
+  const responsaveis = responsaveisCount ?? 0
+  const alunos = alunosCount ?? 0
+  const sessions: { school: string | null }[] = []
+  for (let from = 0; ; from += 1000) {
+    const { data: pageRows, error: pageError } = await supabase
+      .from('response_sessions')
+      .select('school')
+      .eq('survey_id', id)
+      .range(from, from + 999)
+    if (pageError) throw new Error(`response_sessions page: ${pageError.message}`)
+    sessions.push(...((pageRows ?? []) as { school: string | null }[]))
+    if ((pageRows ?? []).length < 1000) break
+  }
   const { count: sampleResolvedCount } = await supabase
     .from('survey_sample_lists')
     .select('id', { count: 'exact', head: true })
