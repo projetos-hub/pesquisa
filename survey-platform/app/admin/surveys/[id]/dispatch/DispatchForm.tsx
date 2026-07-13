@@ -74,7 +74,7 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
   const [showImport,   setShowImport]   = useState(false)
 
   // ── Personalization
-  const [personalized, setPersonalized] = useState(false)
+  const [personalized, setPersonalized] = useState(true)
 
   // ── Sequence (régua)
   const [seqMode,      setSeqMode]      = useState(false)
@@ -278,3 +278,4 @@ export default function DispatchForm({ surveyId, communities, templates, openDat
     </form>
   )
 }
+

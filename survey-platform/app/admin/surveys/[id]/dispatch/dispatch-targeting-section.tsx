@@ -94,7 +94,7 @@ export function TargetingSection({
               onChange={() => {
                 setScope(value)
                 setPreview(null)
-                if (value === 'sample') setPersonalized(true)
+                if (value !== 'group') setPersonalized(true)
               }}
               className="text-[#F7941D]"
             />
@@ -291,3 +291,4 @@ export function TargetingSection({
     </section>
   )
 }
+

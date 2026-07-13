@@ -165,6 +165,7 @@ export async function executePersonalizedJobSample(
     .update({
       processed_users: processedUsers + processed,
       failed_users:    failedUsers + failed,
+      total_users:     total,
       status:          hasMore ? 'sending' : ((processedUsers + processed) === 0 ? 'failed' : 'sent'),
       sent_at:         hasMore ? null : new Date().toISOString(),
       lock_token:      null,
@@ -193,14 +194,14 @@ export async function executePersonalizedJob(
   const failedUsers    = job?.failed_users    ?? 0
   const offset         = processedUsers + failedUsers
 
-  const { users, total } = await fetchCommunityUsers(
+  const { users, total, hasMore } = await fetchCommunityUsers(
     communityId,
     dispatch.target_roles,
     PERSONALIZED_BATCH_SIZE,
     offset,
   )
 
-  if (offset === 0 && total > 0) {
+  if (total > 0) {
     await supabase
       .from('survey_dispatch_jobs')
       .update({ total_users: total, status: 'sending' })
@@ -230,14 +231,13 @@ export async function executePersonalizedJob(
     await new Promise(r => setTimeout(r, PERSONALIZED_DELAY_MS))
   }
 
-  const newOffset = offset + users.length
-  const hasMore   = newOffset < (total || 0)
 
   await supabase
     .from('survey_dispatch_jobs')
     .update({
       processed_users: processedUsers + processed,
       failed_users:    failedUsers + failed,
+      total_users:     total,
       status:          hasMore ? 'sending' : ((processedUsers + processed) === 0 ? 'failed' : 'sent'),
       sent_at:         hasMore ? null : new Date().toISOString(),
       lock_token:      null,
@@ -247,3 +247,5 @@ export async function executePersonalizedJob(
 
   return { processed, failed, hasMore }
 }
+
+

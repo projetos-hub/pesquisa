@@ -2,21 +2,42 @@ import type { LayersUserListItem, TargetRole } from './layers-notification-paylo
 
 const LAYERS_BASE_URL = 'https://api.layers.digital'
 
-async function fetchUsersForRole(
+interface UsersPage {
+  users: LayersUserListItem[]
+  total: number
+  hasMore: boolean
+}
+
+const GUARDIAN_ROLES = new Set([
+  'guardian',
+  'father',
+  'mother',
+  'financial_responsible',
+  'academic_responsible',
+])
+
+function userMatchesRole(user: LayersUserListItem, role: TargetRole): boolean {
+  const roles = user.roles ?? []
+  if (role === 'guardian') return roles.some(r => GUARDIAN_ROLES.has(r))
+  return roles.includes(role)
+}
+
+function userMatchesAnyRole(user: LayersUserListItem, roles: TargetRole[]): boolean {
+  if (roles.length === 0) return true
+  return roles.some(role => userMatchesRole(user, role))
+}
+
+async function fetchUsersPage(
   communityId: string,
   token: string,
-  role: TargetRole | null,
   limit: number,
   offset: number,
-): Promise<{ users: LayersUserListItem[]; total: number }> {
+): Promise<UsersPage> {
   const params = new URLSearchParams({
     active: 'true',
     limit:  String(limit),
     offset: String(offset),
   })
-  if (role !== null) {
-    params.set('role', role)
-  }
 
   try {
     const res = await fetch(`${LAYERS_BASE_URL}/v1/users?${params}`, {
@@ -27,19 +48,34 @@ async function fetchUsersForRole(
       signal: AbortSignal.timeout(10_000),
     })
 
-    if (!res.ok) return { users: [], total: 0 }
+    if (!res.ok) return { users: [], total: offset, hasMore: false }
 
     const data = await res.json() as unknown
     if (Array.isArray(data)) {
-      return { users: data as LayersUserListItem[], total: (data as unknown[]).length }
+      const users = data as LayersUserListItem[]
+      const hasMore = users.length === limit
+      return {
+        users,
+        hasMore,
+        total: offset + users.length + (hasMore ? limit : 0),
+      }
     }
+
     if (typeof data === 'object' && data !== null) {
       const d = data as { hits?: LayersUserListItem[]; total?: number }
-      return { users: d.hits ?? [], total: d.total ?? 0 }
+      const users = d.hits ?? []
+      const exactTotal = typeof d.total === 'number' ? d.total : null
+      const hasMore = exactTotal === null ? users.length === limit : offset + users.length < exactTotal
+      return {
+        users,
+        hasMore,
+        total: exactTotal ?? offset + users.length + (hasMore ? limit : 0),
+      }
     }
-    return { users: [], total: 0 }
+
+    return { users: [], total: offset, hasMore: false }
   } catch {
-    return { users: [], total: 0 }
+    return { users: [], total: offset, hasMore: false }
   }
 }
 
@@ -48,38 +84,47 @@ export async function fetchCommunityUsers(
   roles: TargetRole[],
   limit = 200,
   offset = 0,
-): Promise<{ users: LayersUserListItem[]; total: number }> {
+): Promise<{ users: LayersUserListItem[]; total: number; hasMore: boolean }> {
   const token = process.env.LAYERS_API_TOKEN
-  if (!token) return { users: [], total: 0 }
+  if (!token) return { users: [], total: 0, hasMore: false }
 
   const allRoles: TargetRole[] = ['guardian', 'student', 'admin']
   const isAllRoles = allRoles.every(r => roles.includes(r))
 
   if (roles.length === 0 || isAllRoles) {
-    return fetchUsersForRole(communityId, token, null, limit, offset)
+    return fetchUsersPage(communityId, token, limit, offset)
   }
 
-  if (roles.length === 1) {
-    return fetchUsersForRole(communityId, token, roles[0], limit, offset)
-  }
-
-  const results = await Promise.all(
-    roles.map(role => fetchUsersForRole(communityId, token, role, limit + offset, 0))
-  )
-
+  const needed = offset + limit
+  const matched: LayersUserListItem[] = []
   const seen = new Set<string>()
-  const merged: LayersUserListItem[] = []
-  for (const { users } of results) {
-    for (const user of users) {
-      if (!seen.has(user._id)) {
-        seen.add(user._id)
-        merged.push(user)
-      }
+  let rawOffset = 0
+  let rawHasMore = true
+  let estimatedRawTotal = 0
+
+  while (matched.length < needed && rawHasMore) {
+    const page = await fetchUsersPage(communityId, token, limit, rawOffset)
+    estimatedRawTotal = page.total
+
+    for (const user of page.users) {
+      if (!user._id || seen.has(user._id)) continue
+      seen.add(user._id)
+      if (userMatchesAnyRole(user, roles)) matched.push(user)
     }
+
+    rawOffset += page.users.length
+    rawHasMore = page.hasMore && page.users.length > 0
   }
 
-  const total = merged.length
-  const page  = merged.slice(offset, offset + limit)
+  const users = matched.slice(offset, needed)
+  const hasMore = matched.length > needed || rawHasMore
+  const total = hasMore
+    ? offset + users.length + limit
+    : matched.length
 
-  return { users: page, total }
+  return {
+    users,
+    hasMore,
+    total: Math.max(total, estimatedRawTotal === rawOffset ? matched.length : total),
+  }
 }

@@ -122,15 +122,58 @@ function jobProgress(job: Job): number {
 }
 
 function dispatchProgress(dispatch: Dispatch) {
-  const totalUsers = dispatch.jobs.reduce((sum, job) => sum + (job.total_users ?? 0), 0)
+  const userTotal = dispatch.jobs.reduce((sum, job) => sum + (job.total_users ?? 0), 0)
   const sentUsers = dispatch.jobs.reduce((sum, job) => sum + (job.processed_users ?? 0), 0)
   const failedUsers = dispatch.jobs.reduce((sum, job) => sum + (job.failed_users ?? 0), 0)
-  const handledUsers = sentUsers + failedUsers
-  const pendingUsers = Math.max(0, totalUsers - handledUsers)
-  const percent = totalUsers > 0 ? clampPercent((handledUsers / totalUsers) * 100) : 0
   const activeJobs = dispatch.jobs.filter(job => job.status === 'sending' || job.status === 'pending').length
 
-  return { totalUsers, sentUsers, failedUsers, handledUsers, pendingUsers, percent, activeJobs }
+  if (!dispatch.personalized && userTotal === 0) {
+    const totalUsers = dispatch.total_jobs || dispatch.jobs.length
+    const sentJobs = dispatch.jobs.filter(job => job.status === 'sent').length
+    const failedJobs = dispatch.jobs.filter(job => job.status === 'failed').length
+    const handledUsers = sentJobs + failedJobs + dispatch.jobs.filter(job => job.status === 'skipped').length
+    const pendingUsers = Math.max(0, totalUsers - handledUsers)
+    const percent = totalUsers > 0 ? clampPercent((handledUsers / totalUsers) * 100) : 0
+
+    return {
+      totalUsers,
+      sentUsers: sentJobs,
+      failedUsers: failedJobs,
+      handledUsers,
+      pendingUsers,
+      percent,
+      activeJobs,
+      unit: 'comunidades',
+      sentLabel: 'aceitas pela Layers',
+      failedLabel: 'falhas',
+    }
+  }
+
+  const handledUsers = sentUsers + failedUsers
+  const pendingUsers = Math.max(0, userTotal - handledUsers)
+  const percent = userTotal > 0 ? clampPercent((handledUsers / userTotal) * 100) : 0
+
+  return {
+    totalUsers: userTotal,
+    sentUsers,
+    failedUsers,
+    handledUsers,
+    pendingUsers,
+    percent,
+    activeJobs,
+    unit: 'usuarios',
+    sentLabel: 'enviados',
+    failedLabel: 'falhos',
+  }
+}
+
+function nonPersonalizedJobLabel(status: string): string {
+  if (status === 'sent') return 'Aceito pela Layers'
+  if (status === 'failed') return 'Falha na Layers'
+  if (status === 'sending') return 'Enviando para a Layers'
+  if (status === 'pending') return 'Aguardando envio'
+  if (status === 'skipped') return 'Ignorado'
+  return status
 }
 
 function progressTone(status: string): 'amber' | 'green' | 'red' | 'gray' {
@@ -255,7 +298,7 @@ export default function DispatchHistory({
                 <span className="block truncate text-sm font-medium text-gray-700">{dispatch.title}</span>
                 {dispatch.status === 'sending' && (
                   <span className="mt-1 block text-xs text-gray-500">
-                    {progress.percent}% processado - {progress.handledUsers}/{progress.totalUsers || 0} usuarios
+                    {progress.percent}% processado - {progress.handledUsers}/{progress.totalUsers || 0} {progress.unit}
                   </span>
                 )}
               </span>
@@ -308,7 +351,7 @@ export default function DispatchHistory({
                         {progress.percent}% processado
                       </p>
                       <p className="text-xs text-gray-500">
-                        {progress.handledUsers}/{progress.totalUsers || 0} usuarios tratados
+                        {progress.handledUsers}/{progress.totalUsers || 0} {progress.unit} tratados
                         {progress.pendingUsers > 0 ? ` - ${progress.pendingUsers} pendentes` : ''}
                       </p>
                     </div>
@@ -320,8 +363,8 @@ export default function DispatchHistory({
                   </div>
                   <ProgressBar value={progress.percent} tone={progressTone(dispatch.status)} />
                   <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-600 sm:grid-cols-4">
-                    <span><strong className="text-gray-800">{progress.sentUsers}</strong> enviados</span>
-                    <span><strong className="text-gray-800">{progress.failedUsers}</strong> falhos</span>
+                    <span><strong className="text-gray-800">{progress.sentUsers}</strong> {progress.sentLabel}</span>
+                    <span><strong className="text-gray-800">{progress.failedUsers}</strong> {progress.failedLabel}</span>
                     <span><strong className="text-gray-800">{progress.activeJobs}</strong> comunidades ativas</span>
                     <span><strong className="text-gray-800">{dispatch.total_jobs}</strong> comunidades totais</span>
                   </div>
@@ -381,16 +424,22 @@ export default function DispatchHistory({
                           )}
                         </div>
 
-                        <div>
-                          <div className="mb-1 flex justify-between text-[11px] text-gray-500">
-                            <span>{jobProgress(job)}%</span>
-                            <span>
-                              {jobHandledUsers(job)}/{job.total_users ?? 0} usuarios
-                              {job.failed_users > 0 ? ` (${job.failed_users} falhos)` : ''}
-                            </span>
+                        {dispatch.personalized ? (
+                          <div>
+                            <div className="mb-1 flex justify-between text-[11px] text-gray-500">
+                              <span>{jobProgress(job)}%</span>
+                              <span>
+                                {jobHandledUsers(job)}/{job.total_users ?? 0} usuarios
+                                {job.failed_users > 0 ? ` (${job.failed_users} falhos)` : ''}
+                              </span>
+                            </div>
+                            <ProgressBar value={jobProgress(job)} tone={progressTone(job.status)} />
                           </div>
-                          <ProgressBar value={jobProgress(job)} tone={progressTone(job.status)} />
-                        </div>
+                        ) : (
+                          <div className="text-[11px] text-gray-500">
+                            {nonPersonalizedJobLabel(job.status)}
+                          </div>
+                        )}
 
                         <div className="text-right text-[11px] text-gray-400">
                           {job.sent_at ? formatDate(job.sent_at) : 'em lotes de ate 75'}
@@ -451,3 +500,4 @@ export default function DispatchHistory({
     </div>
   )
 }
+

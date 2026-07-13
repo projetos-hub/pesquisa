@@ -100,6 +100,17 @@ export async function POST(
     }
 
     // Validação específica para scope 'sample'
+    // Disparos para comunidade inteira precisam expandir usuarios pela API da Layers.
+    // O alvo group=all da API de notificacao apenas confirma aceite do payload,
+    // mas nao fornece auditoria nem garantia operacional de entrega por usuario.
+    if ((body.target_scope === 'all' || body.target_scope === 'communities') && !body.personalized) {
+      logWarn('dispatch.community_scope_requires_personalized', surveyLogContext, { targetScope: body.target_scope })
+      return json(
+        { error: 'Disparos para comunidades precisam usar modo personalizado para enviar usuario a usuario.' },
+        { status: 422 },
+      )
+    }
+
     if (body.target_scope === 'sample') {
       if (!body.personalized) {
         logWarn('dispatch.sample_requires_personalized', surveyLogContext)
@@ -311,3 +322,4 @@ export async function GET(
     return json({ error: 'Erro interno' }, { status: 500 })
   }
 }
+
