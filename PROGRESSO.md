@@ -1503,6 +1503,19 @@ Status atualizado:
 
 ---
 
+### Nota futura - Entregar pesquisa para One Page
+
+Quando Lucas falar em "entregar pesquisa pra Onepage", retomar o contexto em `docs/onepage-integration-future-mission.md`.
+
+Manual original salvo fora do repo:
+
+```text
+C:\Users\lucas.mesquita\Downloads\MANUAL_INTEGRACAO_APP_ONE_PAGE.md
+```
+
+Resumo operacional: o One Page e dono de rota, shell, marca, unidade e escopo. A pesquisa deve consumir o `scope` resolvido por `frontend/server.js`, usando `mapa_coligada_filial.json` como fonte de verdade e filtrando por `CODCOLIGADA + CODFILIAL`. Preferir secao nativa SSR/Express/HTMX/Alpine dentro do One Page; nao criar segunda logica de escopo nem app React/Next separado sem necessidade tecnica real.
+
+---
 ### Sessao 2026-06-25 - Incidente e fechamento do disparo Amostral 2
 
 | Item | Status | Detalhe |
@@ -1645,6 +1658,30 @@ Regra operacional durante esta missao:
 - Nao commitar nem publicar novas mudancas enquanto a bateria estiver em teste, salvo pedido explicito.
 - Nao commitar o HAR `docs/app.layers.education.criacaocomunicado.har`; ele e material sensivel de diagnostico.
 
+#### Atualizacao 2026-06-30 - aguardando configuracao Layers
+
+Diagnostico sincronizado com abertura real do modulo Comunicados:
+- Lucas abriu o modulo Comunicados na Layers em 2026-06-30.
+- Consulta em `layers_posts_provider_calls` logo depois mostrou apenas 2 chamadas totais, ambas manuais via PowerShell.
+- Ultima chamada registrada: `2026-06-30 13:51:59.937237+00`, `action=manual-audit-check`, `returned_count=3`.
+- Conclusao: naquele momento, o feed visual de Comunicados nao chamou nosso endpoint `/api/layers/actions/posts`.
+
+Contato com a Layers:
+- Equipe Layers confirmou que a configuracao para habilitar sincronizacao de comunicados e feita por eles.
+- Carlos Rafael assumiu apoio e perguntou qual era o app provedor.
+- Resposta enviada:
+  - App provedor: `Pesquisa`
+  - App id/provider: `m3jzq5s00b`
+  - Action/Respond: `@layers:Posts:getUpdatedAfter`
+  - Endpoint: `https://pesquisa-nu-sand.vercel.app/api/layers/actions/posts`
+  - Versao: `1`
+  - Comunidade de teste: `raizeducacao`
+
+Status atual:
+- Aguardando a Layers ajustar/habilitar a sincronizacao interna do modulo Comunicados para consumir o provider `m3jzq5s00b`.
+- Quando a Layers avisar que ajustou, repetir o teste abrindo Comunicados e consultar `layers_posts_provider_calls` para confirmar chamada real da UI.
+- Se houver chamada com `returned_count > 0` e renderizacao visual, limpar registros `CONTRATO`/T15/T16 e remover/reverter o estado temporario de teste.
+
 ---
 
 ### Sessao 2026-06-29 - Marca e Unidade nas comunidades
@@ -1676,3 +1713,404 @@ Observacoes:
 - O push em `main` foi concluido; o remoto registrou bypass da regra de PR.
 - O worktree continua com alteracoes nao relacionadas e temporarias que nao entraram no commit: docs antigos, HAR, `tmp`, `node_modules/.vite`, `.temp/cli-latest` e alguns arquivos com apenas remocao de BOM.
 - Proximo cuidado: fazer smoke visual no admin e baixar uma base XLSX/CSV para conferir as colunas novas em ambiente real.
+
+
+---
+
+### Sessao 2026-07-06 - Comunicados Layers: provider ativo, testes de renderizacao e payload minimo
+
+| Item | Status | Detalhe |
+|---|---|---|
+| Configuracao Layers para `raizeducacao` | confirmado | A Layers passou a chamar o provider `m3jzq5s00b`/`@layers:Posts:getUpdatedAfter` com `user_agent=axios/1.16.0` |
+| Endpoint provider | confirmado | `https://pesquisa-nu-sand.vercel.app/api/layers/actions/posts` responde `200` e registra auditoria em `layers_posts_provider_calls` |
+| Poll automatico | confirmado | Chamadas automaticas apareceram em pares: full sync com `after=1960-06-30...` e incremental com `after` do ultimo `updated_at` |
+| Novo comunicado geral | recebido pela Layers | `TESTE VISUAL - Pesquisa Raiz 2026-07-06 13:00`, id `daf8817e-495f-489f-b61d-c480c727f66b`; apos a criacao, full sync subiu para `returned_count=12` |
+| Renderizacao visual | ainda nao validada | Mesmo com provider chamado e itens retornados, os comunicados ainda nao apareceram no modulo visual observado pelo usuario |
+| Hipotese principal | aberta | Pode haver filtro silencioso por `category`, `targets`, usuario/membro, categoria pre-cadastrada ou indexacao interna da Layers |
+| Testes de target | criados | `raiz1234`, `lucas.mesquita@raizeducacao.com.br`, `projetos@raizeducacao.com.br`, `targets.users`, `targets.members` e `groups:["all"]` |
+| Payload minimo | publicado | Commit `94148bd` (`test(comunicados): permite payload minimo no provider`) permite responder sem campos opcionais quando `targets.__responseMode="minimal"` |
+| Testes minimos | criados | `TESTE MINIMO 1 - Groups all`, `TESTE MINIMO 2 - Targets vazio`, `TESTE MINIMO 3 - Email Projetos`, todos de 2026-07-06 16:13 |
+
+#### Evidencias principais
+
+- Antes do ajuste da Layers, a abertura do modulo Comunicados nao gerava chamadas reais no nosso endpoint.
+- Depois da configuracao por comunidade, `layers_posts_provider_calls` registrou chamadas automaticas para `community_id='raizeducacao'`, `action='@layers:Posts:getUpdatedAfter'`, `version='1'`, `user_agent='axios/1.16.0'`.
+- A Layers recebeu os registros novos: apos o primeiro teste visual, chamadas automaticas retornaram `12` no full sync e `1` no incremental.
+- O problema atual nao e discovery, provider ou Vercel. A falha esta na renderizacao/filtro/cache/indexacao do modulo visual da Layers, ou no contrato semantico de `targets/category`.
+
+#### Testes criados em producao para `raizeducacao`
+
+- `TESTE VISUAL - Pesquisa Raiz 2026-07-06 13:00` - `category=Geral`, `groups:["all"]`.
+- `TESTE VISUAL 2 - Avisos Geral 2026-07-06 14:22` - `category=Avisos`, texto sem HTML, `groups:["all"]`.
+- `TESTE VISUAL 3 - Usuario Lucas 2026-07-06 14:22` - `targets.users=["6377844ce70782001c8b06fc"]`.
+- `TESTE VISUAL 4 - Identificador raiz1234 2026-07-06 14:29` - `targets.users=["raiz1234"]`.
+- `TESTE VISUAL 5 - Email Lucas 2026-07-06 14:29` - `targets.users=["lucas.mesquita@raizeducacao.com.br"]`.
+- `TESTE VISUAL 6 - Member raiz1234 2026-07-06 14:29` - `targets.members=["raiz1234"]`.
+- `TESTE VISUAL 7 - Email Projetos 2026-07-06 15:54` - `targets.users=["projetos@raizeducacao.com.br"]`.
+- `TESTE VISUAL 8 - Member Projetos 2026-07-06 15:54` - `targets.members=["projetos@raizeducacao.com.br"]`.
+- `TESTE MINIMO 1 - Groups all 2026-07-06 16:13` - resposta minima, sem `category`, `author`, `approved`, `attachments`, com `targets.groups=["all"]`.
+- `TESTE MINIMO 2 - Targets vazio 2026-07-06 16:13` - resposta minima com `targets={}`.
+- `TESTE MINIMO 3 - Email Projetos 2026-07-06 16:13` - resposta minima com `targets.users=["projetos@raizeducacao.com.br"]`.
+
+#### Como retomar
+
+1. Abrir Comunicados na Layers com usuario valido de `raizeducacao`, preferencialmente `projetos@raizeducacao.com.br`.
+2. Consultar `layers_posts_provider_calls` e verificar se houve poll apos `2026-07-06T19:13:47.661024+00:00`.
+3. Se o poll retornar os testes minimos e nada renderizar, pedir para a Layers o contrato exato de renderizacao do feed visual, incluindo formato de `targets`, categorias aceitas, necessidade de `memberId`/`userId` interno e campos opcionais obrigatorios na pratica.
+4. Quando concluir a bateria, arquivar/remover registros `TESTE VISUAL`, `TESTE MINIMO` e `CONTRATO` da tabela `comunicados`.
+5. Manter `94148bd` apenas enquanto a bateria de payload minimo for util; depois remover o modo `__responseMode` se nao virar ferramenta permanente de diagnostico.
+
+
+---
+
+### Sessao 2026-07-07 - Amostra, RF e taxa de resposta
+
+| Item | Status | Detalhe |
+|---|---|---|
+| Encoding do upload Excel | concluido | Corrigidos textos quebrados no fluxo de amostra e centralizado parser de Excel |
+| Base TOTVS de renovacao | analisada | App passou a aceitar aliases `ALUNO`, `FILIAL`, `EMAIL_ALUNO`, `EMAIL_RESP_FINANCEIRO`, `EMAIL_RESP_ACADEMICO` |
+| Importacao somente RF | concluido | Upload ganhou modo para importar somente email do responsavel financeiro |
+| Limpeza de amostra | concluido | Admin ganhou acao manual para limpar amostra antiga antes de nova importacao |
+| Restricao de entrada | corrigido | `/api/portal/resolve` filtra pesquisas amostrais antes da primeira tela, evitando card visivel para usuario fora da amostra |
+| UI de disparos | corrigido | Historico mostra disparos operacionais legados e separa template draft de envio real |
+| Taxa de resposta | concluido | Admin, respostas, export, API publica, CSV/Sheets e XLSX retornam `respostas / amostra valida` |
+| Amostra com flag aberta | corrigido | Pesquisa com amostra carregada mas `access_control=aberta` agora tambem exibe taxa e colunas de amostra |
+| Documentacao | concluido | Criado `docs/release-2026-07-07-amostra-rf-export-response-rate.md` |
+
+Commits publicados:
+- `ab9a988 fix(sample): corrige encoding e aliases do upload Excel`
+- `33ee097 feat(sample): permite importar somente email do RF`
+- `64c77c7 feat(sample): adiciona limpeza manual da amostra`
+- `70f347c fix: restringe entrada e corrige UI de disparos`
+- `aeea609 feat(export): adiciona taxa de resposta da amostra`
+- `b5adc1c fix(export): detecta amostra carregada sem flag amostral`
+
+Gates validados:
+
+```bash
+cd survey-platform
+npx vitest run __tests__/unit/portal-resolve.test.ts __tests__/unit/sample-excel.test.ts
+npx vitest run __tests__/unit/public-responses-auth.test.ts __tests__/unit/report-xlsx-schema.test.ts __tests__/unit/report-xlsx-workbook.test.ts
+npm run typecheck
+npm run build
+```
+
+Detalhamento completo:
+- `docs/release-2026-07-07-amostra-rf-export-response-rate.md`
+
+---
+
+### Sessao 2026-07-10 - Auditoria de amostras: intencao de rematricula x Amostral 2
+
+| Item | Status | Detalhe |
+|---|---|---|
+| Bases brutas da intencao | analisado | As 3 bases brutas somavam 15.996 linhas; no modo responsavel financeiro eram 15.991 entradas e 13.983 contatos unicos por `community_id + email` |
+| Amostra da intencao | confirmado | `intencao-rematricula` tem 13.994 registros; consistente com importacao somente RF, com 11 extras vs bases analisadas |
+| Potencial com todos os e-mails | levantado | Se importasse aluno + RF + responsavel academico, haveria 36.726 contatos unicos por `community_id + email` |
+| `NOT_FOUND` da intencao | investigado | 502 registros: 420 nao encontrados na comunidade, 80 inativos na Layers, 1 e-mail invalido, 1 ativo agora |
+| Arquivo de inatividade | gerado | `tmp/not_found_intencao_layers_inatividade_20260709.xlsx` |
+| Intersecao de amostras | analisado | Comparacao entre `intencao-rematricula` e `amostral-2-2026` pela chave `community_id + email` |
+| Proposta de produto | documentado | Criar visao em `/admin/auditoria` para "Sobreposicao de amostras" em tempo real |
+
+#### Intersecao geral
+
+| Metrica | Valor |
+|---|---:|
+| Amostra `intencao-rematricula` | 13.994 |
+| Amostra `amostral-2-2026` | 12.903 |
+| Pessoas nas duas por `community_id + email` | 4.192 |
+| So na intencao | 9.802 |
+| So na Amostral 2 | 8.711 |
+| % da intencao tambem na Amostral 2 | 29,96% |
+| % da Amostral 2 tambem na intencao | 32,49% |
+
+#### Intersecao por marca
+
+| Marca | Intencao total | Amostral 2 total | Nas duas | % da intencao | % da Amostral 2 |
+|---|---:|---:|---:|---:|---:|
+| Matriz Educacao | 4.429 | 3.499 | 1.234 | 27,86% | 35,27% |
+| Colegio Qi | 2.171 | 1.830 | 671 | 30,91% | 36,67% |
+| Apogeu | 1.901 | 1.510 | 544 | 28,62% | 36,03% |
+| Leonardo da Vinci | 1.690 | 1.543 | 532 | 31,48% | 34,48% |
+| Apogeu Global School | 1.170 | 1.014 | 386 | 32,99% | 38,07% |
+| Global Tree | 736 | 663 | 194 | 26,36% | 29,26% |
+| Sarah Dawsey | 442 | 507 | 185 | 41,86% | 36,49% |
+| Escola Sa Pereira | 540 | 560 | 169 | 31,30% | 30,18% |
+| Colegio Americano | 351 | 313 | 117 | 33,33% | 37,38% |
+| Colegio Unificado | 353 | 313 | 105 | 29,75% | 33,55% |
+| Colegio Uniao | 211 | 146 | 55 | 26,07% | 37,67% |
+
+Documento completo:
+- `docs/plan/auditoria-sobreposicao-amostras.md`
+
+Proxima implementacao sugerida:
+1. Criar endpoint admin read-only `GET /api/admin/auditoria/sample-overlap?baseSurveyId=...&compareSurveyId=...`.
+2. Criar aba "Sobreposicao de amostras" em `/admin/auditoria`.
+3. Exibir cards gerais, tabela por marca, tabela por unidade e conflitos Layers.
+4. Adicionar export XLSX com abas `Resumo`, `Por marca`, `Por unidade`, `Nas duas`, `So na A`, `So na B` e `Conflitos Layers`.
+
+---
+
+### TODO 2026-07-14 - Backfill serie/turma da Amostral 2
+
+Contexto verificado em 2026-07-13:
+- Pesquisa `amostral-2-2026` (`897a492a-62ed-42a8-8b7d-8bebf01dbd22`) tem 1.182 respostas.
+- `serie` e `turma` vazios em 837 respostas (70,8%).
+- `school` vazio em 100% das respostas; `community_id` quase completo (apenas 1 vazio).
+- O problema concentra respostas ate 2026-07-06; a partir de 2026-07-08 o enriquecimento passou a preencher quase tudo.
+- `survey_sample_lists` nao tem serie/turma/grade, apenas `community_id`, `email`, `nome`, `layers_user_id`, `perfil`.
+- Recuperacao via Layers API parece segura para responsaveis com exatamente 1 aluno relacionado; responsaveis com multiplos alunos precisam regra/manual; alunos retornaram 403 na rota de matriculas com o token atual.
+
+Plano sugerido:
+1. Gerar dry-run de backfill sem update.
+2. Atualizar automaticamente apenas sessoes sem `serie/turma` em que Layers retorna exatamente 1 aluno vinculado com serie/turma.
+3. Exportar ambiguos: responsaveis com multiplos alunos, alunos sem acesso a matricula, registros sem match.
+4. Se necessario, completar o restante via base original/TOTVS por `community_id + email`.
+
+---
+
+### TODO 2026-07-13 - Disparo para comunidade inteira sem base
+
+Contexto do incidente do Arraia Qi:
+- O disparo direto por comunidade usando `group=all` na Layers retornou `success=true`, mas nao gerou entrega auditavel por usuario.
+- O caminho confiavel foi importar uma base/amostra, resolver `layers_user_id` por e-mail e disparar em modo personalizado/amostral.
+- Para o futuro, precisamos de um fluxo proprio para enviar para todos os usuarios de uma comunidade sem depender de planilha.
+
+Requisitos sugeridos:
+1. Criar uma previa de alcance por comunidade que puxe usuarios da Layers com paginacao completa.
+2. Filtrar perfis localmente por regra de negocio (`guardian`, `father`, `mother`, `financial_responsible`, `academic_responsible`, etc.).
+3. Mostrar total por comunidade antes do envio e bloquear se a contagem vier zero/inconsistente.
+4. Materializar os destinatarios em uma tabela/lista temporaria auditavel antes de disparar.
+5. Enviar usuario a usuario, com `notification_audit_logs`, progresso por comunidade e retry.
+6. Nao usar `group=all` como garantia de entrega ate termos confirmacao formal/contrato da Layers.
+
+Status: adiado. Nao implementar agora; usar base/amostra quando o disparo precisar ser operacionalmente auditavel.
+
+---
+
+### Sessao 2026-07-13 - Disparo Simbiose Arraia Qi
+
+Documento completo:
+- `docs/simbiose-arraia-qi-2026.md`
+
+Resumo:
+- Pesquisa: `arraia-qi-2026`.
+- Base TOTVS: `BI 1.00.3.5`, `CODPERLET=2026`, com `19.682` linhas retornadas.
+- Filtro Qi aplicado por par `CODCOLIGADA + CODFILIAL`, nao apenas por coligada.
+- Pares usados: `2/2` Tijuca, `2/6` Freguesia, `2/7` Rio 2, `2/10` Valqueire, `6/1` Metropolitano, `10/1` Recreio.
+- Planilha de links por comunidade usada: `C:\Users\lucas.mesquita\Downloads\links-portal-layers-comunidades.xlsx`.
+- Base final entregue: `C:\Users\lucas.mesquita\Downloads\base-disparo-arraia-qi-simbiose.xlsx`.
+- Destinatarios unicos: `3.518`.
+- Lotes Simbiose: `47`.
+- Resultado: todos os lotes retornaram `204 No Content`.
+
+Templates finais corretos:
+- `385` Tijuca.
+- `386` Freguesia.
+- `387` Rio 2.
+- `388` Valqueire.
+- `389` Metropolitano.
+- `390` Recreio.
+
+Templates descartados:
+- `373` a `378`: encoding corrompido.
+- `379` a `384`: ASCII de contingencia, nao usar como versao final.
+
+Aprendizados:
+- Validar encoding do JSON retornado pela Simbiose antes de considerar template pronto.
+- Usar link fixo por comunidade Layers quando o destino depende da unidade.
+- Nao registrar senha/token em docs, commits ou logs.
+
+Produto futuro:
+- E viavel integrar a API de templates/disparos Simbiose no app como fluxo admin server-side.
+- Requisitos minimos: client server-only, env vars seguras, preview obrigatorio, auditoria por template/chunk/destinatario, confirmacao explicita e retry idempotente por chunk.
+
+---
+
+### Sessao 2026-07-13 - Arraia Qi: incidente de disparo, fix e envio auditavel por amostra
+
+| Item | Status | Detalhe |
+|---|---|---|
+| Diagnostico do disparo original | concluido | Dispatch `7ffaf5e5-fb38-4cb6-85e0-f806db9ca1ee` foi criado como `target_scope=communities` e `personalized=false`; a Layers retornou `success=true` para 6 comunidades, mas nao houve auditoria por usuario nem confirmacao de entrega |
+| Causa raiz | concluido | `group=all` confirma aceite do payload por comunidade, mas nao e evidencia de entrega usuario a usuario; o app tambem mostrava isso como `0/0 usuarios`, mascarando o problema operacional |
+| Fix de codigo | publicado | Commit `f4e2cd9 fix(dispatch): expandir comunidades usuario a usuario`, com deploy Vercel `success` |
+| Protecao no backend | concluido | Novos disparos `all/communities` sem `personalized=true` agora sao bloqueados pelo endpoint de dispatch |
+| Paginacao Layers | corrigido | `fetchCommunityUsers` passou a paginar respostas em array sem `total` confiavel e filtrar roles localmente |
+| UI historico | corrigido | Historico nao apresenta mais dispatch nao personalizado como `0/0 usuarios`; diferencia aceite por comunidade de envio personalizado por usuario |
+| Tentativas diretas canceladas | concluido | Dispatches `f8e8a7b9-8f1b-4bdd-950a-9f90f44bde7a` e `fdf55e4f-160f-4c9d-a6b3-1fd0e998e828` foram cancelados sem envio real (`audit=0`) |
+| Amostra real importada | concluido | Planilha `C:/Users/lucas.mesquita/Downloads/base-disparo-arraia-qi-simbiose.xlsx`, aba `destinatarios`, substituiu a amostra antiga de teste da pesquisa |
+| Resolucao Layers | concluido | 3.518 destinatarios importados; 3.417 responsaveis resolvidos; 101 `NOT_FOUND`/fora do alvo familiar; zero pendentes |
+| Disparo final | concluido | Dispatch `800ac49d-ef75-4bc6-82c1-4d6c857e4b0c`, `target_scope=sample`, `personalized=true`, status final `sent` |
+| Resultado final | concluido | 3.417/3.417 enviados, 0 falhas, 6/6 comunidades concluidas |
+| Auditoria | atencao menor | `notification_audit_logs` tem 3.416 registros `sent` para 3.417 processados; diferenca de 1 log em `qi-metropolitano`, sem falha no job |
+| Documentacao | concluido | Criado `docs/release-2026-07-13-arraia-qi-dispatch.md` e atualizado `docs/operations/runbooks.md` |
+
+#### Amostra importada e resolvida
+
+| Comunidade | Amostra | Resolvidos | NOT_FOUND/fora do alvo |
+|---|---:|---:|---:|
+| `qi-rio2` | 775 | 748 | 27 |
+| `qi-metropolitano` | 732 | 715 | 17 |
+| `qi-tijuca` | 667 | 645 | 22 |
+| `qi-freguesia` | 464 | 453 | 11 |
+| `qi-recreio` | 461 | 448 | 13 |
+| `az51800x` | 419 | 408 | 11 |
+| **Total** | **3.518** | **3.417** | **101** |
+
+#### Dispatch final por comunidade
+
+| Comunidade | Status | Enviados | Falhas | Total |
+|---|---|---:|---:|---:|
+| `qi-rio2` | `sent` | 748 | 0 | 748 |
+| `qi-metropolitano` | `sent` | 715 | 0 | 715 |
+| `qi-tijuca` | `sent` | 645 | 0 | 645 |
+| `qi-freguesia` | `sent` | 453 | 0 | 453 |
+| `qi-recreio` | `sent` | 448 | 0 | 448 |
+| `az51800x` | `sent` | 408 | 0 | 408 |
+| **Total** | **sent** | **3.417** | **0** | **3.417** |
+
+#### Gates validados
+
+```bash
+cd survey-platform
+npm run typecheck
+npx vitest run __tests__/unit/layers-notification-users.test.ts __tests__/unit/layers-notifications.test.ts __tests__/unit/dispatch-form-utils.test.ts
+npm run lint
+```
+
+Resultado:
+- Typecheck passou.
+- Testes focados passaram: 22 testes.
+- Lint passou sem erros; restaram warnings conhecidos de `<img>` e imports nao usados em outras telas.
+
+#### Decisoes operacionais
+
+- Para disparos criticos, usar amostra/base resolvida ate existir fluxo nativo confiavel de comunidade inteira.
+- Nao considerar `group=all` como entrega auditavel.
+- Antes de disparar, conferir total da amostra, resolvidos, `NOT_FOUND`, jobs antigos `sending/scheduled` e auditoria.
+- Depois do envio, conferir `sum(processed_users) = sum(total_users)` e `failed_users = 0`.
+
+#### Proximos passos futuros
+
+1. Investigar a diferenca de 1 audit log em `qi-metropolitano`.
+2. Criar fluxo nativo de "comunidade inteira sem base": preview de alcance, materializacao de destinatarios, filtro local de roles, envio usuario a usuario e auditoria obrigatoria.
+3. Adicionar alerta/UX para impedir interpretacao de aceite por comunidade como envio para pessoas.
+
+Documento completo:
+- `docs/release-2026-07-13-arraia-qi-dispatch.md`
+
+---
+
+### TODO 2026-07-14 - Integrar canal Comunicado Simbiose no disparo do app
+
+Objetivo:
+- Adicionar na tela atual de disparo uma opcao de canal `Comunicado Simbiose`, junto de Push/E-mail Layers.
+- O mesmo texto do disparo deve gerar template(s) na Simbiose e disparar para a mesma amostra/segmentacao escolhida no app.
+
+Premissa validada:
+- A base/amostra precisa ter e-mail e `community_id`.
+- `codcoligada`, `codfilial`, marca, unidade, nome fantasia, link do portal Layers e ids Simbiose devem ser enriquecidos por uma tabela auxiliar no banco, usando `community_id` como chave.
+- Nao exigir que toda planilha importada venha com coligada/filial.
+
+Tabela auxiliar sugerida:
+```sql
+community_simbiose_mapping (
+  community_id text primary key,
+  marca text not null,
+  unidade text not null,
+  nome_fantasia text not null,
+  codcoligada int not null,
+  codfilial int not null,
+  portal_link text not null,
+  simbiose_community_id text not null,
+  simbiose_parent_id text not null default 'raizeducacao',
+  active boolean not null default true,
+  updated_at timestamptz not null default now()
+)
+```
+
+Mapeamento Qi usado como referencia inicial:
+- `qi-freguesia` -> `2/6`
+- `qi-tijuca` -> `2/2`
+- `qi-rio2` -> `2/7`
+- `az51800x` -> `2/10`
+- `qi-metropolitano` -> `6/1`
+- `qi-recreio` -> `10/1`
+
+Fluxo desejado:
+1. Admin escreve titulo/corpo do disparo uma vez.
+2. Admin seleciona publico: comunidades, amostra, grupo de amostra ou futuramente nao respondentes.
+3. Admin marca canais: Push Layers, E-mail Layers, Comunicado Simbiose.
+4. Se Simbiose estiver marcado, o app enriquece destinatarios via `community_simbiose_mapping`.
+5. O app mostra preview obrigatorio:
+   - total por unidade/template;
+   - e-mails validos/invalidos/vazios;
+   - duplicados removidos;
+   - comunidades sem mapeamento;
+   - links do portal por unidade;
+   - quantidade de chunks de 80.
+6. Ao confirmar, o app cria template(s) na Simbiose por unidade quando o link for diferente.
+7. O app dispara em chunks de 80 e salva auditoria por chunk.
+8. Retry deve reenviar apenas chunks que nao retornaram `204`.
+
+Cuidados obrigatorios:
+- Simbiose deve rodar server-side, nunca no frontend.
+- Credenciais em env vars/conta tecnica, nao senha pessoal.
+- Validar encoding do template antes do disparo; bloquear se vier `?` ou `\uFFFD` no retorno.
+- Bloquear disparo se alguma comunidade da base nao tiver `codcoligada`, `codfilial` ou `portal_link`.
+- Criar protecao contra disparo duplicado da mesma pesquisa/amostra/template.
+
+Fases sugeridas:
+1. Criar migration + seed inicial de `community_simbiose_mapping`.
+2. Criar `lib/simbiose-client.ts` server-only (`login`, `createTemplate`, `triggerTemplate`).
+3. Criar preview/auditoria Simbiose no endpoint de dispatch.
+4. Adicionar checkbox/canal na UI de disparo.
+5. Criar tabelas de auditoria (`simbiose_dispatches`, `simbiose_dispatch_templates`, `simbiose_dispatch_chunks`).
+6. Implementar disparo e retry por chunk.
+
+Status: guardado para retomar amanha.
+
+---
+
+### Sessao 2026-07-13 - Backfill serie/turma da Amostral 2
+
+| Item | Status | Detalhe |
+|---|---|---|
+| Slug | confirmado | `amostral-2-2026` (`897a492a-62ed-42a8-8b7d-8bebf01dbd22`) |
+| Diagnostico inicial | confirmado | 1.182 respostas totais; 837 com `serie` ou `turma` vazias |
+| Script operacional | criado | `survey-platform/scripts/backfill-amostral2-serie-turma.mjs`, com modo dry-run e `--apply` |
+| Dry-run completo | concluido | 837 sessoes analisadas; 533 candidatas seguras; 304 ignoradas por regra de seguranca |
+| Backfill aplicado | concluido | 533 sessoes atualizadas, todas com `serie` e `turma` preenchidas |
+| Fonte dos dados | confirmado | 533 vieram de `related_groups` da Layers, somente em responsaveis com exatamente 1 aluno relacionado |
+| Restante pendente | aberto | 304 sessoes continuam sem `serie/turma` |
+| Sheets | verificado | 1.182 sessoes seguem `synced_to_sheets=false`, entao o sync futuro deve ler os campos novos do banco |
+
+#### Resultado apos update
+
+| Metrica | Valor |
+|---|---:|
+| Respostas totais | 1.182 |
+| Com `serie` preenchida | 878 |
+| Com `turma` preenchida | 878 |
+| Ainda sem `serie` | 304 |
+| Ainda sem `turma` | 304 |
+| Ainda sem `serie` ou `turma` | 304 |
+
+#### Pendencias restantes
+
+| Motivo | Quantidade |
+|---|---:|
+| Alunos com `enrollments_403` na Layers | 144 |
+| Responsaveis com multiplos alunos relacionados | 137 |
+| Responsaveis sem aluno relacionado retornado | 22 |
+| Sessao sem identidade/comunidade suficiente | 1 |
+| **Total** | **304** |
+
+Relatorios locais:
+- `tmp/amostral2-serie-turma-dry-run-2026-07-13T21-34-43-569Z.json`
+- `tmp/amostral2-serie-turma-apply-2026-07-13T21-39-25-466Z.json`
+
+Proximos passos para fechar os 304 restantes:
+1. Para alunos, usar uma credencial/rota Layers com permissao de matriculas ou cruzar via base TOTVS.
+2. Para responsaveis com multiplos filhos, cruzar com TOTVS/amostra original para escolher a turma correta ou marcar como multi-aluno.
+3. Revisar manualmente a sessao sem identidade suficiente.
