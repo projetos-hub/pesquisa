@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+﻿import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { AdminPageShell } from '../../AdminPageShell'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
@@ -25,7 +25,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
 
   if (!survey) notFound()
 
-  // Busca perguntas com opções
+  // Busca perguntas com opÃ§Ãµes
   const { data: questionsRaw } = await supabase
     .from('questions')
     .select('id, order_index, type, key, title, description, required, settings')
@@ -73,7 +73,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
     unidade: c.unidade ?? null,
   }))
 
-  // Stats de respostas. Use count/head para evitar o limite padr�o de 1000 linhas do Supabase.
+  // Stats de respostas. Use count/head para evitar o limite padrao de 1000 linhas do Supabase.
   const [
     { count: totalCount },
     { count: responsaveisCount },
@@ -140,7 +140,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
       {/* Breadcrumb */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/admin/surveys" className="text-gray-400 hover:text-gray-600 text-sm">
-          ← Pesquisas
+          â† Pesquisas
         </Link>
         <span className="text-gray-300">/</span>
         <h2 className="text-lg font-semibold text-gray-900 truncate">{survey.title}</h2>
@@ -151,7 +151,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { label: 'Total de respostas', value: total,       color: 'text-[#F7941D]', hint: null },
-            { label: 'Responsáveis',       value: responsaveis, color: 'text-blue-600', hint: null },
+            { label: 'ResponsÃ¡veis',       value: responsaveis, color: 'text-blue-600', hint: null },
             { label: 'Alunos',            value: alunos,       color: 'text-purple-600', hint: null },
             ...(isSampleSurvey
               ? [{
@@ -213,13 +213,13 @@ export default async function SurveyDetailPage({ params }: PageProps) {
           />
         </div>
 
-        {/* Adaptações por comunidade */}
+        {/* AdaptaÃ§Ãµes por comunidade */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h3 className="text-sm font-semibold text-gray-700">Adaptações por comunidade</h3>
+              <h3 className="text-sm font-semibold text-gray-700">AdaptaÃ§Ãµes por comunidade</h3>
               <p className="text-xs text-gray-400 mt-0.5">
-                Personalize textos por comunidade sem duplicar perguntas, respostas ou relatórios.
+                Personalize textos por comunidade sem duplicar perguntas, respostas ou relatÃ³rios.
               </p>
             </div>
             <Link
@@ -237,7 +237,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
             <div>
               <h3 className="text-sm font-semibold text-gray-700">Amostra Segmentada</h3>
               <p className="text-xs text-gray-400 mt-0.5">
-                Faça upload de uma lista de usuários para segmentar esta pesquisa.
+                FaÃ§a upload de uma lista de usuÃ¡rios para segmentar esta pesquisa.
               </p>
             </div>
             <Link
@@ -255,14 +255,14 @@ export default async function SurveyDetailPage({ params }: PageProps) {
             <div>
               <h3 className="text-sm font-semibold text-gray-700">Disparos</h3>
               <p className="text-xs text-gray-400 mt-0.5">
-                Envie notificações push e email para as famílias via Layers.
+                Envie notificaÃ§Ãµes push e email para as famÃ­lias via Layers.
               </p>
             </div>
             <Link
               href={`/admin/surveys/${id}/dispatch`}
               className="bg-[#F7941D] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#D97B10] transition-colors font-medium"
             >
-              📢 Disparar
+              ðŸ“¢ Disparar
             </Link>
           </div>
         </div>
@@ -273,25 +273,25 @@ export default async function SurveyDetailPage({ params }: PageProps) {
             href={`/admin/surveys/${id}/communities`}
             className="text-sm text-[#F7941D] hover:text-[#D97B10] font-medium"
           >
-            Identidade Visual →
+            Identidade Visual â†’
           </Link>
           {total > 0 && (
             <Link
               href={`/admin/surveys/${id}/responses`}
               className="text-sm text-[#F7941D] hover:text-[#D97B10] font-medium"
             >
-              Ver todas as respostas →
+              Ver todas as respostas â†’
             </Link>
           )}
           <Link
             href={`/admin/surveys/${id}/disparos`}
             className="text-sm text-[#F7941D] hover:text-[#D97B10] font-medium"
           >
-            Disparos →
+            Disparos â†’
           </Link>
         </div>
 
-        {/* Formulário de edição */}
+        {/* FormulÃ¡rio de ediÃ§Ã£o */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Metadados</h3>
           <SurveyEditForm survey={survey} settings={survey.settings as Record<string, unknown> | null} />
