@@ -69,6 +69,7 @@ const sessions: SessionRow[] = [{
   nome_responsavel: 'Maria',
   nome_aluno: 'Joao',
   serie: '3A',
+  turma: 'T-301',
   email: 'maria@example.com',
   school: 'school-1',
   onda: '1',
@@ -130,6 +131,9 @@ describe('buildAdvancedXlsx', () => {
       'Unidade',
       'Nome da Comunidade',
       'community_id',
+      'serie',
+      'turma',
+      'onda',
       'categoriaNPS',
       'NPS',
       'Clareza',
@@ -140,10 +144,13 @@ describe('buildAdvancedXlsx', () => {
     expect(raw?.getCell('D2').value).toBe('Valqueire')
     expect(raw?.getCell('E2').value).toBe('Colegio Qi Valqueire')
     expect(raw?.getCell('F2').value).toBe('community-1')
-    expect(raw?.getCell('M2').value).toBe('promotor')
-    expect(raw?.getCell('O2').value).toBe(10)
-    expect(raw?.getCell('P2').value).toBe(5)
-    expect(raw?.getCell('Q2').value).toBe('Otimo atendimento')
+    expect(raw?.getCell('K2').value).toBe('3A')
+    expect(raw?.getCell('L2').value).toBe('T-301')
+    expect(raw?.getCell('M2').value).toBe('1')
+    expect(raw?.getCell('N2').value).toBe('promotor')
+    expect(raw?.getCell('P2').value).toBe(10)
+    expect(raw?.getCell('Q2').value).toBe(5)
+    expect(raw?.getCell('R2').value).toBe('Otimo atendimento')
 
     const compare = workbook.getWorksheet('Comparativo')
     expect(compare?.getCell('A2').value).toBe('Pesquisa CSAT')

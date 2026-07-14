@@ -236,6 +236,7 @@ export function buildAbaRespostasBrutas(
       session.email || '',
       session.perfil === 'aluno' ? 'estudante' : 'responsavel',
       session.serie ?? '',
+      session.turma ?? '',
       session.onda ?? '',
       categoria,
       session.submitted_at,
