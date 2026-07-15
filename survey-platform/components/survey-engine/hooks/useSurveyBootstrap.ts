@@ -14,7 +14,7 @@ const STORAGE_BASE = process.env.NEXT_PUBLIC_SUPABASE_URL
   : null
 
 export function useSurveyBootstrap(surveySlug: string, searchParams: SearchParamsLike) {
-  const initialCommunityId = searchParams.get('communityId') ?? ''
+  const initialCommunityId = searchParams.get('layers_community_id') ?? searchParams.get('communityId') ?? ''
   const loadingLogoUrl = STORAGE_BASE && initialCommunityId
     ? `${STORAGE_BASE}/${initialCommunityId}/logo.png`
     : null
@@ -26,10 +26,10 @@ export function useSurveyBootstrap(surveySlug: string, searchParams: SearchParam
 
   useEffect(() => {
     async function loadCtx() {
-      let userId      = ''
-      let communityId = searchParams.get('communityId') || ''
-      let session     = ''
-      let accountId   = searchParams.get('accountId')   || ''
+      let userId      = searchParams.get('layers_user_id') || searchParams.get('userId') || ''
+      let communityId = searchParams.get('layers_community_id') || searchParams.get('communityId') || ''
+      let session     = searchParams.get('layers_session') || searchParams.get('session') || ''
+      let accountId   = searchParams.get('layers_account_id') || searchParams.get('accountId') || ''
 
       if (typeof window !== 'undefined' && (window as LayersPortalWindow).LayersPortal) {
         try {
@@ -39,10 +39,10 @@ export function useSurveyBootstrap(surveySlug: string, searchParams: SearchParam
               setTimeout(() => reject(new Error('LayersPortal timeout')), 3000)
             ),
           ])
-          userId      = (window as LayersPortalWindow).LayersPortal!.userId      || ''
+          userId      = (window as LayersPortalWindow).LayersPortal!.userId      || userId
           communityId = (window as LayersPortalWindow).LayersPortal!.communityId || communityId
           accountId   = (window as LayersPortalWindow).LayersPortal!.accountId   || accountId
-          session     = (window as LayersPortalWindow).LayersPortal!.session     || ''
+          session     = (window as LayersPortalWindow).LayersPortal!.session     || session
         } catch {
           // URL params remain as fallback.
         }
@@ -52,6 +52,7 @@ export function useSurveyBootstrap(surveySlug: string, searchParams: SearchParam
       let hubPerfil: Perfil = 'responsavel'
       let hubNomeAluno = ''
       let hubSerie     = ''
+      let hubTurma     = ''
       let hubEmail     = ''
       let hubMeta: Record<string, unknown> = {}
 
@@ -62,7 +63,7 @@ export function useSurveyBootstrap(surveySlug: string, searchParams: SearchParam
           const res = await fetch(`/api/user-context?${qs}`)
           if (res.ok) {
             const profile = await res.json() as {
-              nome: string; perfil: Perfil; nomeAluno: string; serie: string
+              nome: string; perfil: Perfil; nomeAluno: string; serie: string; turma: string
               email: string; meta: Record<string, unknown>
             } | null
             if (profile) {
@@ -70,6 +71,7 @@ export function useSurveyBootstrap(surveySlug: string, searchParams: SearchParam
               hubPerfil    = profile.perfil    || 'responsavel'
               hubNomeAluno = profile.nomeAluno || ''
               hubSerie     = profile.serie     || ''
+              hubTurma     = profile.turma     || ''
               hubEmail     = profile.email     || ''
               hubMeta      = profile.meta      || {}
             }
@@ -95,6 +97,7 @@ export function useSurveyBootstrap(surveySlug: string, searchParams: SearchParam
         perfil:     ((searchParams.get('role') || hubPerfil) as Perfil),
         nomeAluno:  hubNomeAluno || searchParams.get('studentName') || '',
         serie:      hubSerie     || searchParams.get('grade')       || '',
+        turma:      hubTurma     || searchParams.get('turma')       || '',
         email:      hubEmail || searchParams.get('email') || '',
         layersMeta: hubMeta,
       })
@@ -168,3 +171,4 @@ export function useSurveyBootstrap(surveySlug: string, searchParams: SearchParam
     loadingLogoUrl,
   }
 }
+

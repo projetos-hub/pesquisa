@@ -21,7 +21,9 @@ export default function StepCheckbox({ step, tipo, onNext, onBack, isLast, loadi
   const alignStyle = textAlignStyle(textAlign)
   const alignClassName = textAlignClassName(textAlign)
 
-  const opcoes = [...step.opcoes].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  const opcoes = step.sortOptions === false
+    ? step.opcoes
+    : [...step.opcoes].sort((a, b) => a.localeCompare(b, 'pt-BR'))
   const min = step.minSelecoes ?? (step.obrigatorio ? 1 : 0)
   const max = step.maxSelecoes ?? Infinity
   const ok = selected.length >= min
@@ -114,3 +116,4 @@ export default function StepCheckbox({ step, tipo, onNext, onBack, isLast, loadi
     </div>
   )
 }
+

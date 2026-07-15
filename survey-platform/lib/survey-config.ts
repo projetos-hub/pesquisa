@@ -8,6 +8,7 @@ import type {
   TipoPesquisa,
   Answers,
   ConditionalDef,
+  BranchFlowDef,
 } from '@/components/survey-engine/utils/types'
 
 // ─── Tipos para rows do banco ─────────────────────────────────────────────────
@@ -97,9 +98,16 @@ function applyQuestionTextOverride(
 
 /** Campos de base compartilhados por todos os steps */
 function baseFields(q: QuestionRow) {
+  const flowBlockId = typeof q.settings?.flowBlockId === 'string' ? q.settings.flowBlockId.trim() : ''
+  const flowBlockLabel = typeof q.settings?.flowBlockLabel === 'string' ? q.settings.flowBlockLabel.trim() : ''
+  const branchFlow = q.settings?.branchFlow as BranchFlowDef | undefined
+
   return {
     ...(q.conditional_on ? { conditional_on: q.conditional_on } : {}),
     ...(q.only_for_roles?.[0] ? { somentePara: q.only_for_roles[0] as Perfil } : {}),
+    ...(flowBlockId ? { flowBlockId } : {}),
+    ...(flowBlockLabel ? { flowBlockLabel } : {}),
+    ...(branchFlow?.type === 'answer_routes' ? { branchFlow } : {}),
     ...(q.settings?.textAlign ? { textAlign: q.settings.textAlign as StepDef['textAlign'] } : {}),
   }
 }
@@ -123,6 +131,9 @@ const STEP_BUILDERS: Record<string, StepBuilder> = {
     ...(q.title       ? { titulo: q.title }       : {}),
     ...(q.description ? { desc:   q.description } : {}),
     perguntaBilingue: (q.settings?.perguntaBilingue as boolean) ?? false,
+    ...(q.settings?.order === 'asc' || q.settings?.order === 'desc' ? { order: q.settings.order as 'asc' | 'desc' } : {}),
+    ...(typeof q.settings?.lowLabel === 'string' ? { lowLabel: q.settings.lowLabel as string } : {}),
+    ...(typeof q.settings?.highLabel === 'string' ? { highLabel: q.settings.highLabel as string } : {}),
     ...baseFields(q),
   }),
 
@@ -194,6 +205,7 @@ const STEP_BUILDERS: Record<string, StepBuilder> = {
     obrigatorio: q.required,
     ...(q.settings?.minSelecoes ? { minSelecoes: q.settings.minSelecoes as number } : {}),
     ...(q.settings?.maxSelecoes ? { maxSelecoes: q.settings.maxSelecoes as number } : {}),
+    ...(typeof q.settings?.sortOptions === 'boolean' ? { sortOptions: q.settings.sortOptions as boolean } : {}),
     ...baseFields(q),
   }),
 
@@ -315,3 +327,4 @@ export function applyConditionals(config: SurveyConfig): SurveyConfig {
 
   return { ...config, steps }
 }
+

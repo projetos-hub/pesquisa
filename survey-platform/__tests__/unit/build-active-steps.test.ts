@@ -55,6 +55,70 @@ describe('buildActiveSteps', () => {
     expect(withConditional[withConditional.findIndex(step => stepId(step) === 'bilingue') + 1]?.type).toBe('thankyou')
   })
 
+
+  it('activates a linear block from a router answer', () => {
+    const survey: SurveyConfig = {
+      id: 'branching',
+      titulo: 'Branching',
+      tipo_pesquisa: 'qualitativa',
+      publico: ['responsavel'],
+      steps: [
+        { type: 'welcome' },
+        {
+          type: 'radio',
+          key: 'renovou',
+          titulo: 'Renovou?',
+          pergunta: 'Voce renovou?',
+          opcoes: ['Sim', 'Nao'],
+          branchFlow: {
+            type: 'answer_routes',
+            routes: [
+              { value: 'Sim', blockId: 'fluxo-sim' },
+              { value: 'Nao', blockId: 'fluxo-nao' },
+            ],
+          },
+        },
+        { type: 'text', key: 'motivo_sim', titulo: 'Sim', pergunta: '', flowBlockId: 'fluxo-sim' },
+        { type: 'text', key: 'motivo_nao', titulo: 'Nao', pergunta: '', flowBlockId: 'fluxo-nao' },
+        { type: 'thankyou' },
+      ],
+    }
+
+    expect(buildActiveSteps(survey, 'responsavel', {}).map(stepId)).toEqual(['welcome', 'renovou', 'thankyou'])
+    expect(buildActiveSteps(survey, 'responsavel', { renovou: 'Sim' }).map(stepId)).toEqual(['welcome', 'renovou', 'motivo_sim', 'thankyou'])
+    expect(buildActiveSteps(survey, 'responsavel', { renovou: 'Nao' }).map(stepId)).toEqual(['welcome', 'renovou', 'motivo_nao', 'thankyou'])
+  })
+
+
+  it('routes by answer field for NPS router questions', () => {
+    const survey: SurveyConfig = {
+      id: 'nps-branching',
+      titulo: 'NPS branching',
+      tipo_pesquisa: 'quantitativa',
+      publico: ['responsavel'],
+      steps: [
+        {
+          type: 'nps',
+          key: 'nps',
+          branchFlow: {
+            type: 'answer_routes',
+            answerField: 'nps',
+            routes: [
+              { value: '10', blockId: 'promotor' },
+              { value: '0', blockId: 'detrator' },
+            ],
+          },
+        },
+        { type: 'text', key: 'elogio', titulo: 'Elogio', pergunta: '', flowBlockId: 'promotor' },
+        { type: 'text', key: 'critica', titulo: 'Critica', pergunta: '', flowBlockId: 'detrator' },
+        { type: 'thankyou' },
+      ],
+    }
+
+    expect(buildActiveSteps(survey, 'responsavel', { nps: { nps: 10 } }).map(stepId)).toEqual(['nps', 'elogio', 'thankyou'])
+    expect(buildActiveSteps(survey, 'responsavel', { nps: { nps: 0 } }).map(stepId)).toEqual(['nps', 'critica', 'thankyou'])
+  })
+
   it('includes role-specific steps for matching role', () => {
     const active = buildActiveSteps(baseSurvey(), 'aluno', {})
 

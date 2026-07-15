@@ -33,6 +33,12 @@ interface SurveyRunnerProps {
   surveySlug: string
 }
 
+
+function pruneAnswersForSteps(answers: Answers, steps: { type: string; key?: string }[]): Answers {
+  const activeKeys = new Set(steps.map(step => step.key).filter((key): key is string => Boolean(key)))
+  return Object.fromEntries(Object.entries(answers).filter(([key]) => activeKeys.has(key)))
+}
+
 export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const searchParams = useSearchParams()
   const { ctx, survey, surveyNotFound, accessDenied, theme, loadingLogoUrl } = useSurveyBootstrap(surveySlug, searchParams)
@@ -59,7 +65,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
 
   const {
     onda,
-    school, tipo, nome: nomeCompleto, perfil, nomeAluno, serie,
+    school, tipo, nome: nomeCompleto, perfil, nomeAluno, serie, turma,
     communityId, userId, accountId, email, layersMeta,
   } = ctx
 
@@ -110,20 +116,23 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
 
   // ── Navegação ────────────────────────────────────────────────────────────────
   function next(key: string, data: unknown) {
-    const newAnswers = { ...answers, [key]: data }
-    setAnswers(newAnswers)
+    const nextAnswers = { ...answers, [key]: data }
+    const newActive = buildActiveSteps(survey!, perfil, nextAnswers)
+    const prunedAnswers = pruneAnswersForSteps(nextAnswers, newActive)
+    setAnswers(prunedAnswers)
 
-    if (isLastData) {
-      submitPesquisa(newAnswers, activeSteps)
+    const newDataSteps = newActive.filter(s => s.type !== 'welcome' && s.type !== 'thankyou')
+    const newLastDataStep = newDataSteps[newDataSteps.length - 1]
+    const isCurrentLastData = Boolean(newLastDataStep && stepId(newLastDataStep) === currentKey)
+
+    if (isCurrentLastData) {
+      submitPesquisa(prunedAnswers, newActive)
     } else {
-      // Recalcula com newAnswers para capturar mudanças condicionais (bilíngue)
-      const newActive = buildActiveSteps(survey!, perfil, newAnswers)
       const currentIndexInNewActive = newActive.findIndex(s => stepId(s) === currentKey)
       const nextStep  = newActive[currentIndexInNewActive + 1]
       if (nextStep) setCurrentKey(stepId(nextStep))
     }
   }
-
   function back() {
     if (currentStep?.type === 'thankyou') return
     if (currentIdx > 0) {
@@ -150,6 +159,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
           nomeCompleto,
           nomeAluno,
           serie,
+          turma,
           email,
           layersMeta,
           answers: finalAnswers,

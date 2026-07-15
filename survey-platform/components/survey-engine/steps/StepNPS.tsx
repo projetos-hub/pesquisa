@@ -18,6 +18,11 @@ export default function StepNPS({ step, tipo, onNext, onBack }: StepNPSProps) {
   const [tentou, setTentou] = useState(false)
   const perguntaBilingue = step.perguntaBilingue || false
   const ok = nps !== null && (!perguntaBilingue || bil !== null)
+  const order = step.order ?? 'desc'
+  const scores = order === 'asc' ? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] : [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
+  const lowLabel = step.lowLabel ?? 'Nada provavel'
+  const highLabel = step.highLabel ?? 'Extremamente provavel'
+  const hintLabels = order === 'asc' ? [lowLabel, highLabel] : [highLabel, lowLabel]
   const textAlign = step.textAlign ?? 'left'
   const alignStyle = textAlignStyle(textAlign)
   const alignClassName = textAlignClassName(textAlign)
@@ -32,7 +37,7 @@ export default function StepNPS({ step, tipo, onNext, onBack }: StepNPSProps) {
       <p className="step-title" style={alignStyle}>{step.titulo ?? `Qual a probabilidade de recomendar a ${tipo} a um amigo ou colega?`}</p>
       {step.desc && <p className="step-desc" style={alignStyle}>{step.desc}</p>}
       <div className="nps-row">
-        {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0].map(n => (
+        {scores.map(n => (
           <button
             key={n}
             type="button"
@@ -46,8 +51,8 @@ export default function StepNPS({ step, tipo, onNext, onBack }: StepNPSProps) {
         ))}
       </div>
       <div className="nps-hint">
-        <span>Extremamente provável</span>
-        <span>Nada provável</span>
+        <span>{hintLabels[0]}</span>
+        <span>{hintLabels[1]}</span>
       </div>
       {perguntaBilingue && (
         <div className="q-group" style={{ marginTop: 28 }}>
@@ -79,3 +84,4 @@ export default function StepNPS({ step, tipo, onNext, onBack }: StepNPSProps) {
     </div>
   )
 }
+

@@ -15,6 +15,19 @@ export interface ConditionalDef {
   value: string
 }
 
+export interface BranchRouteDef {
+  value: string
+  blockId: string
+  blockLabel?: string
+}
+
+export interface BranchFlowDef {
+  type: 'answer_routes'
+  answerField?: string
+  routes: BranchRouteDef[]
+  defaultBlockId?: string
+}
+
 // ─── Seção de escala (bilíngue etc.) ─────────────────────────────────────────
 export interface StepSection {
   key: string
@@ -27,6 +40,9 @@ interface BaseStep {
   somentePara?: Perfil
   condicional?: (answers: Answers) => boolean
   conditional_on?: ConditionalDef   // spec serializável — reconstruído por applyConditionals()
+  flowBlockId?: string
+  flowBlockLabel?: string
+  branchFlow?: BranchFlowDef
   textAlign?: TextAlign
 }
 
@@ -41,6 +57,9 @@ export interface NPSStepDef extends BaseStep {
   type: 'nps'
   key: string
   perguntaBilingue?: boolean
+  order?: 'asc' | 'desc'
+  lowLabel?: string
+  highLabel?: string
   titulo?: string
   desc?: string
 }
@@ -89,6 +108,7 @@ export interface CheckboxStepDef extends BaseStep {
   obrigatorio?: boolean
   minSelecoes?: number
   maxSelecoes?: number
+  sortOptions?: boolean
 }
 
 export interface FileUploadStepDef extends BaseStep {
@@ -167,6 +187,7 @@ export interface SurveyContext {
   perfil: Perfil
   nomeAluno: string
   serie: string
+  turma: string
   email: string
   layersMeta: Record<string, unknown>
 }
@@ -176,3 +197,4 @@ export interface NPSAnswer {
   nps: number
   participa_bilingue?: string
 }
+
