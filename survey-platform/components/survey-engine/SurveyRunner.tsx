@@ -112,7 +112,8 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
 
   // isLastData = o passo atual é o último que contém perguntas (não é welcome nem thankyou)
   const lastDataStep = dataSteps[dataSteps.length - 1]
-  const isLastData   = lastDataStep && stepId(lastDataStep) === currentKey
+  const isBranchRouter = Boolean(currentStep?.branchFlow)
+  const isLastData   = lastDataStep && stepId(lastDataStep) === currentKey && !isBranchRouter
 
   // ── Navegação ────────────────────────────────────────────────────────────────
   function next(key: string, data: unknown) {
