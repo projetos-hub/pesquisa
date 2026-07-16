@@ -31,6 +31,7 @@ function readPath(vars: Record<string, string | undefined>, key: string): string
     'escola.nome': 'nomeEscola',
     'escola.marca': 'marca',
     'escola.unidade': 'unidade',
+    'mais.nome': 'programaMais',
     'pesquisa.titulo': 'surveyTitle',
   }
 

@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { buildActiveSteps, stepId } from './utils/buildActiveSteps'
+import { applyStepPlaceholders } from './utils/applyStepPlaceholders'
 import type {
   Answers, SurveyContext, NPSAnswer,
   WelcomeStepDef, NPSStepDef, ScaleStepDef, RadioStepDef,
@@ -48,6 +49,26 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
 
+  const displaySurvey = useMemo(() => {
+    if (!survey || !ctx) return survey
+    const nomeEscola = theme?.nomeEscola ?? ctx.tipo
+    return applyStepPlaceholders(survey, {
+      nome: ctx.nome,
+      email: ctx.email,
+      nomeAluno: ctx.nomeAluno,
+      serie: ctx.serie,
+      nomeEscola,
+      marca: theme?.marca,
+      unidade: theme?.unidade,
+      school: ctx.school,
+      tipo: ctx.tipo,
+      surveyTitle: survey.titulo,
+      openDate: ctx.openDate,
+      closeDate: ctx.closeDate,
+      programaMais: theme?.programaMais ?? 'Mais Raiz',
+    })
+  }, [ctx, survey, theme])
+
   // ── Loading personalizado por comunidade ─────────────────────────────────────
   // ── Comunidade não autorizada ─────────────────────────────────────────────────
   if (accessDenied) {
@@ -59,9 +80,13 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   }
 
   // ── Survey não encontrado ou erro de rede ────────────────────────────────────
-  if (surveyNotFound || !survey) {
+  const renderedSurvey = displaySurvey ?? survey
+
+  if (surveyNotFound || !renderedSurvey) {
     return <SurveyNotFoundCard surveySlug={surveySlug} />
   }
+
+  const currentSurvey = renderedSurvey!
 
   const {
     onda,
@@ -70,9 +95,9 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   } = ctx
 
   // Status e datas: instalação do banco tem prioridade sobre URL params
-  const status    = (survey.installation?.status    ?? ctx.status)    as SurveyContext['status']
-  const openDate  =  survey.installation?.open_date  ?? ctx.openDate
-  const closeDate =  survey.installation?.close_date ?? ctx.closeDate
+  const status    = (currentSurvey.installation?.status    ?? ctx.status)    as SurveyContext['status']
+  const openDate  =  currentSurvey.installation?.open_date  ?? ctx.openDate
+  const closeDate =  currentSurvey.installation?.close_date ?? ctx.closeDate
 
   // themeVars: CSS custom properties para o card container
   const themeVars = theme?.primaryColor
@@ -83,26 +108,26 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
     : undefined
 
   // ── Perfil sem acesso ────────────────────────────────────────────────────────
-  const allowAllRoles = (survey.settings as { allow_all_roles?: boolean } | undefined)?.allow_all_roles
-  if (!allowAllRoles && survey.publico && !survey.publico.includes(perfil)) {
-    return <RoleDeniedCard title={survey.titulo} />
+  const allowAllRoles = (currentSurvey.settings as { allow_all_roles?: boolean } | undefined)?.allow_all_roles
+  if (!allowAllRoles && currentSurvey.publico && !currentSurvey.publico.includes(perfil)) {
+    return <RoleDeniedCard title={currentSurvey.titulo} />
   }
 
   // ── Prazo ────────────────────────────────────────────────────────────────────
   if (status === 'nao_aberta') {
-    return <NotOpenCard title={survey.titulo} openDate={openDate} />
+    return <NotOpenCard title={currentSurvey.titulo} openDate={openDate} />
   }
 
   if (status === 'encerrada') {
-    return <ClosedCard title={survey.titulo} closeDate={closeDate} />
+    return <ClosedCard title={currentSurvey.titulo} closeDate={closeDate} />
   }
 
   if (status === 'pausada') {
-    return <PausedCard title={survey.titulo} themeVars={themeVars} />
+    return <PausedCard title={currentSurvey.titulo} themeVars={themeVars} />
   }
 
   // ── Steps ativos ─────────────────────────────────────────────────────────────
-  const activeSteps = buildActiveSteps(survey, perfil, answers)
+  const activeSteps = buildActiveSteps(currentSurvey, perfil, answers)
   const currentIdx  = activeSteps.findIndex(s => stepId(s) === currentKey)
   const currentStep = activeSteps[currentIdx] || activeSteps[0]
 
@@ -118,7 +143,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   // ── Navegação ────────────────────────────────────────────────────────────────
   function next(key: string, data: unknown) {
     const nextAnswers = { ...answers, [key]: data }
-    const newActive = buildActiveSteps(survey!, perfil, nextAnswers)
+    const newActive = buildActiveSteps(currentSurvey, perfil, nextAnswers)
     const prunedAnswers = pruneAnswersForSteps(nextAnswers, newActive)
     setAnswers(prunedAnswers)
 
@@ -250,7 +275,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
           school={school}
           tipo={tipo}
           theme={theme}
-          indicacaoLinks={survey!.settings?.indicacao_links}
+          indicacaoLinks={currentSurvey.settings?.indicacao_links}
         />
       )
     }
@@ -264,7 +289,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
   return (
     <div className="card" style={themeVars}>
       <div className="header">
-        <h1>{survey.titulo}</h1>
+        <h1>{currentSurvey.titulo}</h1>
       </div>
 
       {!isWelcome && !isThankyou && dataSteps.length > 0 && (

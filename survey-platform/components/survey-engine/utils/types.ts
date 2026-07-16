@@ -139,6 +139,7 @@ export interface SurveyTheme {
   nomeEscola?: string
   marca?: string
   unidade?: string
+  programaMais?: string
   welcomeMessage?: string
   thankyouMessage?: string
   welcomeTextAlign?: TextAlign

@@ -17,6 +17,7 @@ export const PLACEHOLDER_TOKENS: PlaceholderToken[] = [
   { key: 'marca', label: 'Marca', category: 'Escola', example: 'Matriz' },
   { key: 'escola.marca', label: 'Marca', category: 'Escola', example: 'Matriz' },
   { key: 'unidade', label: 'Unidade', category: 'Escola', example: 'Bangu' },
+  { key: 'programaMais', label: 'Nome do programa Mais', category: 'Escola', example: 'Mais Qi' },
   { key: 'escola.unidade', label: 'Unidade', category: 'Escola', example: 'Bangu' },
   { key: 'school', label: 'Codigo/nome da escola', category: 'Escola', example: 'botafogo' },
   { key: 'tipo', label: 'Tipo de unidade', category: 'Escola', example: 'escola' },
