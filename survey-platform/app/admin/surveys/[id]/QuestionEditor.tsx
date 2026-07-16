@@ -120,6 +120,7 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
           accept: form.formAccept,
           correctAnswer: form.formCorrectAnswer,
           textAlign: form.formTextAlign,
+          ...(form.formHideTitle ? { hideTitle: true } : {}),
           ...(form.formType === 'scale' || form.formType === 'scale_sections' ? {
             scaleValues: parseScaleValues(form.formScaleValues),
             scaleHighLabel: form.formScaleHighLabel,
@@ -162,6 +163,7 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
         accept: form.formAccept,
         correctAnswer: form.formCorrectAnswer,
         textAlign: form.formTextAlign,
+        hideTitle: form.formHideTitle,
         scaleValues: form.formScaleValues,
         scaleHighLabel: form.formScaleHighLabel,
         scaleLowLabel: form.formScaleLowLabel,

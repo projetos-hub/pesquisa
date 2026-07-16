@@ -109,6 +109,7 @@ function baseFields(q: QuestionRow) {
     ...(flowBlockLabel ? { flowBlockLabel } : {}),
     ...(branchFlow?.type === 'answer_routes' ? { branchFlow } : {}),
     ...(q.settings?.textAlign ? { textAlign: q.settings.textAlign as StepDef['textAlign'] } : {}),
+    ...(q.settings?.hideTitle === true ? { hideTitle: true } : {}),
   }
 }
 

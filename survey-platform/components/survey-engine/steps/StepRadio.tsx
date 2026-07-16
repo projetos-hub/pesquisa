@@ -30,7 +30,7 @@ export default function StepRadio({ step, tipo, onNext, onBack, isLast, loading 
 
   return (
     <div className={alignClassName}>
-      <p className="step-title" style={alignStyle}>{step.titulo}</p>
+      {!step.hideTitle && <p className="step-title" style={alignStyle}>{step.titulo}</p>}
       {step.desc && <p className="step-desc" style={alignStyle}>{step.desc}</p>}
       <div className="q-group">
         <p className="question-label" style={alignStyle}>{resolve(step.pergunta)}</p>

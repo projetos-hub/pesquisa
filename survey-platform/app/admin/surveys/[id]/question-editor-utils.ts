@@ -72,6 +72,7 @@ export function applyQuestionMetadata(
     accept: string
     correctAnswer: string
     textAlign: string
+    hideTitle: boolean
     scaleValues: string
     scaleHighLabel: string
     scaleLowLabel: string
@@ -96,6 +97,7 @@ export function applyQuestionMetadata(
           accept: metadata.accept,
           correctAnswer: metadata.correctAnswer,
           textAlign: metadata.textAlign,
+          ...(metadata.hideTitle ? { hideTitle: true } : {}),
           ...(metadata.type === 'scale' || metadata.type === 'scale_sections' ? {
             scaleValues: parseScaleValues(metadata.scaleValues),
             scaleHighLabel: metadata.scaleHighLabel,

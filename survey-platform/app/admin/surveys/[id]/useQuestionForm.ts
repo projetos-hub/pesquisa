@@ -28,6 +28,7 @@ export interface QuestionFormState {
   formCorrectAnswer: string
   formQuizMode: boolean
   formTextAlign: 'left' | 'center' | 'right' | 'justify'
+  formHideTitle: boolean
   formScaleValues: string
   formScaleHighLabel: string
   formScaleLowLabel: string
@@ -51,6 +52,7 @@ export interface QuestionFormActions {
   setFormCorrectAnswer: (v: string) => void
   setFormQuizMode: (v: boolean) => void
   setFormTextAlign: (v: 'left' | 'center' | 'right' | 'justify') => void
+  setFormHideTitle: (v: boolean) => void
   setFormScaleValues: (v: string) => void
   setFormScaleHighLabel: (v: string) => void
   setFormScaleLowLabel: (v: string) => void
@@ -100,6 +102,7 @@ export function useQuestionForm(
   const [formCorrectAnswer, setFormCorrectAnswer] = useState('')
   const [formQuizMode, setFormQuizMode]         = useState(false)
   const [formTextAlign, setFormTextAlign]       = useState<'left' | 'center' | 'right' | 'justify'>('left')
+  const [formHideTitle, setFormHideTitle]       = useState(false)
   const [formScaleValues, setFormScaleValues]   = useState('')
   const [formScaleHighLabel, setFormScaleHighLabel] = useState('')
   const [formScaleLowLabel, setFormScaleLowLabel] = useState('')
@@ -126,6 +129,7 @@ export function useQuestionForm(
     setFormCorrectAnswer((q.settings?.correctAnswer as string) || '')
     setFormQuizMode(!!(q.settings?.correctAnswer as string))
     setFormTextAlign((q.settings?.textAlign as 'left' | 'center' | 'right' | 'justify') || 'left')
+    setFormHideTitle(q.settings?.hideTitle === true)
     setFormScaleValues(formatScaleValues(q.settings?.scaleValues))
     setFormScaleHighLabel((q.settings?.scaleHighLabel as string) || '')
     setFormScaleLowLabel((q.settings?.scaleLowLabel as string) || '')
@@ -142,6 +146,7 @@ export function useQuestionForm(
     setFormPlaceholder(''); setFormAccept(''); setFormOptions(['', ''])
     setFormCorrectAnswer(''); setFormQuizMode(false); setFormRequired(true)
     setFormTextAlign('left')
+    setFormHideTitle(false)
     setFormScaleValues(''); setFormScaleHighLabel(''); setFormScaleLowLabel('')
     setFormFlowBlockId(''); setFormFlowBlockLabel(''); setFormBranchEnabled(false); setFormBranchRoutes({})
     setKeyEdited(false)
@@ -159,6 +164,7 @@ export function useQuestionForm(
     fd.set('placeholder', formPlaceholder)
     fd.set('accept', formAccept)
     fd.set('textAlign', formTextAlign)
+    fd.set('hideTitle', String(formHideTitle))
     if (formType === 'scale' || formType === 'scale_sections') {
       fd.set('scaleValues', formScaleValues)
       fd.set('scaleHighLabel', formScaleHighLabel)
@@ -174,12 +180,12 @@ export function useQuestionForm(
   return {
     formType, formTitle, formKey, keyEdited,
     formDesc, formPergunta, formPlaceholder, formAccept,
-    formRequired, formOptions, formCorrectAnswer, formQuizMode, formTextAlign,
+    formRequired, formOptions, formCorrectAnswer, formQuizMode, formTextAlign, formHideTitle,
     formScaleValues, formScaleHighLabel, formScaleLowLabel,
     formFlowBlockId, formFlowBlockLabel, formBranchEnabled, formBranchRoutes,
     setFormType, setFormTitle, setFormKey, setKeyEdited,
     setFormDesc, setFormPergunta, setFormPlaceholder, setFormAccept,
-    setFormRequired, setFormOptions, setFormCorrectAnswer, setFormQuizMode, setFormTextAlign,
+    setFormRequired, setFormOptions, setFormCorrectAnswer, setFormQuizMode, setFormTextAlign, setFormHideTitle,
     setFormScaleValues, setFormScaleHighLabel, setFormScaleLowLabel,
     setFormFlowBlockId, setFormFlowBlockLabel, setFormBranchEnabled, setFormBranchRoutes,
     handleTitleChange, startEditMetadata, resetForm, buildFormData,

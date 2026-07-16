@@ -174,6 +174,10 @@ export function QuestionEditorForm({
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
               <TextAlignControl value={form.formTextAlign} onChange={form.setFormTextAlign} label="Alinhamento do texto" />
             </div>
+            <label className="flex w-fit items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" checked={form.formHideTitle} onChange={event => form.setFormHideTitle(event.target.checked)} />
+              Mostrar somente a pergunta, sem titulo acima
+            </label>
             <details className="group rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
               <summary className="cursor-pointer list-none text-sm font-medium text-slate-600 group-open:mb-3">
                 Descricao auxiliar opcional

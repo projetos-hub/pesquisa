@@ -44,6 +44,7 @@ interface BaseStep {
   flowBlockLabel?: string
   branchFlow?: BranchFlowDef
   textAlign?: TextAlign
+  hideTitle?: boolean
 }
 
 export interface WelcomeStepDef extends BaseStep {

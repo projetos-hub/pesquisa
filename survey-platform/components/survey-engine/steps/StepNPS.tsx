@@ -34,7 +34,7 @@ export default function StepNPS({ step, tipo, onNext, onBack }: StepNPSProps) {
 
   return (
     <div className={alignClassName}>
-      <p className="step-title" style={alignStyle}>{step.titulo ?? `Qual a probabilidade de recomendar a ${tipo} a um amigo ou colega?`}</p>
+      {!step.hideTitle && <p className="step-title" style={alignStyle}>{step.titulo ?? `Qual a probabilidade de recomendar a ${tipo} a um amigo ou colega?`}</p>}
       {step.desc && <p className="step-desc" style={alignStyle}>{step.desc}</p>}
       <div className="nps-row">
         {scores.map(n => (

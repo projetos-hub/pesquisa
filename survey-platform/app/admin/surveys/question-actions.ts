@@ -80,6 +80,7 @@ export async function createQuestion(
   const accept         = (formData.get('accept')         as string) || ''
   const correctAnswer  = (formData.get('correctAnswer')  as string) || ''
   const textAlign      = (formData.get('textAlign')      as string) || ''
+  const hideTitle      = formData.get('hideTitle') === 'true'
 
   if (!type || !key || !title) return { error: 'Tipo, key e título são obrigatórios' }
   if (!/^[a-z0-9_]+$/.test(key)) return { error: 'Key deve conter apenas letras minúsculas, números e underscore' }
@@ -101,6 +102,7 @@ export async function createQuestion(
   if (accept)        settings.accept        = accept
   if (correctAnswer) settings.correctAnswer = correctAnswer
   if (['left', 'center', 'right', 'justify'].includes(textAlign)) settings.textAlign = textAlign
+  if (hideTitle) settings.hideTitle = true
   const scaleError = assignScaleSettings(settings, formData, type)
   if (scaleError) return { error: scaleError }
   assignFlowSettings(settings, formData, type)
@@ -162,6 +164,7 @@ export async function updateQuestion(
   const accept         = (formData.get('accept')         as string) || ''
   const correctAnswer  = (formData.get('correctAnswer')  as string) || ''
   const textAlign      = (formData.get('textAlign')      as string) || ''
+  const hideTitle      = formData.get('hideTitle') === 'true'
 
   if (!type || !key || !title) return { error: 'Tipo, key e título são obrigatórios' }
   if (!/^[a-z0-9_]+$/.test(key)) return { error: 'Key deve conter apenas letras minúsculas, números e underscore' }
@@ -174,6 +177,7 @@ export async function updateQuestion(
   if (accept)        settings.accept        = accept
   if (correctAnswer) settings.correctAnswer = correctAnswer
   if (['left', 'center', 'right', 'justify'].includes(textAlign)) settings.textAlign = textAlign
+  if (hideTitle) settings.hideTitle = true
   const scaleError = assignScaleSettings(settings, formData, type)
   if (scaleError) return { error: scaleError }
   assignFlowSettings(settings, formData, type)
