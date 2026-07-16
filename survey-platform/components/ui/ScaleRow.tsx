@@ -26,8 +26,8 @@ export default function ScaleRow({ label, value, onChange, highlight }: ScaleRow
         ))}
       </div>
       <div className="scale-hint">
-        <span>5 - Muito Satisfeito</span>
-        <span>1 - Muito Insatisfeito</span>
+        <span>5 - Ótimo</span>
+        <span>1 - Péssimo</span>
       </div>
     </div>
   )
