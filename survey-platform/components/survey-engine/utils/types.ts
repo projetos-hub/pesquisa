@@ -71,6 +71,9 @@ export interface ScaleStepDef extends BaseStep {
   desc?: string
   perguntas?: string[]
   secoes?: StepSection[]
+  scaleValues: number[]
+  scaleHighLabel?: string
+  scaleLowLabel?: string
 }
 
 export interface RadioStepDef extends BaseStep {

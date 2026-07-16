@@ -115,6 +115,28 @@ function baseFields(q: QuestionRow) {
 // ─── Strategy map: um builder por tipo de question ───────────────────────────
 // CC de rowsToConfig cai de 14 para ~4 com esta abordagem.
 
+function parseScaleValues(value: unknown): number[] | null {
+  if (!Array.isArray(value)) return null
+
+  const values = value
+    .map(item => typeof item === 'number' ? item : Number(item))
+    .filter(item => Number.isInteger(item))
+
+  return values.length >= 2 ? values : null
+}
+
+function scaleFields(q: QuestionRow) {
+  const scaleValues = parseScaleValues(q.settings?.scaleValues)
+  if (!scaleValues) {
+    throw new Error(`Pergunta de escala sem settings.scaleValues: ${q.key}`)
+  }
+
+  return {
+    scaleValues,
+    ...(typeof q.settings?.scaleHighLabel === 'string' ? { scaleHighLabel: q.settings.scaleHighLabel } : {}),
+    ...(typeof q.settings?.scaleLowLabel === 'string' ? { scaleLowLabel: q.settings.scaleLowLabel } : {}),
+  }
+}
 type StepBuilder = (q: QuestionRow, opts: OptionRow[]) => StepDef
 
 const STEP_BUILDERS: Record<string, StepBuilder> = {
@@ -143,6 +165,7 @@ const STEP_BUILDERS: Record<string, StepBuilder> = {
     titulo: q.title,
     ...(q.description ? { desc: q.description } : {}),
     perguntas: opts.map(o => o.label),
+    ...scaleFields(q),
     ...baseFields(q),
   }),
 
@@ -169,6 +192,7 @@ const STEP_BUILDERS: Record<string, StepBuilder> = {
       titulo: q.title,
       ...(q.description ? { desc: q.description } : {}),
       secoes,
+      ...scaleFields(q),
       ...baseFields(q),
     }
   },

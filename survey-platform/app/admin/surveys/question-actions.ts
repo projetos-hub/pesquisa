@@ -4,6 +4,66 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { createServiceClient } from '@/lib/supabase-service'
 import { requireAuth } from './actions-helpers'
 
+function readBranchRoutes(formData: FormData) {
+  const raw = (formData.get('branchRoutes') as string) || ''
+  if (!raw) return []
+
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    return Object.entries(parsed)
+      .map(([value, blockId]) => ({ value, blockId: String(blockId).trim() }))
+      .filter(route => route.value.trim() && route.blockId)
+  } catch {
+    return []
+  }
+}
+
+
+const SCALE_TYPES = new Set(['scale', 'scale_sections'])
+
+function assignScaleSettings(settings: Record<string, unknown>, formData: FormData, type: string): string | undefined {
+  if (!SCALE_TYPES.has(type)) return undefined
+
+  const rawValues = ((formData.get('scaleValues') as string) || '').trim()
+  const tokens = rawValues.split(/[\s,;]+/).map(token => token.trim()).filter(Boolean)
+  if (tokens.length < 2) return 'Informe pelo menos duas notas para a escala.'
+
+  const scaleValues = tokens.map(token => Number(token))
+  if (scaleValues.some(value => !Number.isInteger(value))) return 'As notas da escala devem ser numeros inteiros.'
+  if (new Set(scaleValues).size !== scaleValues.length) return 'As notas da escala nao podem se repetir.'
+
+  settings.scaleValues = scaleValues
+
+  const scaleHighLabel = ((formData.get('scaleHighLabel') as string) || '').trim()
+  const scaleLowLabel = ((formData.get('scaleLowLabel') as string) || '').trim()
+  if (scaleHighLabel) settings.scaleHighLabel = scaleHighLabel
+  if (scaleLowLabel) settings.scaleLowLabel = scaleLowLabel
+
+  return undefined
+}
+
+function branchAnswerField(type: string): string | undefined {
+  if (type === 'nps') return 'nps'
+  return undefined
+}
+
+function assignFlowSettings(settings: Record<string, unknown>, formData: FormData, type: string) {
+  const flowBlockId = ((formData.get('flowBlockId') as string) || '').trim()
+  const flowBlockLabel = ((formData.get('flowBlockLabel') as string) || '').trim()
+  const branchRoutes = readBranchRoutes(formData)
+
+  if (flowBlockId) settings.flowBlockId = flowBlockId
+  if (flowBlockLabel) settings.flowBlockLabel = flowBlockLabel
+  if (branchRoutes.length > 0) {
+    const answerField = branchAnswerField(type)
+    settings.branchFlow = {
+      type: 'answer_routes',
+      ...(answerField ? { answerField } : {}),
+      routes: branchRoutes,
+    }
+  }
+}
+
 export async function createQuestion(
   surveyId: string,
   formData: FormData
@@ -41,6 +101,9 @@ export async function createQuestion(
   if (accept)        settings.accept        = accept
   if (correctAnswer) settings.correctAnswer = correctAnswer
   if (['left', 'center', 'right', 'justify'].includes(textAlign)) settings.textAlign = textAlign
+  const scaleError = assignScaleSettings(settings, formData, type)
+  if (scaleError) return { error: scaleError }
+  assignFlowSettings(settings, formData, type)
 
   const { data: created, error } = await supabase
     .from('questions')
@@ -111,6 +174,9 @@ export async function updateQuestion(
   if (accept)        settings.accept        = accept
   if (correctAnswer) settings.correctAnswer = correctAnswer
   if (['left', 'center', 'right', 'justify'].includes(textAlign)) settings.textAlign = textAlign
+  const scaleError = assignScaleSettings(settings, formData, type)
+  if (scaleError) return { error: scaleError }
+  assignFlowSettings(settings, formData, type)
 
   const { error } = await supabase
     .from('questions')

@@ -18,6 +18,7 @@ import {
   HAS_OPTIONS,
   moveQuestionLocally,
   parseOptionLabels,
+  parseScaleValues,
 } from './question-editor-utils'
 import { useQuestionForm } from './useQuestionForm'
 import type { QuestionRow } from './useQuestionForm'
@@ -119,6 +120,20 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
           accept: form.formAccept,
           correctAnswer: form.formCorrectAnswer,
           textAlign: form.formTextAlign,
+          ...(form.formType === 'scale' || form.formType === 'scale_sections' ? {
+            scaleValues: parseScaleValues(form.formScaleValues),
+            scaleHighLabel: form.formScaleHighLabel,
+            scaleLowLabel: form.formScaleLowLabel,
+          } : {}),
+          flowBlockId: form.formFlowBlockId,
+          flowBlockLabel: form.formFlowBlockLabel,
+          branchFlow: form.formBranchEnabled ? {
+            type: 'answer_routes',
+            ...(form.formType === 'nps' ? { answerField: 'nps' } : {}),
+            routes: Object.entries(form.formBranchRoutes)
+              .filter(([, blockId]) => blockId.trim())
+              .map(([value, blockId]) => ({ value, blockId: blockId.trim() })),
+          } : undefined,
         },
         options: buildQuestionOptions(labels),
       }])
@@ -147,6 +162,13 @@ export default function QuestionEditor({ surveyId, questions: initialQuestions }
         accept: form.formAccept,
         correctAnswer: form.formCorrectAnswer,
         textAlign: form.formTextAlign,
+        scaleValues: form.formScaleValues,
+        scaleHighLabel: form.formScaleHighLabel,
+        scaleLowLabel: form.formScaleLowLabel,
+        flowBlockId: form.formFlowBlockId,
+        flowBlockLabel: form.formFlowBlockLabel,
+        branchEnabled: form.formBranchEnabled,
+        branchRoutes: form.formBranchRoutes,
       }))
       resetForm()
     })

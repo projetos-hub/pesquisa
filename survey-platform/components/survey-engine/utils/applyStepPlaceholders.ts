@@ -63,6 +63,8 @@ function renderStep(step: StepDef, vars: StepPlaceholderVars): StepDef {
         ...s,
         titulo: renderPlaceholders(s.titulo, vars),
         desc: renderText(s.desc, vars),
+        scaleHighLabel: renderText(s.scaleHighLabel, vars),
+        scaleLowLabel: renderText(s.scaleLowLabel, vars),
         perguntas: s.perguntas?.map(item => renderPlaceholders(item, vars)),
         secoes: s.secoes?.map(section => ({
           ...section,

@@ -4,20 +4,15 @@ import type React from 'react'
 import type { MutableRefObject } from 'react'
 
 import type { QuestionFormActions, QuestionFormState, QuestionRow } from './useQuestionForm'
-import { HAS_OPTIONS, HAS_PERGUNTA, QUESTION_TYPES } from './question-editor-utils'
+import { BRANCHABLE_TYPES, getBranchRouteOptions, HAS_OPTIONS, HAS_PERGUNTA, QUESTION_TYPES } from './question-editor-utils'
 import { PlaceholderTextField } from '../../components/PlaceholderTextField'
 import { TextAlignControl } from '../../components/TextAlignControl'
 
 type QuestionForm = QuestionFormState & QuestionFormActions
 
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  border: '1px solid #e2e8f0',
-  borderRadius: 6,
-  padding: '8px 10px',
-  fontSize: '.875rem',
-  boxSizing: 'border-box',
-}
+const inputClass = 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#F7941D]'
+const sectionClass = 'rounded-xl border border-slate-200 bg-white p-4'
+const mutedTextClass = 'text-xs text-slate-500'
 
 interface QuestionEditorFormProps {
   isEdit: boolean
@@ -36,20 +31,48 @@ interface QuestionEditorFormProps {
   onOptionKeyDown: (e: React.KeyboardEvent<HTMLInputElement>, idx: number) => void
 }
 
+interface FlowPath {
+  id: string
+  label: string
+}
+
+function routeLabel(value: unknown, fallback: string) {
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback
+}
+
+function collectFlowPaths(questions: QuestionRow[]): FlowPath[] {
+  const paths = new Map<string, string>()
+
+  for (const question of questions) {
+    const blockId = routeLabel(question.settings?.flowBlockId, '')
+    const blockLabel = routeLabel(question.settings?.flowBlockLabel, blockId)
+    if (blockId) paths.set(blockId, blockLabel)
+
+    const branchFlow = question.settings?.branchFlow as { routes?: { blockId?: string; blockLabel?: string }[] } | undefined
+    for (const route of branchFlow?.routes ?? []) {
+      const routeBlockId = routeLabel(route.blockId, '')
+      if (routeBlockId) paths.set(routeBlockId, routeLabel(route.blockLabel, routeBlockId))
+    }
+  }
+
+  return [...paths.entries()].map(([id, label]) => ({ id, label }))
+}
+
+function pathName(paths: FlowPath[], id: string) {
+  if (!id) return 'Caminho principal'
+  return paths.find(path => path.id === id)?.label || id
+}
+
 export function ThankYouEditorForm({ onReset }: { onReset: () => void }) {
   return (
-    <div style={{ border: '2px solid #667eea', borderRadius: 10, padding: 20, marginTop: 12, background: '#fff' }}>
-      <h4 style={{ fontWeight: 600, color: '#2d3748', marginBottom: 4, marginTop: 0 }}>🙏 Tela de agradecimento</h4>
-      <p style={{ fontSize: '.82rem', color: '#718096', marginTop: 0, marginBottom: 16 }}>
-        A mensagem de agradecimento padrão é configurada em <strong>Configurações da pesquisa</strong> (seção acima).
-        Para mensagens por escola, use <strong>Comunidades → Identidade Visual</strong>.
+    <div className="mt-3 rounded-xl border border-slate-200 bg-white p-5">
+      <h4 className="m-0 text-sm font-semibold text-slate-800">Tela de agradecimento</h4>
+      <p className="mb-4 mt-1 text-xs text-slate-500">
+        A mensagem padrao e configurada em Configuracoes da pesquisa. Para mensagens por escola, use Comunidades e Identidade Visual.
       </p>
-      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-        <button onClick={onReset}
-          style={{ background: '#f7fafc', color: '#4a5568', border: '1px solid #e2e8f0', borderRadius: 8, padding: '9px 20px', cursor: 'pointer', fontSize: '.875rem' }}>
-          Fechar
-        </button>
-      </div>
+      <button onClick={onReset} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+        Fechar
+      </button>
     </div>
   )
 }
@@ -70,211 +93,366 @@ export function QuestionEditorForm({
   onAddOptionRow,
   onOptionKeyDown,
 }: QuestionEditorFormProps) {
+  const editingQuestion = questions.find(q => q.id === editingMetadataId)
+  const optionLabels = isEdit ? editingQuestion?.options.map(o => o.label) || [] : form.formOptions.filter(o => o.trim())
+  const branchRouteOptions = getBranchRouteOptions(form.formType, optionLabels)
+  const flowPaths = collectFlowPaths(questions)
+  const hasFlowConfig = Boolean(form.formFlowBlockId || form.formBranchEnabled)
+  const hasAdvancedSettings = form.formType === 'text' || form.formType === 'file_upload' || form.formType === 'radio' || form.formType === 'scale' || form.formType === 'scale_sections'
+
   return (
-    <div style={{ border: `2px ${isEdit ? 'solid' : 'dashed'} #667eea`, borderRadius: 10, padding: 20, marginTop: 12, background: isEdit ? '#fff' : '#f8f9ff' }}>
-      <h4 style={{ fontWeight: 600, color: '#2d3748', marginBottom: 16, marginTop: 0 }}>{isEdit ? 'Editar pergunta' : 'Nova pergunta'}</h4>
-
-      <div style={{ display: 'grid', gap: 14 }}>
+    <div className={`mt-3 rounded-2xl border ${isEdit ? 'border-[#667eea]' : 'border-dashed border-[#667eea]'} bg-slate-50 p-4`}>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <label style={{ fontSize: '.85rem', fontWeight: 500, color: '#4a5568', display: 'block', marginBottom: 6 }}>Tipo</label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 6 }}>
-            {QUESTION_TYPES.map(t => (
-              <button key={t.value} onClick={() => { form.setFormType(t.value); if (!isEdit) form.setFormOptions(['', '']) }}
-                style={{
-                  padding: '8px 12px',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  border: `2px solid ${form.formType === t.value ? '#667eea' : '#e2e8f0'}`,
-                  borderRadius: 8,
-                  background: form.formType === t.value ? '#667eea15' : '#fff',
-                  color: form.formType === t.value ? '#553c9a' : '#4a5568',
-                  fontWeight: form.formType === t.value ? 600 : 400,
-                }}>
-                <div style={{ fontSize: '.85rem' }}>{t.icon} {t.label}</div>
-                <div style={{ fontSize: '.73rem', color: form.formType === t.value ? '#553c9a99' : '#a0aec0', marginTop: 2 }}>{t.desc}</div>
-              </button>
-            ))}
-          </div>
+          <h4 className="m-0 text-base font-semibold text-slate-900">{isEdit ? 'Editar pergunta' : 'Nova pergunta'}</h4>
+          <p className="mt-1 text-xs text-slate-500">Configure primeiro o que o respondente ve. Regras e fluxo ficam nas secoes recolhidas.</p>
         </div>
-
-        <div>
-          <PlaceholderTextField
-            label="Título"
-            value={form.formTitle}
-            onChange={form.handleTitleChange}
-            required
-            placeholder="Ex: Satisfação geral"
-            className="w-full rounded-md border border-slate-200 px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
-          />
-          {form.formKey && (
-            <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: '.75rem', color: '#a0aec0' }}>ID: </span>
-              <input
-                value={form.formKey}
-                onChange={e => { form.setFormKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_')); form.setKeyEdited(true) }}
-                style={{ fontSize: '.75rem', color: '#718096', fontFamily: 'monospace', background: 'none', border: 'none', borderBottom: '1px dashed #cbd5e0', padding: '0 2px', width: `${Math.max(form.formKey.length, 10)}ch` }}
-                title="Identificador técnico — gerado automaticamente"
-              />
-            </div>
-          )}
-        </div>
-
-        <div>
-          <label style={{ fontSize: '.85rem', fontWeight: 500, color: '#4a5568', display: 'block', marginBottom: 4 }}>
-            Descrição <span style={{ color: '#a0aec0', fontWeight: 400 }}>(opcional)</span>
+        {form.formKey && (
+          <label className="flex items-center gap-2 text-xs text-slate-400">
+            ID
+            <input
+              value={form.formKey}
+              onChange={e => { form.setFormKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_')); form.setKeyEdited(true) }}
+              className="w-[18ch] rounded-md border border-slate-200 bg-white px-2 py-1 font-mono text-xs text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
+              title="Identificador tecnico gerado automaticamente"
+            />
           </label>
-          {form.formType === 'welcome' ? (
-            <PlaceholderTextField
-              label="Texto de boas-vindas"
-              value={form.formDesc}
-              onChange={form.setFormDesc}
-              multiline
-              rows={4}
-              placeholder="Texto de boas-vindas (suporta {{nome}}, {{nomeAluno}}, {{serie}}, {{nomeEscola}})"
-              className="w-full rounded-md border border-slate-200 px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
-            />
-          ) : (
-            <PlaceholderTextField
-              label="Descrição"
-              value={form.formDesc}
-              onChange={form.setFormDesc}
-              placeholder="Instrução ou contexto para o respondente"
-              className="w-full rounded-md border border-slate-200 px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
-            />
-          )}
-        </div>
-
-        {HAS_PERGUNTA.has(form.formType) && (
-          <div>
-            <label style={{ fontSize: '.85rem', fontWeight: 500, color: '#4a5568', display: 'block', marginBottom: 4 }}>
-              Texto da pergunta <span style={{ color: '#a0aec0', fontWeight: 400 }}>— use {'{tipo}'} para substituir pelo tipo de unidade</span>
-            </label>
-            <PlaceholderTextField
-              label="Texto da pergunta"
-              value={form.formPergunta}
-              onChange={form.setFormPergunta}
-              placeholder="Ex: Como você avalia a {tipo}?"
-              className="w-full rounded-md border border-slate-200 px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
-            />
-          </div>
         )}
-
-        {form.formType === 'text' && (
-          <div>
-            <label style={{ fontSize: '.85rem', fontWeight: 500, color: '#4a5568', display: 'block', marginBottom: 4 }}>
-              Placeholder <span style={{ color: '#a0aec0', fontWeight: 400 }}>(opcional)</span>
-            </label>
-            <PlaceholderTextField
-              label="Placeholder"
-              value={form.formPlaceholder}
-              onChange={form.setFormPlaceholder}
-              placeholder="Ex: Escreva sua sugestão aqui..."
-              className="w-full rounded-md border border-slate-200 px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F7941D]"
-            />
-          </div>
-        )}
-
-        <TextAlignControl value={form.formTextAlign} onChange={form.setFormTextAlign} />
-
-        {form.formType === 'file_upload' && (
-          <div>
-            <label style={{ fontSize: '.85rem', fontWeight: 500, color: '#4a5568', display: 'block', marginBottom: 4 }}>
-              Tipos de arquivo aceitos <span style={{ color: '#a0aec0', fontWeight: 400 }}>(opcional, ex: .pdf,.jpg,.png)</span>
-            </label>
-            <input value={form.formAccept} onChange={e => form.setFormAccept(e.target.value)}
-              placeholder=".pdf,.jpg,.png" style={inputStyle} />
-          </div>
-        )}
-
-        {!isEdit && HAS_OPTIONS.has(form.formType) && (
-          <div>
-            <label style={{ fontSize: '.85rem', fontWeight: 500, color: '#4a5568', display: 'block', marginBottom: 6 }}>
-              Opções de resposta <span style={{ color: '#e53e3e' }}>*</span>
-            </label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {form.formOptions.map((opt, idx) => (
-                <div key={idx} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <span style={{ color: '#a0aec0', fontSize: '.8rem', minWidth: 20, textAlign: 'right' }}>{idx + 1}.</span>
-                  <input
-                    ref={el => { optionRefs.current[idx] = el }}
-                    value={opt}
-                    onChange={e => onUpdateOption(idx, e.target.value)}
-                    onKeyDown={e => onOptionKeyDown(e, idx)}
-                    placeholder={`Opção ${idx + 1}`}
-                    style={{ ...inputStyle, flex: 1 }}
-                  />
-                  {form.formOptions.length > 1 && (
-                    <button onClick={() => onRemoveOption(idx)}
-                      style={{ background: 'none', border: 'none', color: '#e53e3e', cursor: 'pointer', fontSize: '1rem', padding: '0 4px', flexShrink: 0 }}
-                      title="Remover opção">×</button>
-                  )}
-                </div>
-              ))}
-            </div>
-            <button onClick={() => onAddOptionRow()}
-              style={{ marginTop: 8, fontSize: '.82rem', color: '#667eea', background: 'none', border: '1px dashed #667eea', borderRadius: 6, padding: '5px 12px', cursor: 'pointer' }}>
-              + Adicionar opção
-            </button>
-          </div>
-        )}
-
-        {form.formType === 'radio' && (
-          <div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '.875rem', color: '#4a5568' }}>
-              <input type="checkbox" checked={form.formQuizMode} onChange={e => { form.setFormQuizMode(e.target.checked); if (!e.target.checked) form.setFormCorrectAnswer('') }} />
-              Modo quiz — esta pergunta tem uma resposta certa
-            </label>
-          </div>
-        )}
-        {form.formType === 'radio' && form.formQuizMode && (isEdit ? true : form.formOptions.some(o => o.trim())) && (
-          <div style={{ marginTop: 4, padding: '10px 12px', background: '#fffbeb', border: '1px solid #fbd38d', borderRadius: 8 }}>
-            <label style={{ fontSize: '.82rem', fontWeight: 500, color: '#744210', display: 'block', marginBottom: 6 }}>
-              Qual é a resposta correta?
-            </label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {(isEdit ? questions.find(q => q.id === editingMetadataId)?.options.map(o => o.label) || [] : form.formOptions.filter(o => o.trim())).map(opt => (
-                <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '.85rem', color: '#2d3748' }}>
-                  <input type="radio" name="correctAnswer" checked={form.formCorrectAnswer === opt} onChange={() => form.setFormCorrectAnswer(opt)} />
-                  {opt}
-                </label>
-              ))}
-              {form.formCorrectAnswer && (
-                <button onClick={() => form.setFormCorrectAnswer('')}
-                  style={{ alignSelf: 'flex-start', marginTop: 4, fontSize: '.75rem', color: '#e53e3e', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                  Limpar seleção
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '.875rem', color: '#4a5568' }}>
-            <input type="checkbox" checked={form.formRequired} onChange={e => form.setFormRequired(e.target.checked)} />
-            Pergunta obrigatória
-          </label>
-        </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-        <button onClick={isEdit ? onUpdateMetadata : onAdd} disabled={isPending || !canAdd}
-          style={{
-            background: !canAdd ? '#e2e8f0' : '#667eea',
-            color: !canAdd ? '#a0aec0' : '#fff',
-            border: 'none',
-            borderRadius: 8,
-            padding: '9px 20px',
-            cursor: !canAdd ? 'not-allowed' : 'pointer',
-            fontWeight: 600,
-            fontSize: '.875rem',
-          }}>
+      <div className="grid gap-4">
+        <section className={sectionClass}>
+          <SectionTitle title="Pergunta" hint="O conteudo principal exibido para quem responde." />
+
+          <div className="mt-3 grid gap-3">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">Tipo</label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                {QUESTION_TYPES.map(type => (
+                  <button
+                    key={type.value}
+                    type="button"
+                    onClick={() => { form.setFormType(type.value); if (!isEdit) form.setFormOptions(['', '']) }}
+                    className={`min-h-16 rounded-xl border px-3 py-2 text-left transition-colors ${
+                      form.formType === type.value
+                        ? 'border-[#667eea] bg-[#667eea]/10 text-[#553c9a]'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5 text-xs font-semibold"><span aria-hidden="true" className="text-sm">{type.icon}</span>{type.label}</span>
+                    <span className="mt-1 block text-[11px] leading-snug text-slate-400">{type.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <PlaceholderTextField
+                label="Titulo exibido"
+                value={form.formTitle}
+                onChange={form.handleTitleChange}
+                required
+                placeholder="Ex: Voce pretende renovar a matricula?"
+                className={inputClass}
+              />
+              <label className="flex w-fit items-center gap-2 text-sm text-slate-700">
+                <input type="checkbox" checked={form.formRequired} onChange={event => form.setFormRequired(event.target.checked)} />
+                Pergunta obrigatoria
+              </label>
+            </div>
+
+            {HAS_PERGUNTA.has(form.formType) && (
+              <PlaceholderTextField
+                label="Texto da pergunta"
+                value={form.formPergunta}
+                onChange={form.setFormPergunta}
+                placeholder="Ex: Como voce avalia a {tipo}?"
+                className={inputClass}
+              />
+            )}
+
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+              <TextAlignControl value={form.formTextAlign} onChange={form.setFormTextAlign} label="Alinhamento do texto" />
+            </div>
+            <details className="group rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+              <summary className="cursor-pointer list-none text-sm font-medium text-slate-600 group-open:mb-3">
+                Descricao auxiliar opcional
+              </summary>
+              {form.formType === 'welcome' ? (
+                <PlaceholderTextField
+                  label="Texto de boas-vindas"
+                  value={form.formDesc}
+                  onChange={form.setFormDesc}
+                  multiline
+                  rows={4}
+                  placeholder="Texto de boas-vindas (suporta {{nome}}, {{nomeAluno}}, {{serie}}, {{nomeEscola}})"
+                  className={inputClass}
+                />
+              ) : (
+                <PlaceholderTextField
+                  label="Descricao"
+                  value={form.formDesc}
+                  onChange={form.setFormDesc}
+                  placeholder="Instrucao ou contexto para o respondente"
+                  className={inputClass}
+                />
+              )}
+            </details>
+          </div>
+        </section>
+
+        {(HAS_OPTIONS.has(form.formType) || form.formType === 'nps') && (
+          <section className={sectionClass}>
+            <SectionTitle title="Respostas" hint="Defina as escolhas que podem alimentar uma ramificacao." />
+
+            {form.formType === 'nps' ? (
+              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                NPS usa notas de 0 a 10. Essas notas podem direcionar caminhos diferentes na secao Fluxo.
+              </div>
+            ) : !isEdit && HAS_OPTIONS.has(form.formType) ? (
+              <div className="mt-3 grid gap-2">
+                {form.formOptions.map((option, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <span className="w-6 text-right text-xs text-slate-400">{idx + 1}.</span>
+                    <input
+                      ref={element => { optionRefs.current[idx] = element }}
+                      value={option}
+                      onChange={event => onUpdateOption(idx, event.target.value)}
+                      onKeyDown={event => onOptionKeyDown(event, idx)}
+                      placeholder={`Opcao ${idx + 1}`}
+                      className={inputClass}
+                    />
+                    {form.formOptions.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => onRemoveOption(idx)}
+                        className="h-9 w-9 rounded-lg border border-red-100 text-red-500 hover:bg-red-50"
+                        title="Remover opcao"
+                      >
+                        x
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => onAddOptionRow()}
+                  className="mt-1 w-fit rounded-lg border border-dashed border-[#667eea] px-3 py-1.5 text-xs font-semibold text-[#667eea] hover:bg-[#667eea]/5"
+                >
+                  Adicionar opcao
+                </button>
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-slate-500">As opcoes desta pergunta sao editadas no card da pergunta.</p>
+            )}
+          </section>
+        )}
+
+        {hasAdvancedSettings && (
+        <details className={sectionClass}>
+          <summary className="cursor-pointer list-none">
+            <SectionTitle title="Avancado" hint="Ajustes especificos do tipo de pergunta." />
+          </summary>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+
+            {form.formType === 'text' && (
+              <PlaceholderTextField
+                label="Placeholder do campo"
+                value={form.formPlaceholder}
+                onChange={form.setFormPlaceholder}
+                placeholder="Ex: Escreva sua sugestao aqui..."
+                className={inputClass}
+              />
+            )}
+
+            {form.formType === 'file_upload' && (
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">Tipos de arquivo aceitos</label>
+                <input value={form.formAccept} onChange={event => form.setFormAccept(event.target.value)} placeholder=".pdf,.jpg,.png" className={inputClass} />
+              </div>
+            )}
+
+            {(form.formType === 'scale' || form.formType === 'scale_sections') && (
+              <div className="grid gap-3 sm:col-span-2 sm:grid-cols-3">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Notas da escala</label>
+                  <input
+                    value={form.formScaleValues}
+                    onChange={event => form.setFormScaleValues(event.target.value)}
+                    placeholder="Ex: 5,4,3,2,1"
+                    className={inputClass}
+                  />
+                  <p className={mutedTextClass}>Informe na ordem em que os botoes devem aparecer.</p>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Rotulo do maior valor</label>
+                  <input
+                    value={form.formScaleHighLabel}
+                    onChange={event => form.setFormScaleHighLabel(event.target.value)}
+                    placeholder="Ex: 5 - Otimo"
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Rotulo do menor valor</label>
+                  <input
+                    value={form.formScaleLowLabel}
+                    onChange={event => form.setFormScaleLowLabel(event.target.value)}
+                    placeholder="Ex: 1 - Pessimo"
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+            )}
+
+            {form.formType === 'radio' && (
+              <div className="sm:col-span-2">
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input type="checkbox" checked={form.formQuizMode} onChange={event => { form.setFormQuizMode(event.target.checked); if (!event.target.checked) form.setFormCorrectAnswer('') }} />
+                  Modo quiz: esta pergunta tem uma resposta certa
+                </label>
+
+                {form.formQuizMode && branchRouteOptions.length > 0 && (
+                  <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <p className="mb-2 text-xs font-semibold text-amber-900">Resposta correta</p>
+                    <div className="grid gap-1">
+                      {branchRouteOptions.map(option => (
+                        <label key={option} className="flex items-center gap-2 text-sm text-slate-700">
+                          <input type="radio" name="correctAnswer" checked={form.formCorrectAnswer === option} onChange={() => form.setFormCorrectAnswer(option)} />
+                          {option}
+                        </label>
+                      ))}
+                    </div>
+                    {form.formCorrectAnswer && (
+                      <button type="button" onClick={() => form.setFormCorrectAnswer('')} className="mt-2 text-xs font-semibold text-red-600">
+                        Limpar selecao
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </details>
+        )}
+
+        <details className={sectionClass} open={hasFlowConfig}>
+          <summary className="cursor-pointer list-none">
+            <SectionTitle title="Fluxo" hint="Use caminhos quando uma resposta deve abrir um ramo linear." />
+          </summary>
+
+          <div className="mt-4 grid gap-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">Esta pergunta aparece em</label>
+                <select
+                  value={form.formFlowBlockId}
+                  onChange={event => form.setFormFlowBlockId(event.target.value)}
+                  className={inputClass}
+                >
+                  <option value="">Caminho principal</option>
+                  {flowPaths.map(path => (
+                    <option key={path.id} value={path.id}>{path.label}</option>
+                  ))}
+                  {form.formFlowBlockId && !flowPaths.some(path => path.id === form.formFlowBlockId) && (
+                    <option value={form.formFlowBlockId}>{form.formFlowBlockId}</option>
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">Criar ou renomear caminho</label>
+                <input
+                  value={form.formFlowBlockId}
+                  onChange={event => form.setFormFlowBlockId(event.target.value.toLowerCase().replace(/[^a-z0-9_\-]/g, '-'))}
+                  placeholder="ex: renovou"
+                  className={inputClass}
+                />
+                <p className={mutedTextClass}>Deixe vazio para pergunta inicial ou comum.</p>
+              </div>
+            </div>
+
+            {form.formFlowBlockId && (
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">Nome interno do caminho</label>
+                <input
+                  value={form.formFlowBlockLabel}
+                  onChange={event => form.setFormFlowBlockLabel(event.target.value)}
+                  placeholder="Ex: Familias que renovaram"
+                  className={inputClass}
+                />
+              </div>
+            )}
+
+            {BRANCHABLE_TYPES.has(form.formType) ? (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                  <input type="checkbox" checked={form.formBranchEnabled} onChange={event => form.setFormBranchEnabled(event.target.checked)} />
+                  Usar esta pergunta para escolher o proximo caminho
+                </label>
+
+                {form.formBranchEnabled && (
+                  <div className="mt-3 grid gap-2">
+                    {branchRouteOptions.length === 0 ? (
+                      <p className="text-sm text-amber-700">Adicione opcoes de resposta antes de configurar os caminhos.</p>
+                    ) : branchRouteOptions.map(option => (
+                      <div key={option} className="grid gap-2 rounded-lg border border-slate-200 bg-white p-2 sm:grid-cols-[minmax(0,1fr)_minmax(180px,0.8fr)] sm:items-center">
+                        <span className="truncate text-sm font-medium text-slate-700">{option}</span>
+                        <input
+                          value={form.formBranchRoutes[option] ?? ''}
+                          onChange={event => form.setFormBranchRoutes(prev => ({ ...prev, [option]: event.target.value.toLowerCase().replace(/[^a-z0-9_\-]/g, '-') }))}
+                          placeholder="ex: renovou"
+                          className={inputClass}
+                          list="flow-paths"
+                        />
+                      </div>
+                    ))}
+                    <datalist id="flow-paths">
+                      {flowPaths.map(path => <option key={path.id} value={path.id}>{path.label}</option>)}
+                    </datalist>
+                    <div className="rounded-lg bg-white px-3 py-2 text-xs text-slate-500">
+                      Exemplo: Sim - renovou, Nao - nao-renovou. Depois crie perguntas dentro desses caminhos.
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-500">
+                Este tipo de pergunta pode pertencer a um caminho, mas nao cria ramificacao direta.
+              </p>
+            )}
+
+            {hasFlowConfig && (
+              <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                Resumo: esta pergunta aparece em {pathName(flowPaths, form.formFlowBlockId)}{form.formBranchEnabled ? ' e tambem direciona respostas para outros caminhos.' : '.'}
+              </div>
+            )}
+          </div>
+        </details>
+      </div>
+
+      <div className="mt-4 flex gap-2">
+        <button
+          type="button"
+          onClick={isEdit ? onUpdateMetadata : onAdd}
+          disabled={isPending || !canAdd}
+          className="rounded-lg bg-[#667eea] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+        >
           {isPending ? 'Salvando...' : (isEdit ? 'Atualizar pergunta' : 'Adicionar pergunta')}
         </button>
-        <button onClick={onReset}
-          style={{ background: '#fff', color: '#4a5568', border: '1px solid #e2e8f0', borderRadius: 8, padding: '9px 20px', cursor: 'pointer', fontSize: '.875rem' }}>
+        <button type="button" onClick={onReset} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
           Cancelar
         </button>
       </div>
+    </div>
+  )
+}
+
+function SectionTitle({ title, hint }: { title: string; hint: string }) {
+  return (
+    <div>
+      <h5 className="m-0 text-sm font-semibold text-slate-900">{title}</h5>
+      <p className="mt-0.5 text-xs text-slate-500">{hint}</p>
     </div>
   )
 }

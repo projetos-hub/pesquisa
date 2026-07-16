@@ -19,6 +19,7 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
   const textAlign = step.textAlign ?? 'left'
   const alignStyle = textAlignStyle(textAlign)
   const alignClassName = textAlignClassName(textAlign)
+  const scaleValues = step.scaleValues
 
   const [simpleRatings, setSimpleRatings] = useState<Record<number, number>>({})
   const [sectionRatings, setSectionRatings] = useState<Record<string, Record<number, number>>>({})
@@ -55,6 +56,9 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
                 key={i}
                 label={resolve(l)}
                 value={sectionRatings[sec.key]?.[i]}
+                values={scaleValues}
+                highLabel={step.scaleHighLabel}
+                lowLabel={step.scaleLowLabel}
                 highlight={tentou && sectionRatings[sec.key]?.[i] == null}
                 onChange={v =>
                   setSectionRatings(p => ({
@@ -108,6 +112,9 @@ export default function StepEscala({ step, tipo, onNext, onBack, isLast, loading
           key={i}
           label={l}
           value={simpleRatings[i]}
+          values={scaleValues}
+          highLabel={step.scaleHighLabel}
+          lowLabel={step.scaleLowLabel}
           highlight={tentou && simpleRatings[i] == null}
           onChange={v => setSimpleRatings(p => ({ ...p, [i]: v }))}
         />

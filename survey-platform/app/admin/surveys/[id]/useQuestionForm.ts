@@ -28,6 +28,13 @@ export interface QuestionFormState {
   formCorrectAnswer: string
   formQuizMode: boolean
   formTextAlign: 'left' | 'center' | 'right' | 'justify'
+  formScaleValues: string
+  formScaleHighLabel: string
+  formScaleLowLabel: string
+  formFlowBlockId: string
+  formFlowBlockLabel: string
+  formBranchEnabled: boolean
+  formBranchRoutes: Record<string, string>
 }
 
 export interface QuestionFormActions {
@@ -44,12 +51,26 @@ export interface QuestionFormActions {
   setFormCorrectAnswer: (v: string) => void
   setFormQuizMode: (v: boolean) => void
   setFormTextAlign: (v: 'left' | 'center' | 'right' | 'justify') => void
+  setFormScaleValues: (v: string) => void
+  setFormScaleHighLabel: (v: string) => void
+  setFormScaleLowLabel: (v: string) => void
+  setFormFlowBlockId: (v: string) => void
+  setFormFlowBlockLabel: (v: string) => void
+  setFormBranchEnabled: (v: boolean) => void
+  setFormBranchRoutes: React.Dispatch<React.SetStateAction<Record<string, string>>>
   handleTitleChange: (val: string) => void
   startEditMetadata: (q: QuestionRow) => void
   resetForm: () => void
   buildFormData: () => FormData
 }
 
+function formatScaleValues(value: unknown): string {
+  if (!Array.isArray(value)) return ''
+  return value
+    .map(item => typeof item === 'number' ? item : Number(item))
+    .filter(item => Number.isInteger(item))
+    .join(', ')
+}
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -79,6 +100,13 @@ export function useQuestionForm(
   const [formCorrectAnswer, setFormCorrectAnswer] = useState('')
   const [formQuizMode, setFormQuizMode]         = useState(false)
   const [formTextAlign, setFormTextAlign]       = useState<'left' | 'center' | 'right' | 'justify'>('left')
+  const [formScaleValues, setFormScaleValues]   = useState('')
+  const [formScaleHighLabel, setFormScaleHighLabel] = useState('')
+  const [formScaleLowLabel, setFormScaleLowLabel] = useState('')
+  const [formFlowBlockId, setFormFlowBlockId]   = useState('')
+  const [formFlowBlockLabel, setFormFlowBlockLabel] = useState('')
+  const [formBranchEnabled, setFormBranchEnabled] = useState(false)
+  const [formBranchRoutes, setFormBranchRoutes] = useState<Record<string, string>>({})
 
   function handleTitleChange(val: string) {
     setFormTitle(val)
@@ -98,6 +126,14 @@ export function useQuestionForm(
     setFormCorrectAnswer((q.settings?.correctAnswer as string) || '')
     setFormQuizMode(!!(q.settings?.correctAnswer as string))
     setFormTextAlign((q.settings?.textAlign as 'left' | 'center' | 'right' | 'justify') || 'left')
+    setFormScaleValues(formatScaleValues(q.settings?.scaleValues))
+    setFormScaleHighLabel((q.settings?.scaleHighLabel as string) || '')
+    setFormScaleLowLabel((q.settings?.scaleLowLabel as string) || '')
+    setFormFlowBlockId((q.settings?.flowBlockId as string) || '')
+    setFormFlowBlockLabel((q.settings?.flowBlockLabel as string) || '')
+    const branchFlow = q.settings?.branchFlow as { routes?: { value: string; blockId: string }[] } | undefined
+    setFormBranchEnabled(branchFlow?.routes ? branchFlow.routes.length > 0 : false)
+    setFormBranchRoutes(Object.fromEntries((branchFlow?.routes ?? []).map(route => [route.value, route.blockId])))
     setKeyEdited(true)
   }
 
@@ -106,6 +142,8 @@ export function useQuestionForm(
     setFormPlaceholder(''); setFormAccept(''); setFormOptions(['', ''])
     setFormCorrectAnswer(''); setFormQuizMode(false); setFormRequired(true)
     setFormTextAlign('left')
+    setFormScaleValues(''); setFormScaleHighLabel(''); setFormScaleLowLabel('')
+    setFormFlowBlockId(''); setFormFlowBlockLabel(''); setFormBranchEnabled(false); setFormBranchRoutes({})
     setKeyEdited(false)
   }
 
@@ -121,7 +159,15 @@ export function useQuestionForm(
     fd.set('placeholder', formPlaceholder)
     fd.set('accept', formAccept)
     fd.set('textAlign', formTextAlign)
+    if (formType === 'scale' || formType === 'scale_sections') {
+      fd.set('scaleValues', formScaleValues)
+      fd.set('scaleHighLabel', formScaleHighLabel)
+      fd.set('scaleLowLabel', formScaleLowLabel)
+    }
     if (formCorrectAnswer) fd.set('correctAnswer', formCorrectAnswer)
+    if (formFlowBlockId.trim()) fd.set('flowBlockId', formFlowBlockId.trim())
+    if (formFlowBlockLabel.trim()) fd.set('flowBlockLabel', formFlowBlockLabel.trim())
+    if (formBranchEnabled) fd.set('branchRoutes', JSON.stringify(formBranchRoutes))
     return fd
   }
 
@@ -129,9 +175,13 @@ export function useQuestionForm(
     formType, formTitle, formKey, keyEdited,
     formDesc, formPergunta, formPlaceholder, formAccept,
     formRequired, formOptions, formCorrectAnswer, formQuizMode, formTextAlign,
+    formScaleValues, formScaleHighLabel, formScaleLowLabel,
+    formFlowBlockId, formFlowBlockLabel, formBranchEnabled, formBranchRoutes,
     setFormType, setFormTitle, setFormKey, setKeyEdited,
     setFormDesc, setFormPergunta, setFormPlaceholder, setFormAccept,
     setFormRequired, setFormOptions, setFormCorrectAnswer, setFormQuizMode, setFormTextAlign,
+    setFormScaleValues, setFormScaleHighLabel, setFormScaleLowLabel,
+    setFormFlowBlockId, setFormFlowBlockLabel, setFormBranchEnabled, setFormBranchRoutes,
     handleTitleChange, startEditMetadata, resetForm, buildFormData,
   }
 }

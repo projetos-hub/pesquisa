@@ -4,14 +4,20 @@ export const QUESTION_TYPES = [
   { value: 'text', label: 'Texto livre', icon: '📝', desc: 'Campo de texto aberto' },
   { value: 'radio', label: 'Múltipla escolha', icon: '⭕', desc: 'Seleciona uma opção' },
   { value: 'checkbox', label: 'Caixas de seleção', icon: '☑️', desc: 'Seleciona várias opções' },
-  { value: 'scale', label: 'Escala linear (1–5)', icon: '⭐', desc: 'Nota de 1 a 5' },
+  { value: 'scale', label: 'Escala linear', icon: '*', desc: 'Notas configuraveis' },
   { value: 'nps', label: 'NPS (0–10)', icon: '📊', desc: 'Recomendação 0 a 10' },
   { value: 'file_upload', label: 'Envio de arquivo', icon: '📎', desc: 'Upload de documento' },
 ]
 
 export const HAS_OPTIONS = new Set(['radio', 'checkbox', 'scale'])
+export const BRANCHABLE_TYPES = new Set(['radio', 'checkbox', 'nps'])
 export const HAS_PERGUNTA = new Set(['radio', 'checkbox', 'text', 'file_upload'])
 
+export function getBranchRouteOptions(type: string, options: string[]): string[] {
+  if (type === 'nps') return ['10', '9', '8', '7', '6', '5', '4', '3', '2', '1', '0']
+  if (type === 'radio' || type === 'checkbox') return options
+  return []
+}
 export function typeLabel(type: string) {
   if (type === 'thankyou') return 'Agradecimento'
   if (type === 'welcome') return 'Boas-vindas'
@@ -28,6 +34,12 @@ export function parseOptionLabels(optionsText: string): string[] {
   return optionsText.split('\n').map(label => label.trim()).filter(Boolean)
 }
 
+export function parseScaleValues(scaleValues: string): number[] {
+  return scaleValues
+    .split(/[\s,;]+/)
+    .map(value => Number(value.trim()))
+    .filter(value => Number.isInteger(value))
+}
 export function buildQuestionOptions(labels: string[]): QuestionRow['options'] {
   return labels.map((label, i) => ({ id: `${i}`, order_index: i, label }))
 }
@@ -60,6 +72,13 @@ export function applyQuestionMetadata(
     accept: string
     correctAnswer: string
     textAlign: string
+    scaleValues: string
+    scaleHighLabel: string
+    scaleLowLabel: string
+    flowBlockId: string
+    flowBlockLabel: string
+    branchEnabled: boolean
+    branchRoutes: Record<string, string>
   }
 ): QuestionRow[] {
   return questions.map(q => q.id === questionId
@@ -77,6 +96,20 @@ export function applyQuestionMetadata(
           accept: metadata.accept,
           correctAnswer: metadata.correctAnswer,
           textAlign: metadata.textAlign,
+          ...(metadata.type === 'scale' || metadata.type === 'scale_sections' ? {
+            scaleValues: parseScaleValues(metadata.scaleValues),
+            scaleHighLabel: metadata.scaleHighLabel,
+            scaleLowLabel: metadata.scaleLowLabel,
+          } : {}),
+          flowBlockId: metadata.flowBlockId,
+          flowBlockLabel: metadata.flowBlockLabel,
+          branchFlow: metadata.branchEnabled ? {
+            type: 'answer_routes',
+            ...(metadata.type === 'nps' ? { answerField: 'nps' } : {}),
+            routes: Object.entries(metadata.branchRoutes)
+              .filter(([, blockId]) => blockId.trim())
+              .map(([value, blockId]) => ({ value, blockId: blockId.trim() })),
+          } : undefined,
         },
       }
     : q
