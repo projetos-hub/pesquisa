@@ -29,6 +29,8 @@ export default function WelcomeStep({ step, nome, nomeAluno, serie, perfil, tipo
     nomeEscola: nomeDaEscola,
     marca: theme?.marca ?? '',
     unidade: theme?.unidade ?? '',
+    programaMais: theme?.programaMais ?? 'Mais Raiz',
+    equipeMarca: theme?.equipeMarca ?? theme?.marca ?? 'Raiz',
   }
 
   // Título personalizado (ex: "Olá, {{nome}}")

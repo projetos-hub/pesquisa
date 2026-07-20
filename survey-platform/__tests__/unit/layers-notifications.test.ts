@@ -230,6 +230,18 @@ describe('resolveMaisProgramIdentity', () => {
       programaMais: 'Mais Sá Pereira',
       equipeMarca: 'Sá Pereira',
     })
+    expect(resolveMaisProgramIdentity({ marca: 'Leonardo da Vinci' })).toEqual({
+      programaMais: 'Mais Leonardo Da Vinci',
+      equipeMarca: 'Leonardo Da Vinci',
+    })
+    expect(resolveMaisProgramIdentity({ marca: 'Sarah Dawsey' })).toEqual({
+      programaMais: 'Mais Sarah Dawsey',
+      equipeMarca: 'Sarah Dawsey',
+    })
+    expect(resolveMaisProgramIdentity({ marca: 'Raiz Educação' })).toEqual({
+      programaMais: 'Mais Raiz',
+      equipeMarca: 'Raiz',
+    })
   })
 })
 describe('interpolatePlaceholders', () => {

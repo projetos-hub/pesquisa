@@ -144,6 +144,7 @@ export interface SurveyTheme {
   marca?: string
   unidade?: string
   programaMais?: string
+  equipeMarca?: string
   welcomeMessage?: string
   thankyouMessage?: string
   welcomeTextAlign?: TextAlign

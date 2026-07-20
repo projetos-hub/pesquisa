@@ -180,6 +180,9 @@ const MAIS_PROGRAM_RULES: Array<{ match: string[]; programaMais: string; equipeM
   { match: ['unificado'], programaMais: 'Mais Unificado', equipeMarca: 'Unificado' },
   { match: ['global tree'], programaMais: 'Mais Global Tree', equipeMarca: 'Global Tree' },
   { match: ['apogeu'], programaMais: 'Mais Apogeu', equipeMarca: 'Apogeu' },
+  { match: ['leonardo da vinci', 'leonardodavinci'], programaMais: 'Mais Leonardo Da Vinci', equipeMarca: 'Leonardo Da Vinci' },
+  { match: ['sarah dawsey', 'sarahdawsey'], programaMais: 'Mais Sarah Dawsey', equipeMarca: 'Sarah Dawsey' },
+  { match: ['raiz educacao', 'raizeducacao'], programaMais: 'Mais Raiz', equipeMarca: 'Raiz' },
 ]
 
 function normalizeText(value: string): string {

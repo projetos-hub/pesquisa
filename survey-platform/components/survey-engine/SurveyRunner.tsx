@@ -66,6 +66,7 @@ export default function SurveyRunner({ surveySlug }: SurveyRunnerProps) {
       openDate: ctx.openDate,
       closeDate: ctx.closeDate,
       programaMais: theme?.programaMais ?? 'Mais Raiz',
+      equipeMarca: theme?.equipeMarca ?? theme?.marca ?? 'Raiz',
     })
   }, [ctx, survey, theme])
 
