@@ -5,7 +5,7 @@
 import { z }                              from 'zod'
 import { createServerSupabaseClient }     from '@/lib/supabase-server'
 import { createServiceClient }            from '@/lib/supabase-service'
-import { sendToOneCommunity, interpolatePlaceholders } from '@/lib/layers-notifications'
+import { sendToOneCommunity, interpolatePlaceholders, resolveMaisProgramIdentity } from '@/lib/layers-notifications'
 import { fetchLayersUserProfileByEmail }              from '@/lib/layers-hub'
 import { resolveSchoolName } from '@/lib/community-identity'
 
@@ -71,6 +71,11 @@ export async function POST(
           ? profile.name.trim().split(/\s+/)[0]!.charAt(0).toUpperCase() +
             profile.name.trim().split(/\s+/)[0]!.slice(1).toLowerCase()
           : ''
+        const maisIdentity = resolveMaisProgramIdentity({
+          communityId: community_id,
+          marca: commRow?.marca ?? '',
+          nomeEscola,
+        })
         const vars = {
           nome: firstName,
           nomeAluno: '',
@@ -78,6 +83,8 @@ export async function POST(
           marca: commRow?.marca ?? '',
           unidade: commRow?.unidade ?? '',
           serie: '',
+          programaMais: maisIdentity.programaMais,
+          equipeMarca: maisIdentity.equipeMarca,
         }
 
         const resolvedTitle     = interpolatePlaceholders(push_title  ?? title,       vars)

@@ -4,6 +4,7 @@ import {
   buildSamplePersonalizedPayload,
   buildNotificationPayload,
   interpolatePlaceholders,
+  resolveMaisProgramIdentity,
   type DispatchRecord,
 } from '@/lib/layers-notification-payloads'
 import { sendToOneCommunity } from '@/lib/layers-notifications'
@@ -215,6 +216,22 @@ describe('buildSamplePersonalizedPayload', () => {
   })
 })
 
+describe('resolveMaisProgramIdentity', () => {
+  it('maps Mais Raiz program names and team names by school brand', () => {
+    expect(resolveMaisProgramIdentity({ marca: 'Colégio Qi' })).toEqual({
+      programaMais: 'Mais Qi',
+      equipeMarca: 'Qi',
+    })
+    expect(resolveMaisProgramIdentity({ marca: 'Cubo Global School' })).toEqual({
+      programaMais: 'Cubo After School',
+      equipeMarca: 'Cubo',
+    })
+    expect(resolveMaisProgramIdentity({ marca: 'Escola Sá Pereira' })).toEqual({
+      programaMais: 'Mais Sá Pereira',
+      equipeMarca: 'Sá Pereira',
+    })
+  })
+})
 describe('interpolatePlaceholders', () => {
   it('interpolates known variables and uses readable fallbacks', () => {
     const fallbackText = interpolatePlaceholders(
@@ -231,6 +248,13 @@ describe('interpolatePlaceholders', () => {
       'Ola {{nome}}, {{nomeAluno}}',
       { nome: 'Ana', nomeAluno: 'Bruno', nomeEscola: 'Raiz', serie: '7A' },
     )).toBe('Ola Ana, Bruno')
+  })
+
+  it('interpolates Mais Raiz notification program and team placeholders', () => {
+    expect(interpolatePlaceholders(
+      'O {{programaMais}} quer ouvir sua opiniao. Equipe {{equipeMarca}}',
+      { nome: 'Ana', nomeAluno: '', nomeEscola: 'Colégio Qi Freguesia', marca: 'Colégio Qi', unidade: 'Freguesia', serie: '' },
+    )).toBe('O Mais Qi quer ouvir sua opiniao. Equipe Qi')
   })
 })
 

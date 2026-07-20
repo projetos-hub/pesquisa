@@ -95,7 +95,7 @@ export interface BuildBasePayloadInput {
 
 export type DispatchBasePayload = ReturnType<typeof buildDispatchBasePayload>
 
-export const PLACEHOLDERS = ['{{nome}}', '{{nomeAluno}}', '{{nomeEscola}}', '{{marca}}', '{{unidade}}', '{{serie}}']
+export const PLACEHOLDERS = ['{{nome}}', '{{nomeAluno}}', '{{nomeEscola}}', '{{marca}}', '{{unidade}}', '{{serie}}', '{{programaMais}}', '{{equipeMarca}}']
 
 export const KNOWN_COMMUNITIES = [
   'americano','fwnash24','apogeu-santoantonio-i','apogeu-santoantonio-ii',

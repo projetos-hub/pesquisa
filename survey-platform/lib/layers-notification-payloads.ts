@@ -1,3 +1,5 @@
+import { renderPlaceholders } from './placeholders/render'
+
 const PORTAL_ALIAS = '@raizeducacao:pesquisa'
 
 export type TargetScope = 'all' | 'communities' | 'group' | 'sample'
@@ -32,12 +34,14 @@ export interface LayersUserListItem {
 }
 
 export interface PersonalizedVars {
-  nome:       string
-  nomeAluno:  string
-  nomeEscola: string
-  marca?:     string
-  unidade?:   string
-  serie:      string
+  nome:         string
+  nomeAluno:    string
+  nomeEscola:   string
+  marca?:       string
+  unidade?:     string
+  serie:        string
+  programaMais?: string
+  equipeMarca?:  string
 }
 
 export interface SamplePersonalizedPayloadInput {
@@ -154,6 +158,77 @@ function isStudentNameList(value: string): boolean {
   return value.includes(',') || /\s+e\s+/i.test(value.trim())
 }
 
+export interface MaisProgramIdentityInput {
+  communityId?: string | null
+  marca?: string | null
+  nomeEscola?: string | null
+}
+
+export interface MaisProgramIdentity {
+  programaMais: string
+  equipeMarca: string
+}
+
+const MAIS_PROGRAM_RULES: Array<{ match: string[]; programaMais: string; equipeMarca: string }> = [
+  { match: ['cubo'], programaMais: 'Cubo After School', equipeMarca: 'Cubo' },
+  { match: ['sa pereira', 'sao pereira'], programaMais: 'Mais Sá Pereira', equipeMarca: 'Sá Pereira' },
+  { match: ['sap'], programaMais: 'Mais SAP', equipeMarca: 'SAP' },
+  { match: ['qi'], programaMais: 'Mais Qi', equipeMarca: 'Qi' },
+  { match: ['matriz'], programaMais: 'Mais Matriz', equipeMarca: 'Matriz' },
+  { match: ['americano'], programaMais: 'Mais Americano', equipeMarca: 'Americano' },
+  { match: ['uniao'], programaMais: 'Mais União', equipeMarca: 'União' },
+  { match: ['unificado'], programaMais: 'Mais Unificado', equipeMarca: 'Unificado' },
+  { match: ['global tree'], programaMais: 'Mais Global Tree', equipeMarca: 'Global Tree' },
+  { match: ['apogeu'], programaMais: 'Mais Apogeu', equipeMarca: 'Apogeu' },
+]
+
+function normalizeText(value: string): string {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+}
+
+function fallbackEquipeMarca(input: MaisProgramIdentityInput): string {
+  const source = input.marca?.trim() || input.nomeEscola?.trim() || input.communityId?.trim() || 'Raiz'
+  return source
+    .replace(/^Colégio\s+/i, '')
+    .replace(/^Colegio\s+/i, '')
+    .replace(/^Escola\s+/i, '')
+    .replace(/\s+Educação$/i, '')
+    .replace(/\s+Educacao$/i, '')
+    .trim() || 'Raiz'
+}
+
+export function resolveMaisProgramIdentity(input: MaisProgramIdentityInput): MaisProgramIdentity {
+  const haystack = normalizeText([
+    input.communityId ?? '',
+    input.marca ?? '',
+    input.nomeEscola ?? '',
+  ].join(' '))
+
+  const rule = MAIS_PROGRAM_RULES.find(item => item.match.some(token => haystack.includes(token)))
+  if (rule) return { programaMais: rule.programaMais, equipeMarca: rule.equipeMarca }
+
+  const equipeMarca = fallbackEquipeMarca(input)
+  return { programaMais: `Mais ${equipeMarca}`, equipeMarca }
+}
+
+function notificationVars(vars: PersonalizedVars): Record<string, string | undefined> {
+  const identity = resolveMaisProgramIdentity({
+    marca: vars.marca,
+    nomeEscola: vars.nomeEscola,
+  })
+
+  return {
+    nome: vars.nome || 'você',
+    nomeAluno: vars.nomeAluno || 'seu filho(a)',
+    nomeEscola: vars.nomeEscola || 'a escola',
+    marca: vars.marca || vars.nomeEscola || 'a escola',
+    unidade: vars.unidade || vars.nomeEscola || 'a escola',
+    serie: vars.serie || 'a turma',
+    programaMais: vars.programaMais || identity.programaMais,
+    equipeMarca: vars.equipeMarca || identity.equipeMarca,
+  }
+}
+
 export function interpolatePlaceholders(text: string, vars: PersonalizedVars): string {
   const nomeAluno = vars.nomeAluno || 'seu filho(a)'
   const studentText = isStudentNameList(nomeAluno)
@@ -162,37 +237,54 @@ export function interpolatePlaceholders(text: string, vars: PersonalizedVars): s
         .replace(/\bda\s+\{\{nomeAluno\}\}/gi, 'de {{nomeAluno}}')
     : text
 
-  return studentText
-    .replace(/\{\{nome\}\}/g,       vars.nome       || 'você')
-    .replace(/\{\{nomeAluno\}\}/g,  nomeAluno)
-    .replace(/\{\{nomeEscola\}\}/g, vars.nomeEscola || 'a escola')
-    .replace(/\{\{escola\.nome\}\}/g, vars.nomeEscola || 'a escola')
-    .replace(/\{\{marca\}\}/g,      vars.marca      || vars.nomeEscola || 'a escola')
-    .replace(/\{\{escola\.marca\}\}/g, vars.marca   || vars.nomeEscola || 'a escola')
-    .replace(/\{\{unidade\}\}/g,    vars.unidade    || vars.nomeEscola || 'a escola')
-    .replace(/\{\{escola\.unidade\}\}/g, vars.unidade || vars.nomeEscola || 'a escola')
-    .replace(/\{\{serie\}\}/g,      vars.serie      || 'a turma')
+  return renderPlaceholders(studentText, notificationVars(vars))
 }
+
 function optionalText(value: string | null | undefined): string | null {
   const trimmed = value?.trim()
   return trimmed ? value! : null
 }
 
+export type CommunityNotificationIdentity = string | (MaisProgramIdentityInput & {
+  unidade?: string | null
+  programaMais?: string | null
+  equipeMarca?: string | null
+})
+
+function communityNotificationVars(identity: CommunityNotificationIdentity) {
+  if (typeof identity === 'string') {
+    const maisIdentity = resolveMaisProgramIdentity({ nomeEscola: identity })
+    return {
+      nomeEscola: identity,
+      marca: '',
+      unidade: '',
+      programaMais: maisIdentity.programaMais,
+      equipeMarca: maisIdentity.equipeMarca,
+    }
+  }
+
+  const maisIdentity = resolveMaisProgramIdentity(identity)
+  return {
+    nomeEscola: identity.nomeEscola ?? '',
+    marca: identity.marca ?? '',
+    unidade: identity.unidade ?? '',
+    programaMais: identity.programaMais ?? maisIdentity.programaMais,
+    equipeMarca: identity.equipeMarca ?? maisIdentity.equipeMarca,
+  }
+}
+
 export function buildPersonalizedPayload(
-  dispatch:   DispatchRecord,
-  user:       LayersUserListItem,
-  nomeEscola: string,
+  dispatch:  DispatchRecord,
+  user:      LayersUserListItem,
+  community: CommunityNotificationIdentity,
 ): LayersPayload {
   return buildUserPayload(dispatch, { kind: 'user', id: user._id }, {
     nome: formatFirstName(user.name ?? ''),
     nomeAluno: '',
-    nomeEscola,
-    marca: '',
-    unidade: '',
+    ...communityNotificationVars(community),
     serie: '',
   })
 }
-
 export function buildSamplePersonalizedPayload(
   dispatch: DispatchRecord,
   input:    SamplePersonalizedPayloadInput,

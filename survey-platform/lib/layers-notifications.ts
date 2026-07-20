@@ -1,4 +1,4 @@
-﻿//
+//
 // Endpoint: POST https://api.layers.digital/v2/notification/send
 // Auth: Bearer LAYERS_API_TOKEN + community-id header
 // Docs: docs/layers-notifications.md
@@ -31,6 +31,7 @@ export {
   buildNotificationPayload,
   buildSamplePersonalizedPayload,
   interpolatePlaceholders,
+  resolveMaisProgramIdentity,
   type Channel,
   type DispatchRecord,
   type DispatchResult,
@@ -168,8 +169,13 @@ export async function executeDispatch(dispatchId: string): Promise<DispatchResul
       .from('communities')
       .select('community_id, nome_escola, marca, unidade')
       .in('community_id', communityIds)
-    const nomeEscolaByCommunity = new Map(
-      (communityRows ?? []).map(row => [row.community_id, resolveSchoolName(row)])
+    const identityByCommunity = new Map(
+      (communityRows ?? []).map(row => [row.community_id, {
+        communityId: row.community_id,
+        nomeEscola: resolveSchoolName(row),
+        marca: row.marca ?? '',
+        unidade: row.unidade ?? '',
+      }])
     )
 
     const results = await Promise.allSettled(
@@ -184,7 +190,7 @@ export async function executeDispatch(dispatchId: string): Promise<DispatchResul
               job.id,
               dispatchRecord as DispatchRecord,
               job.community_id,
-              nomeEscolaByCommunity.get(job.community_id) ?? '',
+              identityByCommunity.get(job.community_id) ?? '',
             )
         return { communityId: job.community_id, success: res.failed === 0, hasMore: res.hasMore }
       })

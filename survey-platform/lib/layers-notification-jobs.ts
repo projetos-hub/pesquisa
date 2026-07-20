@@ -5,6 +5,8 @@ import {
   buildPersonalizedPayload,
   buildSamplePersonalizedPayload,
   formatFirstName,
+  resolveMaisProgramIdentity,
+  type CommunityNotificationIdentity,
   type DispatchRecord,
   type JobResult,
   type PersonalizedVars,
@@ -112,6 +114,11 @@ export async function executePersonalizedJobSample(
         } catch { /* ignore lookup failures */ }
       }
 
+      const maisIdentity = resolveMaisProgramIdentity({
+        communityId,
+        marca: commRow?.marca ?? '',
+        nomeEscola: communityNomeEscola,
+      })
       const vars: PersonalizedVars = {
         nome:       formatFirstName(entry.nome ?? ''),
         nomeAluno,
@@ -119,6 +126,8 @@ export async function executePersonalizedJobSample(
         marca:      commRow?.marca ?? '',
         unidade:    commRow?.unidade ?? '',
         serie,
+        programaMais: maisIdentity.programaMais,
+        equipeMarca:  maisIdentity.equipeMarca,
       }
 
       const payload = buildSamplePersonalizedPayload(dispatch, {
@@ -180,9 +189,27 @@ export async function executePersonalizedJob(
   jobId:       string,
   dispatch:    DispatchRecord,
   communityId: string,
-  nomeEscola:  string,
+  community: CommunityNotificationIdentity,
 ): Promise<{ processed: number; failed: number; hasMore: boolean }> {
   const supabase = createServiceClient()
+  let effectiveCommunity = community
+
+  if (typeof effectiveCommunity === 'string' && !effectiveCommunity) {
+    const { data: commRow } = await supabase
+      .from('communities')
+      .select('community_id, nome_escola, marca, unidade')
+      .eq('community_id', communityId)
+      .maybeSingle()
+
+    effectiveCommunity = commRow
+      ? {
+          communityId,
+          nomeEscola: resolveSchoolName(commRow),
+          marca: commRow.marca ?? '',
+          unidade: commRow.unidade ?? '',
+        }
+      : communityId
+  }
 
   const { data: job } = await supabase
     .from('survey_dispatch_jobs')
@@ -212,7 +239,7 @@ export async function executePersonalizedJob(
   let failed    = 0
 
   for (const user of users) {
-    const payload = buildPersonalizedPayload(dispatch, user, nomeEscola)
+    const payload = buildPersonalizedPayload(dispatch, user, effectiveCommunity)
     const result  = await sendToOneCommunity(communityId, payload)
 
     if (result.success) processed++
