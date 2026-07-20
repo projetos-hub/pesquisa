@@ -94,7 +94,7 @@ describe('rowsToConfig', () => {
   it('sorts questions and maps scale options by order_index', () => {
     const questions = [
       questionRow({ id: 'q2', order_index: 2, type: 'text', key: 'final', title: 'Final' }),
-      questionRow({ id: 'q1', order_index: 1, type: 'scale', key: 'pedagogico', title: 'Pedagogico' }),
+      questionRow({ id: 'q1', order_index: 1, type: 'scale', key: 'pedagogico', title: 'Pedagogico', settings: { scaleValues: [1, 2, 3, 4, 5] } }),
     ]
     const options = [
       optionRow({ question_id: 'q1', order_index: 1, label: 'Acompanhamento' }),
@@ -115,7 +115,7 @@ describe('rowsToConfig', () => {
   it('maps scale_sections preserving section and option order', () => {
     const config = rowsToConfig(
       surveyRow(),
-      [questionRow({ id: 'q1', type: 'scale_sections', key: 'bilingue', title: 'Bilingue' })],
+      [questionRow({ id: 'q1', type: 'scale_sections', key: 'bilingue', title: 'Bilingue', settings: { scaleValues: [1, 2, 3, 4, 5] } })],
       [
         optionRow({ question_id: 'q1', order_index: 0, label: 'Speaking', section_key: 'oral', section_title: 'Oral' }),
         optionRow({ question_id: 'q1', order_index: 1, label: 'Listening', section_key: 'oral', section_title: 'Oral' }),
