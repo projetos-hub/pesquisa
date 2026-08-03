@@ -85,6 +85,7 @@ export async function executePersonalizedJobSample(
     .not('layers_user_id', 'is', null)
     .neq('layers_user_id', 'NOT_FOUND')
     .order('created_at')
+    .order('id')
     .range(offset, offset + PERSONALIZED_BATCH_SIZE - 1)
 
   if (groupMemberIds) {
