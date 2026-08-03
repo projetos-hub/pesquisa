@@ -48,7 +48,7 @@ export function renderPlaceholders(
 ): string {
   return text.replace(TOKEN_RE, (_, key: string, fallback: string | undefined) => {
     const value = readPath(vars, key)
-    return value ?? fallback ?? ''
+    return value?.trim() ? value : fallback ?? ''
   })
 }
 

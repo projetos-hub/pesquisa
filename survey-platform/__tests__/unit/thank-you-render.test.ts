@@ -23,10 +23,10 @@ describe('ThankYou rendering', () => {
     expect(html).toContain('Pedro')
   })
 
-  it('renders neutral responsible message with referral link', () => {
+  it('renders neutral responsible message without referral link', () => {
     const html = renderThankYou({ nps: 8, perfil: 'responsavel' })
 
-    expect(html).toContain('https://indicacao.example')
+    expect(html).not.toContain('https://indicacao.example')
     expect(html).toContain('Pedro')
   })
 

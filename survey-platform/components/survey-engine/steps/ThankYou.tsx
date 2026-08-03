@@ -106,14 +106,8 @@ export default function ThankYou({ nps, perfil, nomeAluno, school, tipo, theme, 
           Agradecemos pela sua avaliação e por fazer parte da nossa {nomeDaEscola}.<br /><br />
           Sua opinião é importante e ajuda a gente a entender como tornar a experiência
           de <strong>{nomeReferencia}</strong> ainda melhor.
-          Estamos à disposição para conversar sempre que quiser compartilhar suas ideias.<br /><br />
-          Se conhecer famílias que se identifiquem com a proposta da {nomeDaEscola}, compartilhe o link:
+          Estamos à disposição para conversar sempre que quiser compartilhar suas ideias.
         </p>
-        {linkIndicacao && (
-          <div className="thankyou-link-box">
-            <a href={linkIndicacao} target="_blank" rel="noreferrer">{linkIndicacao}</a>
-          </div>
-        )}
       </div>
     )
   }
