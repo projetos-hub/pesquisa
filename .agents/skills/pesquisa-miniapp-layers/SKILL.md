@@ -94,4 +94,6 @@ Para operacoes destrutivas ou externas, repetir exatamente o valor `expectedConf
 
 ## Distribuir
 
-Compartilhar apenas a pasta da skill ou um pacote dela. Nao incluir arquivo de configuracao, token, `.env`, planilhas ou logs. Cada colaborador instala a skill globalmente e usa sua propria chave pessoal, permitindo revogacao e auditoria individual.
+Distribuicao publica ou versionada: compartilhar apenas a pasta da skill, sem configuracao, token, `.env`, planilhas ou logs. Cada colaborador emite sua propria chave, permitindo revogacao e auditoria individual.
+
+Distribuicao privada gerenciada: um pacote fora do Git pode conter `bootstrap.json` com uma chave compartilhada. O instalador grava a configuracao no perfil local e remove o bootstrap da pasta extraida. Nunca commitar esse arquivo; enviar o ZIP por canal restrito e exclui-lo apos a instalacao. Todos os destinatarios compartilham a mesma identidade de auditoria e a revogacao interrompe o acesso de todos.
