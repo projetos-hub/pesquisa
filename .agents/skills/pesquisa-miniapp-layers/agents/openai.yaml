@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pesquisa Miniapp Layers"
+  short_description: "Opera o miniapp por API fora do repositorio"
+  default_prompt: "Use $pesquisa-miniapp-layers para operar com seguranca a plataforma de pesquisas por API a partir de qualquer workspace."
