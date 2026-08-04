@@ -156,7 +156,7 @@ def build_parser() -> argparse.ArgumentParser:
     setup.add_argument('--api-url', default=DEFAULT_API_URL)
     setup.add_argument('--email', required=True)
     setup.add_argument('--name', default='Codex Skill')
-    setup.add_argument('--expires-days', type=int, default=180)
+    setup.add_argument('--expires-days', type=int, default=None, help='Validade opcional; sem expiracao por padrao.')
     setup.set_defaults(func=command_setup)
 
     doctor = sub.add_parser('doctor', help='Validar token e listar capacidades.')

@@ -35,7 +35,7 @@ Se ainda nao houver uma chave, executar no terminal usando o caminho absoluto re
 python <SKILL_DIR>/scripts/external_client.py setup --email colaborador@raizeducacao.com.br
 ```
 
-O comando solicita a senha do painel sem salva-la, autentica no Supabase e emite um token pessoal e revogavel. O token fica fora da pasta da skill, no perfil local do usuario.
+O comando solicita a senha do painel sem salva-la, autentica no Supabase e emite um token pessoal sem expiracao por padrao e revogavel a qualquer momento. O token fica fora da pasta da skill, no perfil local do usuario. Use `--expires-days N` apenas quando quiser uma chave temporaria.
 
 Nunca copiar token para chat, plano, commit ou pacote da skill.
 

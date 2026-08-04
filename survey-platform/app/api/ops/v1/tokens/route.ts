@@ -4,7 +4,7 @@ import { createServiceClient } from '@/lib/supabase-service'
 
 const CreateTokenSchema = z.object({
   name: z.string().trim().min(1).max(100).default('Codex Skill'),
-  expiresInDays: z.number().int().min(1).max(365).default(180),
+  expiresInDays: z.number().int().min(1).max(365).nullable().default(null),
 })
 
 export async function POST(request: Request) {
@@ -12,7 +12,9 @@ export async function POST(request: Request) {
     const { user, email } = await requireInternalSupabaseUser(request)
     const parsed = CreateTokenSchema.safeParse(await request.json().catch(() => ({})))
     if (!parsed.success) return Response.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
-    const expiresAt = new Date(Date.now() + parsed.data.expiresInDays * 86_400_000).toISOString()
+    const expiresAt = parsed.data.expiresInDays == null
+      ? null
+      : new Date(Date.now() + parsed.data.expiresInDays * 86_400_000).toISOString()
     const created = await createPersonalOpsToken({ user, email, name: parsed.data.name, expiresAt })
     return Response.json({
       ok: true,

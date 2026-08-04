@@ -7,7 +7,7 @@ Base: `https://pesquisa-nu-sand.vercel.app/api/ops/v1`.
 1. `GET /config` retorna URL/key publica do Supabase.
 2. Autenticar com conta interna confirmada.
 3. `POST /tokens` com JWT Supabase em Bearer.
-4. Disponibilizar o token `pml_live_...` em `PESQUISA_API_TOKEN` ou guarda-lo somente na configuracao local.
+4. Disponibilizar o token `pml_live_...` em `PESQUISA_API_TOKEN` ou guarda-lo somente na configuracao local. Tokens nao expiram por padrao, mas permanecem individualmente revogaveis.
 
 O cliente usa `https://pesquisa-nu-sand.vercel.app` por padrao. So `PESQUISA_API_TOKEN` e obrigatoria para operar em producao; `PESQUISA_API_URL` e opcional e substitui a URL para preview/local.
 
