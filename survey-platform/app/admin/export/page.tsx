@@ -6,6 +6,7 @@ import { PublicLinkCreateForm } from './PublicLinkCreateForm'
 import { PublicJsonPreview } from './PublicJsonPreview'
 import { normalizePublicResponseScope, publicResponseScopeLabel, type PublicResponseScope } from '@/lib/public-responses'
 import { fetchSampleResponseSummary, type SampleResponseSummary } from '@/lib/report-queries'
+import { resolveCommunityPrimaryName } from '@/lib/community-identity'
 
 interface Survey {
   id: string
@@ -27,8 +28,11 @@ interface PublicResponseLink {
   scope: PublicResponseScope
 }
 
-interface CommunityBrand {
+interface CommunityRow {
+  community_id: string
+  nome_escola: string | null
   marca: string | null
+  unidade: string | null
 }
 
 function statusLabel(status: string) {
@@ -59,14 +63,14 @@ export default async function ExportPage() {
 
   const { data: communities } = await supabase
     .from('communities')
-    .select('marca')
-    .not('marca', 'is', null) as { data: CommunityBrand[] | null }
+    .select('community_id, nome_escola, marca, unidade')
+    .not('marca', 'is', null) as { data: CommunityRow[] | null }
 
-  const brandNames = [...new Set(
-    (communities ?? [])
-      .map(community => community.marca?.trim())
-      .filter((marca): marca is string => Boolean(marca))
-  )].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  const communityOptions = (communities ?? []).map(community => ({
+    id: community.community_id,
+    brandName: community.marca?.trim() ?? '',
+    unitLabel: community.unidade?.trim() || resolveCommunityPrimaryName(community) || community.community_id,
+  })).filter(community => Boolean(community.id && community.brandName)).sort((a, b) => a.brandName.localeCompare(b.brandName, 'pt-BR') || a.unitLabel.localeCompare(b.unitLabel, 'pt-BR'))
 
   const linksBySurvey = new Map<string, PublicResponseLink[]>()
   for (const rawLink of publicLinks ?? []) {
@@ -113,7 +117,7 @@ export default async function ExportPage() {
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Pesquisa</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
                 <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">Respostas</th>
-                <th className="w-[360px] px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Acoes</th>
+                <th className="w-[440px] px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Acoes</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -146,7 +150,7 @@ export default async function ExportPage() {
                         >
                           XLSX admin
                         </a>
-                        <PublicLinkCreateForm surveyId={survey.id} brandNames={brandNames} />
+                        <PublicLinkCreateForm surveyId={survey.id} communities={communityOptions} />
                       </div>
                     </td>
                   </tr>
