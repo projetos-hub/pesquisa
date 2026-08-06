@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { applyConditionals } from '@/lib/survey-config'
+import { normalizeSurveyCommunityId } from '@/lib/survey-community-id'
 import type { LayersPortalWindow } from '@/lib/layers'
 import type { Perfil, SurveyConfig, SurveyContext } from '../utils/types'
 
@@ -14,7 +15,12 @@ const STORAGE_BASE = process.env.NEXT_PUBLIC_SUPABASE_URL
   : null
 
 export function useSurveyBootstrap(surveySlug: string, searchParams: SearchParamsLike) {
-  const initialCommunityId = searchParams.get('layers_community_id') ?? searchParams.get('communityId') ?? ''
+  const initialCommunityId = normalizeSurveyCommunityId(
+    searchParams.get('layers_community_id')
+      ?? searchParams.get('communityId')
+      ?? searchParams.get('community_id')
+      ?? ''
+  )
   const loadingLogoUrl = STORAGE_BASE && initialCommunityId
     ? `${STORAGE_BASE}/${initialCommunityId}/logo.png`
     : null
@@ -27,7 +33,10 @@ export function useSurveyBootstrap(surveySlug: string, searchParams: SearchParam
   useEffect(() => {
     async function loadCtx() {
       let userId      = searchParams.get('layers_user_id') || searchParams.get('userId') || ''
-      let communityId = searchParams.get('layers_community_id') || searchParams.get('communityId') || ''
+      let communityId = searchParams.get('layers_community_id')
+        || searchParams.get('communityId')
+        || searchParams.get('community_id')
+        || ''
       let session     = searchParams.get('layers_session') || searchParams.get('session') || ''
       let accountId   = searchParams.get('layers_account_id') || searchParams.get('accountId') || ''
 
@@ -47,6 +56,8 @@ export function useSurveyBootstrap(surveySlug: string, searchParams: SearchParam
           // URL params remain as fallback.
         }
       }
+
+      communityId = normalizeSurveyCommunityId(communityId)
 
       let hubNome      = ''
       let hubPerfil: Perfil = 'responsavel'

@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase-service'
 import { rowsToConfig } from '@/lib/survey-config'
 import type { QuestionRow, OptionRow, InstallationRow } from '@/lib/survey-config'
+import { normalizeSurveyCommunityId } from '@/lib/survey-community-id'
 import { getEffectiveSurveyStatus } from '@/lib/survey-status'
 
 const COMMUNITY_IDENTITY_KEYS = [
@@ -165,7 +166,9 @@ export async function GET(req: Request, { params }: RouteContext) {
   const { searchParams } = new URL(req.url)
   // Sanitiza communityId: apenas alfanumérico + hífen + underscore, max 64 chars
   // Evita cache poisoning via communityIds aleatórios acumulando memória no cache
-  const communityId = (searchParams.get('communityId') ?? '')
+  const communityId = normalizeSurveyCommunityId(
+    searchParams.get('communityId') ?? searchParams.get('community_id') ?? ''
+  )
     .replace('@', '')
     .replace(/[^a-z0-9_\-]/gi, '')
     .slice(0, 64)
