@@ -127,7 +127,7 @@ export async function GET(req: Request) {
     if (!survey) continue
 
     const trustedPerfil = profile?.perfil ?? ''
-    if (!isPerfilAllowedForSubmit(survey, trustedPerfil)) continue
+    if (trustedPerfil && !isPerfilAllowedForSubmit(survey, trustedPerfil)) continue
 
     if (isSampleAccessControl(survey)) {
       const allowed = await isUserInSample(survey.id, communityId, userId, profile?.email ?? '')

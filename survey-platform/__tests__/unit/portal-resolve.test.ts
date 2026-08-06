@@ -108,4 +108,16 @@ describe('portal resolve access filtering', () => {
     expect(res.status).toBe(200)
     await expect(res.json()).resolves.toEqual({ surveys: [] })
   })
+
+  it('lists open surveys when the Layers profile is unavailable', async () => {
+    state.profile = null
+    state.installs = [installSurvey({ access_control: 'aberta' })]
+
+    const res = await resolvePortal()
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toMatchObject({
+      surveys: [{ slug: 'renovacao-2027', title: 'Intencao de renovacao 2027' }],
+    })
+  })
 })
