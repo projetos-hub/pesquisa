@@ -1,14 +1,34 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import type { LayersPortalWindow } from '@/lib/layers'
 import type { ResolvedSurvey } from '@/app/api/portal/resolve/route'
+import { normalizeSurveyCommunityId } from '@/lib/survey-community-id'
 
 const PORTAL_TIMEOUT_MS = 5000
 
 export default function PortalPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="card">
+          <div className="header"><h1>Pesquisa de Satisfação</h1></div>
+          <div className="loading-screen">
+            <div className="spinner" />
+            <p>Carregando...</p>
+          </div>
+        </div>
+      }
+    >
+      <PortalContent />
+    </Suspense>
+  )
+}
+
+function PortalContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [surveys, setSurveys] = useState<ResolvedSurvey[] | null>(null)
   const [communityId, setCommunityId] = useState('')
   const [launchParams, setLaunchParams] = useState({ userId: '', accountId: '', session: '' })
@@ -47,6 +67,15 @@ export default function PortalPage() {
           // LayersPortal indisponível ou timeout — continua sem contexto
         }
       }
+
+      // Fallback: mesmo com LayersPortal indisponível/timeout, a Layers
+      // pode ter passado o contexto via query string do iframe.
+      if (!cId)  cId  = searchParams.get('communityId') || searchParams.get('community_id') || searchParams.get('layers_community_id') || ''
+      if (!uId)  uId  = searchParams.get('userId')    || searchParams.get('layers_user_id')    || ''
+      if (!aId)  aId  = searchParams.get('accountId') || searchParams.get('layers_account_id') || ''
+      if (!sess) sess = searchParams.get('session')   || searchParams.get('layers_session')    || ''
+
+      cId = normalizeSurveyCommunityId(cId)
 
       setCommunityId(cId)
       setLaunchParams({ userId: uId, accountId: aId, session: sess })
@@ -87,7 +116,7 @@ export default function PortalPage() {
     }
 
     init()
-  }, [router])
+  }, [router, searchParams])
 
   // ── Telas de estado ──────────────────────────────────────────────────────────
 
