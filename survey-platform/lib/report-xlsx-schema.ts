@@ -98,7 +98,8 @@ export function getMetaValues(s: SessionRow, surveyTitle: string): unknown[] {
     s.nome_escola ?? s.school ?? s.community_id,
     s.community_id,
     s.user_id,
-    s.perfil === 'aluno' ? s.nome_aluno || '' : s.nome_responsavel || '',
+    // Aluno: nome_aluno; fallback nome_responsavel (o submit guarda user.name do proprio aluno la)
+    s.perfil === 'aluno' ? s.nome_aluno || s.nome_responsavel || '' : s.nome_responsavel || '',
     s.email || '',
     s.perfil === 'aluno' ? 'estudante' : 'responsavel',
     s.serie || '',

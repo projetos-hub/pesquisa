@@ -110,6 +110,8 @@ describe('report-xlsx-schema', () => {
       '2026-06-23T10:00:00Z',
     ])
     expect(getMetaValues({ ...base, perfil: 'responsavel' }, 'Pesquisa')[7]).toBe('Maria')
+    // aluno sem nome_aluno: usa nome_responsavel (user.name do aluno gravado no submit)
+    expect(getMetaValues({ ...base, perfil: 'aluno', nome_aluno: '' }, 'Pesquisa')[7]).toBe('Maria')
   })
 
   it('maps scale averages to color bands', () => {
