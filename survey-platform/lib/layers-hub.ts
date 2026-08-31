@@ -151,6 +151,40 @@ async function fetchSerie(
   }
 }
 
+// Serie/turma/nome do PRÓPRIO aluno via /related (escopo users:* — o único que o token
+// atual possui; enrollments/groups devolvem 403 MissingPermission). O member retornado
+// para um aluno é ele mesmo, com groups (série/turma) embutidos. fetchSerie fica como
+// fallback para o caso de o token ganhar enrollment:read/group:read.
+async function fetchOwnSerieTurma(
+  userId: string,
+  headers: Record<string, string>,
+): Promise<{ nomeAluno: string; serie: string; turma: string }> {
+  let nomeAluno = ''
+  let serie = ''
+  let turma = ''
+  try {
+    const relRes = await fetch(`${BASE_URL}/v1/users/${userId}/related`, {
+      headers,
+      signal: AbortSignal.timeout(5_000),
+    })
+    if (relRes.ok) {
+      const rel = await relRes.json() as { members?: LayersRelatedMember[] }
+      const own = summarizeRelatedStudents(rel.members)
+      nomeAluno = own.nomeAluno
+      serie = own.serie
+      turma = own.turma
+    }
+  } catch {
+    // segue para o fallback
+  }
+  if (!serie && !turma) {
+    const fallback = await fetchSerie(userId, headers)
+    serie = fallback.serie
+    turma = fallback.turma
+  }
+  return { nomeAluno, serie, turma }
+}
+
 async function _fetchLayersUserUncached(
   userId: string,
   communityId: string,
@@ -209,9 +243,10 @@ async function _fetchLayersUserUncached(
         }
       }
     } else {
-      const fallback = await fetchSerie(userId, headers)
-      serie = fallback.serie
-      turma = fallback.turma
+      const own = await fetchOwnSerieTurma(userId, headers)
+      nomeAluno = own.nomeAluno || (user.name ?? '')  // o próprio aluno é o respondente
+      serie = own.serie
+      turma = own.turma
     }
 
     return {
@@ -306,9 +341,10 @@ async function _fetchLayersUserAnyRoleUncached(
         }
       }
     } else if (perfil === 'aluno') {
-      const fallback = await fetchSerie(userId, headers)
-      serie = fallback.serie
-      turma = fallback.turma
+      const own = await fetchOwnSerieTurma(userId, headers)
+      nomeAluno = own.nomeAluno || (user.name ?? '')
+      serie = own.serie
+      turma = own.turma
     }
     // colaborador: sem lookup extra
 
